@@ -1,0 +1,644 @@
+[
+ {
+  "test": "environment",
+  "status": "INFO",
+  "detail": {
+   "browser": "firefox 159.0",
+   "playwright": "1.65.0",
+   "date": "2026-11-12 21:51"
+  }
+ },
+ {
+  "test": "two modules + cover on one page, subdirectory /sub/",
+  "status": "PASS",
+  "detail": {
+   "states": [
+    [
+     "ready",
+     "webgl",
+     "1",
+     "\"><img src=x onerror=globalThis.__TITLE_"
+    ],
+    [
+     "ready",
+     "flat",
+     "1",
+     "Zweites Buch mit sehr langem Titel, der "
+    ]
+   ],
+   "stylesheet": {
+    "sheets": [
+     "http://127.0.0.1:8766/sub/media/mod_pdfbook/css/viewer.css?0.1.0-alpha.3"
+    ],
+    "radius": "8px"
+   },
+   "guest_error_sections": [
+    "",
+    ""
+   ],
+   "module_scripts": [
+    "http://127.0.0.1:8766/sub/media/mod_pdfbook/js/viewer.mjs?0.1.0-alpha.3"
+   ],
+   "pdf_requests": [
+    "http://127.0.0.1:8766/sub/images/eight.pdf",
+    "http://127.0.0.1:8766/sub/images/odd-book.pdf"
+   ],
+   "vendor_files": [
+    "media/mod_pdfbook/vendor/pdfjs/build/pdf.mjs",
+    "media/mod_pdfbook/vendor/pdfjs/build/pdf.worker.mjs"
+   ],
+   "rtl_first_spread": [
+    "PDF-Seite 1"
+   ],
+   "download_links": [
+    [
+     false,
+     "http://127.0.0.1:8766/sub/images/eight.pdf"
+    ],
+    [
+     true,
+     "http://127.0.0.1:8766/sub/images/odd-book.pdf"
+    ]
+   ],
+   "injection": {
+    "img": 0,
+    "b": 0,
+    "t": false
+   },
+   "external": [],
+   "errors": [],
+   "console": [
+    "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file: \"http://127.0.0.1:8766/sub/page/two.html\" line: 0}]"
+   ]
+  }
+ },
+ {
+  "test": "F15 configuration errors: hidden for guests, shown to editors",
+  "status": "PASS",
+  "detail": {
+   "guest": [
+    "",
+    ""
+   ],
+   "editor": [
+    "PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.",
+    "PDF muss im Medienverzeichnis images liegen."
+   ]
+  }
+ },
+ {
+  "test": "PDF actions (OpenAction/AA/JS link/Launch/SubmitForm/GoToR/XFA/doc JS) inert",
+  "status": "PASS",
+  "detail": {
+   "annotation_elements": [
+    [
+     "A",
+     "https://safe.example/a?b=%22%3E%3Cimg%20src=x%20onerror=globalThis.__ATTR__=1%3E",
+     "noopener noreferrer",
+     "_blank"
+    ],
+    [
+     "BUTTON",
+     null,
+     null,
+     null
+    ],
+    [
+     "BUTTON",
+     null,
+     null,
+     null
+    ]
+   ],
+   "executed_flags": [],
+   "evil_requests": [],
+   "dialogs": [],
+   "popups": [],
+   "page_after_internal_clicks": "3",
+   "internal_button_targets": [
+    "3",
+    "3"
+   ],
+   "errors": []
+  }
+ },
+ {
+  "test": "outline titles inert, entries capped, repeated toggling",
+  "status": "PASS",
+  "detail": {
+   "entries_rendered": 300,
+   "first_titles": [
+    "<img src=x onerror=globalThis.__OUTLINE__=1>",
+    "</script><script>globalThis.__OUTLINE2__=1</script>",
+    "\"><svg onload=globalThis.__OUTLINE3__=1>",
+    "Umlaute äöü ß – € 漢字 ‮evil"
+   ],
+   "injection": {
+    "img": 0,
+    "f": []
+   },
+   "errors": []
+  }
+ },
+ {
+  "test": "error fixtures and HTTP edge cases (F3, F5)",
+  "status": "PASS",
+  "detail": {
+   "failed": [],
+   "password": {
+    "state": "error",
+    "status": "Dieses PDF ist passwortgeschützt.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: JSHandle@object"
+    ]
+   },
+   "owner-only": {
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "console": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file:"
+    ]
+   },
+   "truncated": {
+    "state": "error",
+    "status": "Die PDF-Datei ist beschädigt oder ungültig.",
+    "errors": [],
+    "console": [
+     "warning: Warning: Indexing all PDF objects",
+     "warning: PDF Book: JSHandle@object"
+    ]
+   },
+   "fake-header": {
+    "state": "error",
+    "status": "Die PDF-Datei ist beschädigt oder ungültig.",
+    "errors": [],
+    "console": [
+     "warning: Warning: Indexing all PDF objects",
+     "warning: PDF Book: JSHandle@object"
+    ]
+   },
+   "too-many": {
+    "state": "error",
+    "status": "Das PDF enthält mehr als 1000 Seiten.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: Error"
+    ],
+    "status_after_resize": "Das PDF enthält mehr als 1000 Seiten.",
+    "state_after_resize": "error",
+    "pages_after_resize": 0,
+    "controls_enabled": []
+   },
+   "net-redirect": {
+    "state": "error",
+    "status": "Die PDF-Datei konnte nicht geladen werden. Bitte später erneut versuchen.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: Error"
+    ]
+   },
+   "net-e500": {
+    "state": "error",
+    "status": "Die PDF-Datei ist nicht erreichbar.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: Error"
+    ]
+   },
+   "net-html-mime": {
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "console": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file:"
+    ]
+   },
+   "net-big-len": {
+    "state": "error",
+    "status": "PDF ist größer als 32 MB.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: Error"
+    ]
+   },
+   "net-big-nolen": {
+    "state": "error",
+    "status": "PDF ist größer als 32 MB.",
+    "errors": [],
+    "console": [
+     "warning: PDF Book: Error"
+    ]
+   }
+  }
+ },
+ {
+  "test": "F2 rapid input / resize while busy",
+  "status": "PASS",
+  "detail": {
+   "after_two_rapid_next_clicks_page": "4",
+   "expected": "4",
+   "after_two_quick_arrowright_from_4": "8",
+   "expected_keys": "8",
+   "spread_width_before": 724.433349609375,
+   "after_resize_during_animation_to_900px": {
+    "spread": 724.9666748046875,
+    "stage": 882,
+    "canvas": 417
+   },
+   "after_resize_back": {
+    "spread": 724.433349609375,
+    "stage": 1262
+   },
+   "errors": []
+  }
+ },
+ {
+  "test": "F2 resize to 520 px during page-turn animation",
+  "status": "PASS",
+  "detail": {
+   "busy_at_resize": "true",
+   "result": {
+    "pages": 1,
+    "stage": 502,
+    "spread": 362,
+    "docOverflow": 0,
+    "page": "2"
+   },
+   "control_resize_when_idle": {
+    "pages": 1,
+    "spread": 362
+   }
+  }
+ },
+ {
+  "test": "F11 page-mode switch returns to automatic",
+  "status": "PASS",
+  "detail": {
+   "cycle": [
+    [
+     "Seitenansicht: Einzelseite",
+     1
+    ],
+    [
+     "Seitenansicht: Doppelseite",
+     2
+    ],
+    [
+     "Seitenansicht: automatisch",
+     2
+    ]
+   ],
+   "pages_at_500px_after_cycle": 1
+  }
+ },
+ {
+  "test": "F13 zoomed swipe scrolls first, turns only at the edge",
+  "status": "PASS",
+  "detail": {
+   "touch_action": "pan-x pan-y",
+   "start": "1",
+   "after_swipe_not_at_edge": "1",
+   "after_swipe_at_right_edge": "2"
+  }
+ },
+ {
+  "test": "F7 JPEG 2000 via JavaScript fallback, no .wasm requests",
+  "status": "PASS",
+  "detail": {
+   "pixel_rgba": [
+    127,
+    126,
+    120,
+    255
+   ],
+   "decoder_requests": [
+    "media/mod_pdfbook/vendor/pdfjs/web/wasm/openjpeg_nowasm_fallback.js"
+   ],
+   "load_errors": []
+  }
+ },
+ {
+  "test": "F9 legacy \"/images/…\" path with spaces",
+  "status": "PASS",
+  "detail": {
+   "pdf_requests": [
+    "images/mit%20leerzeichen.pdf"
+   ]
+  }
+ },
+ {
+  "test": "zoom 250 % reachable by scrolling",
+  "status": "PASS",
+  "detail": {
+   "stageLeft": 9,
+   "spreadLeft": 33,
+   "stageTop": 54.30000305175781,
+   "spreadTop": 78.30000305175781,
+   "scrollW": 1858,
+   "clientW": 1262,
+   "spreadW": 1809.5166015625,
+   "canvasW": 1302
+  }
+ },
+ {
+  "test": "dialog open/close x12 during load/animation/thumbnails",
+  "status": "PASS",
+  "detail": {
+   "workers_before": 2,
+   "workers_after": 2,
+   "dialogs_left": 0,
+   "focus_returned": true,
+   "webgl_warnings": [
+    "warning: [JavaScript Warning: \"WebGL context was lost.\" {file: \"http://127.0.0.1:8766/sub/media/mod_pdfbook/js/turn.mjs?v=0.1.0-alpha.3\" line: 79}]",
+    "warning: [JavaScript Warning: \"WebGL context was lost.\" {file: \"http://127.0.0.1:8766/sub/media/mod_pdfbook/js/turn.mjs?v=0.1.0-alpha.3\" line: 79}]",
+    "warning: [JavaScript Warning: \"WebGL context was lost.\" {file: \"http://127.0.0.1:8766/sub/media/mod_pdfbook/js/turn.mjs?v=0.1.0-alpha.3\" line: 79}]"
+   ],
+   "errors": []
+  }
+ },
+ {
+  "test": "dialog keeps focus (Tab x25; body = browser UI step)",
+  "status": "PASS",
+  "detail": {
+   "inside_dialog": "25/25"
+  }
+ },
+ {
+  "test": "WebGL context lost during animation",
+  "status": "PASS",
+  "detail": {
+   "page": "2",
+   "renderer": "flat",
+   "busy": null,
+   "overlay_hidden": true,
+   "page_after_next": "4",
+   "renderer_after": "flat",
+   "errors": []
+  }
+ },
+ {
+  "test": "WebGL disabled in browser",
+  "status": "PASS",
+  "detail": {
+   "renderer": "flat",
+   "page": "2",
+   "errors": []
+  }
+ },
+ {
+  "test": "prefers-reduced-motion disables animation",
+  "status": "PASS",
+  "detail": {
+   "overlay_visible_100ms_after_click": false
+  }
+ },
+ {
+  "test": "autoplay stops at end and on hidden tab",
+  "status": "PASS",
+  "detail": {
+   "page": "4",
+   "pressed": "false",
+   "pressed_after_hidden": "false"
+  }
+ },
+ {
+  "test": "RTL keyboard navigation (module 2, double, flat)",
+  "status": "INFO",
+  "detail": [
+   [
+    "ArrowLeft",
+    "2",
+    [
+     "PDF-Seite 3",
+     "PDF-Seite 2"
+    ]
+   ],
+   [
+    "ArrowLeft",
+    "4",
+    [
+     "PDF-Seite 5",
+     "PDF-Seite 4"
+    ]
+   ],
+   [
+    "End",
+    "5",
+    [
+     "PDF-Seite 5",
+     "PDF-Seite 4"
+    ]
+   ],
+   [
+    "ArrowRight",
+    "2",
+    [
+     "PDF-Seite 3",
+     "PDF-Seite 2"
+    ]
+   ],
+   [
+    "Home",
+    "1",
+    [
+     "PDF-Seite 1"
+    ]
+   ]
+  ]
+ },
+ {
+  "test": "F10 layout at 320/390/768/1280 and 640x450@2 (~200 % zoom)",
+  "status": "PASS",
+  "detail": {
+   "failed": [],
+   "320x640@1": {
+    "docOverflow": 0,
+    "toolbars": [
+     123,
+     86
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 638,
+     "clientH": 638,
+     "vh": 640,
+     "toolbarInside": true
+    }
+   },
+   "390x844@3": {
+    "docOverflow": 0,
+    "toolbars": [
+     86,
+     86
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 834,
+     "clientH": 834,
+     "vh": 844,
+     "toolbarInside": true
+    }
+   },
+   "768x1024@2": {
+    "docOverflow": 0,
+    "toolbars": [
+     53,
+     53
+    ],
+    "pages": [
+     2,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 1007,
+     "clientH": 1007,
+     "vh": 1024,
+     "toolbarInside": true
+    }
+   },
+   "1280x900@1": {
+    "docOverflow": 0,
+    "toolbars": [
+     53,
+     53
+    ],
+    "pages": [
+     2,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 888,
+     "clientH": 888,
+     "vh": 900,
+     "toolbarInside": true
+    }
+   },
+   "640x450@2": {
+    "docOverflow": 0,
+    "toolbars": [
+     93,
+     53
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 456,
+     "clientH": 456,
+     "vh": 450,
+     "toolbarInside": true
+    }
+   }
+  }
+ },
+ {
+  "test": "resource/geometry fixtures",
+  "status": "INFO",
+  "detail": {
+   "many-links": {
+    "s": 0.4,
+    "state": "ready",
+    "status": "Seite 1",
+    "annotation_nodes": 2000,
+    "errors": [],
+    "warnings": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file: \"http://127.0.0.1:8"
+    ]
+   },
+   "image-15mp": {
+    "s": 0.4,
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "warnings": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file: \"http://127.0.0.1:8"
+    ]
+   },
+   "image-25mp": {
+    "s": 0.2,
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "warnings": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file: \"http://127.0.0.1:8",
+     "warning: Warning: Image exceeded maximum allowed size and was removed."
+    ]
+   },
+   "thousand": {
+    "s": 0.4,
+    "state": "ready",
+    "status": "Seite 1",
+    "thumb_buttons": 1000,
+    "thumb_canvases": 5,
+    "thumb_canvases_after_scroll": 10,
+    "last_page": "1000",
+    "heap_mb": null,
+    "errors": [],
+    "warnings": [
+     "warning: [JavaScript Warning: \"The execution of microtasks on this page was reordered to avoid unsafe execution.\" {file: \"http://127.0.0.1:8"
+    ]
+   }
+  }
+ },
+ {
+  "test": "CSP variants (no bypass)",
+  "status": "INFO",
+  "detail": {
+   "default": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   },
+   "strictstyle": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   },
+   "nonce": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   }
+  }
+ },
+ {
+  "test": "F4 slow/hanging response (net-slow)",
+  "status": "PASS",
+  "detail": {
+   "seconds": 45.4,
+   "state": "ready",
+   "status": "Seite 1",
+   "errors": []
+  }
+ },
+ {
+  "test": "F4 slow/hanging response (net-hang)",
+  "status": "PASS",
+  "detail": {
+   "seconds": 20.0,
+   "state": "error",
+   "status": "Die PDF-Datei lädt zu langsam. Bitte später erneut versuchen oder das PDF direkt öffnen.",
+   "errors": []
+  }
+ }
+]
