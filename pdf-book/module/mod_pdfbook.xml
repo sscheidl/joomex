@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="module" client="site" method="upgrade">
+  <name>PDF Book (Prototyp)</name>
+  <author>Joomex contributors</author>
+  <version>0.1.0-alpha.2</version>
+  <creationDate>2026-11-12</creationDate>
+  <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
+  <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
+  <namespace path="src">Joomex\Module\Pdfbook</namespace>
+  <files><folder module="mod_pdfbook">services</folder><folder>src</folder><folder>tmpl</folder><filename>mod_pdfbook.xml</filename><filename>LICENSE.txt</filename><filename>THIRD-PARTY-NOTICES.md</filename></files>
+  <media destination="mod_pdfbook" folder="media"><folder>css</folder><folder>js</folder><folder>vendor</folder></media>
+  <config><fields name="params"><fieldset name="basic" label="PDF-Flipbook">
+    <field name="pdf" type="text" label="PDF-Datei" description="Relativer Pfad unter images/, z. B. images/broschuere.pdf. Nur öffentliche PDFs, maximal 32 MB; derzeit keine Leerzeichen im Dateinamen." required="true" filter="string" />
+    <field name="book_title" type="text" label="Buchtitel" default="PDF-Flipbook" filter="string" />
+    <field name="display" type="list" label="Darstellung" default="inline"><option value="inline">Eingebettet</option><option value="cover">Schaltfläche mit Dialog</option></field>
+    <field name="page_mode" type="list" label="Seitenansicht" default="auto"><option value="auto">Automatisch</option><option value="single">Einzelseite</option><option value="double">Doppelseite</option></field>
+    <field name="direction" type="list" label="Leserichtung" default="ltr"><option value="ltr">Links nach rechts</option><option value="rtl">Rechts nach links</option></field>
+    <field name="renderer" type="list" label="Blätterdarstellung" default="webgl"><option value="webgl">3D, mit 2D-Ausweichdarstellung</option><option value="flat">Ohne Animation</option></field>
+    <field name="height" type="number" label="Höhe in Pixeln" default="500" min="320" max="1000" filter="integer" />
+    <field name="duration" type="number" label="Blätterdauer in Millisekunden" default="800" min="150" max="1800" filter="integer" />
+    <field name="background" type="color" label="Hintergrund" default="#f2f2f2" />
+    <field name="download" type="radio" label="PDF-Öffnen anzeigen" default="1"><option value="1">JYES</option><option value="0">JNO</option></field>
+  </fieldset></fields></config>
+</extension>
