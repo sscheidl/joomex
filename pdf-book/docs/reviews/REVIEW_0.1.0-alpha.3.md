@@ -127,6 +127,8 @@ Status: **MEASURED** by source search in PDF.js 6.5.438.
 | J9 reinstall/update, uninstall (media folder and module removed, `images/` and other modules unchanged) | **PASS** |
 | New observations | L2: page content looked slightly squashed while turning and then jumped to full height. L3: centre shadow vanished while turning; animation less smooth than the legacy module, no paper curvature. L4: toolbar symbols too small. L5: wish for page click and arrow keys. Addressed in 0.1.0-alpha.6 |
 
+**Owner live test of alpha.6, 2026-11-13:** update installed; new page-turn animation, larger icons, page click and arrow keys judged "clearly better" by the owner (**PASS**). Follow-up wish, addressed in 0.1.0-alpha.7: adjustable look in the back end and an alternative animation.
+
 Still NOT RUN: J6 (subdirectory installation), J8 (full access matrix), J12 (CSP; the staging installation is HTTP only).
 
 Original plan: the owner tests installation, operation, GUI and display manually on the staging installation. The detailed checklist stays private because it contains site details. It covers J1–J5, J7, J9 and J10 plus operation on a real phone. The results will be added here in neutral form.

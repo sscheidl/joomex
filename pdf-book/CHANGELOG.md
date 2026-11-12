@@ -1,5 +1,22 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.7 (2026-11-13)
+
+Owner request after the live test of alpha.6 ("clearly better"): make the look of the page turn adjustable in the back end and offer an alternative animation.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Adjustable look of the 3D turn | New module settings, shown only for the 3D turn: paper curvature 0–100 (0 = rigid sheet, default 50), shadow density 0–60 % (0 = no shadow, default 22), shadow softness 0–100 (default 50) and shadow width 0–100 (default 50). The defaults reproduce alpha.6. Values are clamped in the dispatcher and again in the viewer. The perspective stays automatic. | `module/mod_pdfbook.xml`, `module/src/Dispatcher/Dispatcher.php`, `media/js/model.js`, `media/js/turn.js`, `media/js/viewer.js` |
+| Tempo | The existing setting (150–1800 ms, default 800) is relabelled "Tempo" and applies to both animations. | `module/mod_pdfbook.xml` |
+| Alternative animation "Schieben" (slide) | The old pages slide out and the new ones slide in, inside the frame of the book. It needs no WebGL and also works in single-page view, where the 3D turn does not animate. The setting "Blätteranimation" offers 3D turn, slide or none; stored values of earlier versions stay valid. | `media/js/viewer.js`, `media/css/viewer.css`, `module/mod_pdfbook.xml` |
+
+Measured on 2026-11-13:
+- unit 12/12, PHP 32, dispatcher 11
+- one short browser run in Edge 157 and Firefox 159: defaults, slide in double and single view, extreme settings, click and keys, dialog, WebGL loss all PASS
+- the slide check was flaky in Edge (it sampled before the animation started) and now waits for the animation; the slide itself was confirmed in Edge by sampling it over time, the corrected check was not re-run
+- further short tests were skipped at the owner's request; the owner tests live
+
+
 ## 0.1.0-alpha.6 (2026-11-13)
 
 Changes after the owner's live test of alpha.5 on a Joomla 6.2 staging installation (viewer works; installation, update and uninstallation OK).

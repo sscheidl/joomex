@@ -274,6 +274,31 @@ def t_click_keys(browser):
     rec('page click and arrow keys (active book only, not while typing)', 'PASS' if ok else 'FAIL', {'sequence': seq, 'second_book_page': untouched, 'arrow_inside_page_input': in_input, 'errors': ev['errors']})
     ctx.close()
 
+def t_slide_look(browser):
+    out = {}
+    for label, size in [('double 1280', (1280, 900)), ('single 500', (500, 900))]:
+        ctx, page, ev = new(browser, B + 'slide.html', viewport={'width': size[0], 'height': size[1]}); ready(page)
+        book = page.locator('[data-pdfbook]')
+        page.locator('[aria-label="Nächste Seite"]').click()
+        try: page.locator('.pdfbook-slide').first.wait_for(state='attached', timeout=3000)   # starts once the new pages are rendered
+        except Exception: pass
+        during = page.evaluate("({layers:document.querySelectorAll('.pdfbook-slide').length,overflow:document.querySelector('.pdfbook-stage').scrollWidth-document.querySelector('.pdfbook-stage').clientWidth})")
+        page.wait_for_timeout(900)
+        out[label] = {'during': during, 'after_layers': page.locator('.pdfbook-slide').count(), 'page': book.get_attribute('data-page'), 'renderer': book.get_attribute('data-renderer'),
+                      'pages_in_spread': page.locator('.pdfbook-spread > .pdfbook-page').count(), 'errors': ev['errors']}
+        ctx.close()
+    ok = all(r['during']['layers'] == 2 and r['during']['overflow'] <= 0 and r['after_layers'] == 0 and r['page'] == '2' and r['renderer'] == 'slide' and not r['errors'] for r in out.values())
+    ok = ok and out['double 1280']['pages_in_spread'] == 2 and out['single 500']['pages_in_spread'] == 1
+    rec('slide animation (double and single page)', 'PASS' if ok else 'FAIL', out)
+    ctx, page, ev = new(browser, B + 'look.html'); ready(page, n=0); ready(page, n=1)
+    cfg = page.evaluate("[...document.querySelectorAll('[data-pdfbook]')].map(e=>{const c=JSON.parse(e.dataset.pdfbook);return [c.curvature,c.shadowDensity,c.shadowSoftness,c.shadowWidth,c.duration]})")
+    for n in (0, 1): page.locator('[data-pdfbook]').nth(n).locator('[aria-label="Nächste Seite"]').click()
+    page.wait_for_timeout(700); page.screenshot(path=OUT / 'look-extremes.png'); page.wait_for_timeout(1600)
+    pages = page.evaluate("[...document.querySelectorAll('[data-pdfbook]')].map(e=>e.dataset.page)")
+    rec('adjustable curvature and shadow (maximum and rigid/no shadow)', 'PASS' if cfg == [[100, 60, 0, 100, 1800], [0, 0, 50, 50, 1800]] and pages == ['2', '2'] and not ev['errors'] else 'FAIL',
+        {'config': cfg, 'pages': pages, 'errors': ev['errors']})
+    ctx.close()
+
 def t_webgl(browser, pw):
     ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(150)
@@ -379,7 +404,7 @@ with sync_playwright() as pw:
     FIREFOX = os.environ.get('REVIEW_BROWSER', 'msedge') == 'firefox'
     browser = pw.firefox.launch(headless=True) if FIREFOX else pw.chromium.launch(channel='msedge', headless=True)
     rec('environment', 'INFO', {'browser': ('firefox ' if FIREFOX else 'msedge ') + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
-    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('clickkeys', t_click_keys), ('renderfail', t_render_failure), ('zoom', t_zoom),
+    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('clickkeys', t_click_keys), ('slidelook', t_slide_look), ('renderfail', t_render_failure), ('zoom', t_zoom),
              ('dialog', t_dialog_lifecycle), ('webgl', lambda b: t_webgl(b, pw)), ('autoplay', t_autoplay), ('rtl', t_keyboard_rtl), ('widths', t_widths),
              ('resources', t_resources), ('csp', t_csp), ('slow', t_slow)]
     for key, fn in tests:

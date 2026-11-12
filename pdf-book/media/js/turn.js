@@ -6,11 +6,17 @@
 // coincides exactly with the flat page at the start and at the end of a turn (no size jump).
 
 export const SEGMENTS = 40;
-const LEAD = 0.25;        // how far the free edge runs ahead of the spine (fraction of a half turn, at mid-turn)
 const STIFFNESS = 1.5;    // > 1 keeps the paper straighter near the spine
+/**
+ * Adjustable look of a turn (set per module in the Joomla back end, see viewer.js):
+ * lead    0 … 0.5   how far the free edge runs ahead of the spine (fraction of a half turn at mid-turn); 0 = rigid sheet
+ * opacity 0 … 0.6   density of the cast shadow
+ * blur    0 … 0.05  softness: half width of the shadow edge in page widths
+ * shift   0 … 0.6   width: how far the shadow reaches beside the lifted paper (light from the upper left)
+ */
+export const DEFAULT_LOOK = Object.freeze({lead: 0.25, opacity: 0.22, blur: 0.025, shift: 0.3});
+const SHADOW_PASSES = [-1, -0.5, 0, 0.5, 1];
 const CAMERA = [4.5, 14]; // viewing distance in page widths (nearest, farthest); chosen per turn so the lifted page fits the stage
-const SHADOW = 0.22;      // maximum opacity of the cast shadow
-const LIGHT_X = 0.3;      // the light comes from the upper left: shadows fall to the right of the lifted paper
 
 export const easeOutSine = t => Math.sin(Math.min(1, Math.max(0, t)) * Math.PI / 2);
 
@@ -19,9 +25,9 @@ export const easeOutSine = t => Math.sin(Math.min(1, Math.max(0, t)) * Math.PI /
  * Returns SEGMENTS + 1 points {x, z, facing}: x in page widths from the spine (positive = source side),
  * z = height above the pages, facing = cosine of the local angle (> 0: the front face looks at the viewer).
  */
-export function sheetProfile(p) {
+export function sheetProfile(p, lead = DEFAULT_LOOK.lead) {
   p = Math.min(1, Math.max(0, p));
-  const spine = Math.PI * p, edge = Math.PI * Math.min(1, p + LEAD * Math.sin(Math.PI * p));
+  const spine = Math.PI * p, edge = Math.PI * Math.min(1, p + lead * Math.sin(Math.PI * p));
   const points = [{x: 0, z: 0, facing: Math.cos(spine)}];
   let x = 0, z = 0;
   for (let i = 1; i <= SEGMENTS; i++) {
@@ -54,7 +60,7 @@ const SHADOW_FS = `precision mediump float; varying float vAlpha; void main(){ g
 
 export class PageTurn {
   constructor(canvas) {
-    this.canvas = canvas; this.frame = 0; this.available = false;
+    this.canvas = canvas; this.frame = 0; this.available = false; this.look = DEFAULT_LOOK;
     const gl = this.gl = canvas.getContext('webgl', {alpha: true, antialias: true, depth: true, premultipliedAlpha: true});
     if (!gl) return;
     try {
@@ -92,28 +98,28 @@ export class PageTurn {
   }
   draw(progress, mirror, spread) {
     const gl = this.gl, layout = this.layout(spread); if (!layout) return;
-    const points = sheetProfile(progress), sheet = [], shadow = [];
+    const look = this.look, points = sheetProfile(progress, look.lead), sheet = [], shadow = [];
     const lift = Math.sin(Math.PI * progress);
     for (let i = 0; i < SEGMENTS; i++) {
       for (const [index, y] of [[i, -1], [i + 1, -1], [i, 1], [i, 1], [i + 1, -1], [i + 1, 1]]) {
         const p = points[index];
         sheet.push(p.x * mirror, y, p.z, index / SEGMENTS, (y + 1) / 2, p.facing);
         // Shadow: the sheet projected onto the pages and shifted away from the light.
-        const sx = Math.max(-1, Math.min(1, p.x * mirror + p.z * LIGHT_X));
-        shadow.push(sx, y, SHADOW / 3 * lift * Math.pow(1 - index / SEGMENTS, 1.3));   // darkest at the spine, fading out towards the free edge
+        const sx = Math.max(-1, Math.min(1, p.x * mirror + p.z * look.shift));
+        shadow.push(sx, y, look.opacity / SHADOW_PASSES.length * lift * Math.pow(1 - index / SEGMENTS, 1.3));   // darkest at the spine, fading out towards the free edge
       }
     }
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    // 1) soft cast shadow: three slightly shifted translucent passes
+    // 1) soft cast shadow: several slightly shifted translucent passes (no shift = hard edge)
     gl.useProgram(this.shadow); gl.disable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // premultiplied alpha: black shadow = (0, 0, 0, a)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(shadow), gl.DYNAMIC_DRAW);
     this.attributes(this.shadow, [['aPos', 3, 0]], 12);
     gl.uniform2fv(gl.getUniformLocation(this.shadow, 'uScale'), layout.scale);
-    for (const offset of [-0.012, 0, 0.012]) {
-      gl.uniform2f(gl.getUniformLocation(this.shadow, 'uCenter'), layout.center[0] + offset * layout.scale[0], layout.center[1]);
+    for (const pass of look.opacity > 0 ? SHADOW_PASSES : []) {
+      gl.uniform2f(gl.getUniformLocation(this.shadow, 'uCenter'), layout.center[0] + pass * look.blur * layout.scale[0], layout.center[1]);
       gl.drawArrays(gl.TRIANGLES, 0, shadow.length / 3);
     }
     // 2) the sheet itself, opaque, with depth so that a curled part hides what lies behind it
@@ -139,8 +145,9 @@ export class PageTurn {
    * Turns one sheet. front/back are the page canvases of its two faces, direction > 0 turns from the right side
    * to the left. The spread element gives the position of the pages; the textures are uploaded once per turn.
    */
-  play(front, back, direction, duration, spread) {
+  play(front, back, direction, duration, spread, look = DEFAULT_LOOK) {
     if (!this.available) return Promise.resolve();
+    this.look = {...DEFAULT_LOOK, ...look};
     const gl = this.gl, ratio = Math.min(devicePixelRatio || 1, 2);
     this.canvas.hidden = false;
     this.canvas.width = Math.max(1, Math.round(this.canvas.clientWidth * ratio));
