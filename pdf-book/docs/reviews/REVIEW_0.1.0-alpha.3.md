@@ -129,6 +129,8 @@ Status: **MEASURED** by source search in PDF.js 6.5.438.
 
 **Owner live test of alpha.6, 2026-11-13:** update installed; new page-turn animation, larger icons, page click and arrow keys judged "clearly better" by the owner (**PASS**). Follow-up wish, addressed in 0.1.0-alpha.7: adjustable look in the back end and an alternative animation.
 
+**Owner live test of alpha.7, 2026-11-13:** update installed; the new settings and the animations were checked by the owner: "looks good, no obvious errors, everything seems to work" (**PASS**, visual check without measurements). An independent review of alpha.7 is requested in [REVIEW_REQUEST_0.1.0-alpha.7.md](REVIEW_REQUEST_0.1.0-alpha.7.md).
+
 Still NOT RUN: J6 (subdirectory installation), J8 (full access matrix), J12 (CSP; the staging installation is HTTP only).
 
 Original plan: the owner tests installation, operation, GUI and display manually on the staging installation. The detailed checklist stays private because it contains site details. It covers J1–J5, J7, J9 and J10 plus operation on a real phone. The results will be added here in neutral form.

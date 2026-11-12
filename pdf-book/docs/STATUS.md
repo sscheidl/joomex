@@ -12,7 +12,7 @@
 | 0.1.0-alpha.4 | 2026-11-12 | Fixes for N1–N3. Live test on a Joomla 6.2 staging installation: installation and back end OK, F1 confirmed, viewer did not start (`.mjs` served as `text/plain`, L1). |
 | 0.1.0-alpha.5 | 2026-11-12 | Fix for L1: all JavaScript files named `.js`; see [CHANGELOG.md](../CHANGELOG.md). Live test: viewer works; installation, update and uninstallation OK. |
 | 0.1.0-alpha.6 | 2026-11-13 | New page-turn renderer (curvature, shadows, no size jump), larger icons, page click and arrow keys; see [CHANGELOG.md](../CHANGELOG.md). Live test: "clearly better". |
-| 0.1.0-alpha.7 | 2026-11-13 | Look of the 3D turn adjustable in the back end (curvature, shadow density, softness, width), tempo for both animations, alternative slide animation; see [CHANGELOG.md](../CHANGELOG.md). **Next: live test of alpha.7.** |
+| 0.1.0-alpha.7 | 2026-11-13 | Look of the 3D turn adjustable in the back end (curvature, shadow density, softness, width), tempo for both animations, alternative slide animation; see [CHANGELOG.md](../CHANGELOG.md). Live test: no obvious errors. **Next: independent review** ([request](reviews/REVIEW_REQUEST_0.1.0-alpha.7.md)). |
 
 ## Implemented
 
