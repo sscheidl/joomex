@@ -1,0 +1,58 @@
+https://site.example/cms/    "images/ok.pdf"                               ACCEPT https://site.example/cms/images/ok.pdf
+https://site.example/cms/    "images//ok.pdf"                              ACCEPT https://site.example/cms/images//ok.pdf
+https://site.example/cms/    "images/a%2Bb%26c%27.pdf"                     ACCEPT https://site.example/cms/images/a%2Bb%26c%27.pdf
+https://site.example/cms/    "images/sub/Brosch%C3%BCre.pdf"               ACCEPT https://site.example/cms/images/sub/Brosch%C3%BCre.pdf
+https://site.example/cms/    "images/sub/Broschüre.pdf"                    ACCEPT https://site.example/cms/images/sub/Brosch%C3%BCre.pdf
+https://site.example/cms/    "images/%2fetc.pdf"                           ACCEPT https://site.example/cms/images/%2fetc.pdf
+https://site.example/cms/    "images%2f..%2fx.pdf"                         reject invalid-path
+https://site.example/cms/    "images/%E2%80%AE.pdf"                        ACCEPT https://site.example/cms/images/%E2%80%AE.pdf
+https://site.example/cms/    "IMAGES/ok.pdf"                               reject foreign
+https://site.example/cms/    "images/ok.PDF"                               ACCEPT https://site.example/cms/images/ok.PDF
+https://site.example/cms/    "images/x.pdf;a=b"                            reject foreign
+https://site.example/cms/    "images/x.pdf\t"                              reject invalid-path
+https://site.example/cms/    "images/%C0%AE%C0%AE/x.pdf"                   reject invalid-path
+https://site.example/cms/    "imagesX/x.pdf"                               reject foreign
+https://site.example/cms/    "images.pdf"                                  reject foreign
+https://site.example/cms/    "/cms/imagesx/a.pdf"                          reject foreign
+https://site.example/cms/    "/cms/images/../x.pdf"                        reject invalid-path
+https://site.example/cms/    "https://site.example:443/cms/images/a.pdf"   ACCEPT https://site.example/cms/images/a.pdf
+https://site.example/cms/    "HTTPS://SCHOOL.EXAMPLE/cms/images/a.pdf"     reject foreign
+https://site.example/cms/    "http://site.example/cms/images/a.pdf"        reject foreign
+https://site.example/cms/    "images/a.pdf%3F"                             reject invalid-path
+https://site.example/cms/    "　images/a.pdf"                               reject foreign
+https://site.example/cms/    "images/ a.pdf"                               ACCEPT https://site.example/cms/images/%C2%A0a.pdf
+https://site.example/cms/    "images/ a.pdf"                               ACCEPT https://site.example/cms/images/%E2%80%A8a.pdf
+https://site.example/        "images/ok.pdf"                               ACCEPT https://site.example/images/ok.pdf
+https://site.example/        "images//ok.pdf"                              ACCEPT https://site.example/images//ok.pdf
+https://site.example/        "images/a%2Bb%26c%27.pdf"                     ACCEPT https://site.example/images/a%2Bb%26c%27.pdf
+https://site.example/        "images/sub/Brosch%C3%BCre.pdf"               ACCEPT https://site.example/images/sub/Brosch%C3%BCre.pdf
+https://site.example/        "images/sub/Broschüre.pdf"                    ACCEPT https://site.example/images/sub/Brosch%C3%BCre.pdf
+https://site.example/        "images/%2fetc.pdf"                           ACCEPT https://site.example/images/%2fetc.pdf
+https://site.example/        "images%2f..%2fx.pdf"                         reject invalid-path
+https://site.example/        "images/%E2%80%AE.pdf"                        ACCEPT https://site.example/images/%E2%80%AE.pdf
+https://site.example/        "IMAGES/ok.pdf"                               reject foreign
+https://site.example/        "images/ok.PDF"                               ACCEPT https://site.example/images/ok.PDF
+https://site.example/        "images/x.pdf;a=b"                            reject foreign
+https://site.example/        "images/x.pdf\t"                              reject invalid-path
+https://site.example/        "images/%C0%AE%C0%AE/x.pdf"                   reject invalid-path
+https://site.example/        "imagesX/x.pdf"                               reject foreign
+https://site.example/        "images.pdf"                                  reject foreign
+https://site.example/        "/cms/imagesx/a.pdf"                          reject foreign
+https://site.example/        "/cms/images/../x.pdf"                        reject invalid-path
+https://site.example/        "https://site.example:443/cms/images/a.pdf"   reject foreign
+https://site.example/        "HTTPS://SCHOOL.EXAMPLE/cms/images/a.pdf"     reject foreign
+https://site.example/        "http://site.example/cms/images/a.pdf"        reject foreign
+https://site.example/        "images/a.pdf%3F"                             reject invalid-path
+https://site.example/        "　images/a.pdf"                               reject foreign
+https://site.example/        "images/ a.pdf"                               ACCEPT https://site.example/images/%C2%A0a.pdf
+https://site.example/        "images/ a.pdf"                               ACCEPT https://site.example/images/%E2%80%A8a.pdf
+link "HTTPS://A.example" https://a.example/
+link "mailto:x@y.z?subject=a" mailto:x@y.z?subject=a
+link "mailto:javascript:alert(1)" mailto:javascript:alert(1)
+link "http://[::1]/" http://[::1]/
+link "https://intranet.local/admin" https://intranet.local/admin
+link "tel:123" null
+link " https://a.example" https://a.example/
+link "https://a.example/\u0000" https://a.example/
+{"src":"","title":"obj","base":"https://x.example/","mediaRoot":"images/","fill":false,"mode":"auto","direction":"ltr","duration":150,"download":true,"renderer":"webgl","height":1000,"background":"#ABCDEF"}
+[ 2, 0 ] [ 0, 1 ] [ 3, 2 ] 1 [ 0, 1 ] [ 0, 1 ] [ 5 ]

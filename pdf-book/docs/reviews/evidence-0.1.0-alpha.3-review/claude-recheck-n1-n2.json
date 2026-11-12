@@ -1,0 +1,118 @@
+[
+ {
+  "browser": "edge",
+  "viewport": "320x225",
+  "dialogBottom": 233,
+  "bookBottom": 221,
+  "toolbarTop": 269,
+  "toolbarBottom": 392,
+  "dialogScroll": 0,
+  "bookScroll": 173,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "edge",
+  "viewport": "640x300",
+  "dialogBottom": 306,
+  "bookBottom": 294,
+  "toolbarTop": 255,
+  "toolbarBottom": 348,
+  "dialogScroll": 0,
+  "bookScroll": 55,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "edge",
+  "viewport": "568x320",
+  "dialogBottom": 326,
+  "bookBottom": 314,
+  "toolbarTop": 271,
+  "toolbarBottom": 357,
+  "dialogScroll": 0,
+  "bookScroll": 45,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "edge",
+  "viewport": "844x390",
+  "dialogBottom": 394,
+  "bookBottom": 382,
+  "toolbarTop": 328,
+  "toolbarBottom": 381,
+  "dialogScroll": 0,
+  "bookScroll": 0,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": true
+ },
+ {
+  "browser": "edge",
+  "test": "render failure",
+  "state": "error",
+  "status": "Die Seite konnte nicht dargestellt werden.",
+  "pdfDisposed": false,
+  "docKept": true,
+  "cache": 1,
+  "afterDispose": true
+ },
+ {
+  "browser": "firefox",
+  "viewport": "320x225",
+  "dialogBottom": 233,
+  "bookBottom": 221,
+  "toolbarTop": 270,
+  "toolbarBottom": 393,
+  "dialogScroll": 0,
+  "bookScroll": 174,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "firefox",
+  "viewport": "640x300",
+  "dialogBottom": 306,
+  "bookBottom": 294,
+  "toolbarTop": 256,
+  "toolbarBottom": 349,
+  "dialogScroll": 0,
+  "bookScroll": 56,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "firefox",
+  "viewport": "568x320",
+  "dialogBottom": 326,
+  "bookBottom": 314,
+  "toolbarTop": 272,
+  "toolbarBottom": 358,
+  "dialogScroll": 0,
+  "bookScroll": 46,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": false
+ },
+ {
+  "browser": "firefox",
+  "viewport": "844x390",
+  "dialogBottom": 394,
+  "bookBottom": 382,
+  "toolbarTop": 328,
+  "toolbarBottom": 381,
+  "dialogScroll": 0,
+  "bookScroll": 0,
+  "bookOverflow": "hidden",
+  "toolbar_reachable": true
+ },
+ {
+  "browser": "firefox",
+  "test": "render failure",
+  "state": "error",
+  "status": "Die Seite konnte nicht dargestellt werden.",
+  "pdfDisposed": false,
+  "docKept": true,
+  "cache": 1,
+  "afterDispose": true
+ }
+]
