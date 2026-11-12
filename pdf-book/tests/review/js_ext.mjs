@@ -1,4 +1,4 @@
-const {safePdfUrl,safeLink,spreadFor,nextPage,normalizeConfig}=await import(new URL('file:///'+process.argv[2]+'/media/js/model.mjs').href);
+const {safePdfUrl,safeLink,spreadFor,nextPage,normalizeConfig}=await import(new URL('file:///'+process.argv[2]+'/media/js/model.js').href);
 globalThis.location={href:'https://x.example/'};
 const bases=['https://site.example/cms/','https://site.example/'];
 const cases=['images/ok.pdf','images//ok.pdf','images/a%2Bb%26c%27.pdf','images/sub/Brosch%C3%BCre.pdf','images/sub/Broschüre.pdf','images/%2fetc.pdf','images%2f..%2fx.pdf','images/%E2%80%AE.pdf','IMAGES/ok.pdf','images/ok.PDF','images/x.pdf;a=b','images/x.pdf\t','images/%C0%AE%C0%AE/x.pdf','imagesX/x.pdf','images.pdf','/cms/imagesx/a.pdf','/cms/images/../x.pdf','https://site.example:443/cms/images/a.pdf','HTTPS://SCHOOL.EXAMPLE/cms/images/a.pdf','http://site.example/cms/images/a.pdf','images/a.pdf%3F','\u3000images/a.pdf','images/\u00a0a.pdf','images/\u2028a.pdf'];

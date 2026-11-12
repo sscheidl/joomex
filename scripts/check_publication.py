@@ -40,7 +40,7 @@ def vendor_hashes(root: Path) -> dict[str, str]:
     for lock in root.glob('*/dependencies.json'):
         for name, spec in json.loads(lock.read_text(encoding='utf-8')).items():
             for entry in spec.get('files', []):
-                allowed[f'{lock.parent.name}/media/vendor/{name}/{entry["path"]}'] = entry['sha256']
+                allowed[f'{lock.parent.name}/media/vendor/{name}/{entry.get("shipped_as", entry["path"])}'] = entry['sha256']
     return allowed
 
 

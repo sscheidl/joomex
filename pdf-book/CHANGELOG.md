@@ -1,5 +1,20 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.5 (2026-11-12)
+
+Fix for the first live finding on a real Joomla 6.2 staging installation (owner test of alpha.4).
+
+| Finding | Change | Files |
+| --- | --- | --- |
+| L1 (P1) | The staging server (nginx) delivers `.mjs` as `text/plain`; browsers refuse module scripts with that MIME type ("Failed to load module script … text/plain"), so the viewer never started and the placeholder "… wird geladen" stayed. Fix: all JavaScript files are named `.js`. This covers the own modules (`viewer.js`, `pdfdoc.js`, `model.js`, `turn.js`) and the PDF.js build files (`pdf.js`, `pdf.worker.js`); their content stays byte-identical, and `dependencies.json` records `shipped_as`. The module script is registered relative to `/media` (`mod_pdfbook/viewer.js`), because Joomla would turn a root-relative `.js` path into `//media/…` (the F1 resolution path). `build.py` now rejects any `.mjs` file; the review server serves `.mjs` as `text/plain` like that host. | `media/js/`, `media/vendor/pdfjs/build/`, `module/src/Dispatcher/Dispatcher.php`, `dependencies.json`, `scripts/build.py`, `tests/` |
+
+Measured on 2026-11-12 (short run at the owner's request):
+- unit 10/10, PHP 32, dispatcher 9
+- two builds with identical SHA-256
+- in Edge 157 and Firefox 159: two modules + cover, F15, F2, JPEG 2000 fallback, F9 and N1 all PASS
+- `.js` delivered as `text/javascript`
+
+
 ## 0.1.0-alpha.4 (2026-11-12)
 
 Fixes for the new findings of the [alpha.3 review](docs/reviews/REVIEW_0.1.0-alpha.3.md). Not reviewed independently; the owner's live test on the staging installation is the deciding check.

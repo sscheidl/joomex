@@ -42,7 +42,7 @@ function page(string $file, array $modules, string $nonce = '', bool $editor = f
         if (isset($seen[$c[0] . $c[1]])) continue; $seen[$c[0] . $c[1]] = 1;
         $n = $nonce ? " nonce=\"$nonce\"" : '';
         // Emulates the traced Joomla 6.2 relative media lookup (review F1): "ext/file.css" -> {root}/media/ext/css/file.css
-        if ($c[0] === 'style' && preg_match('~^([a-z0-9_]+)/([^/]+\.css)$~', $c[2], $m)) { $c[2] = Joomla\CMS\Uri\Uri::root(true) . "/media/{$m[1]}/css/{$m[2]}"; }
+        if (preg_match('~^([a-z0-9_]+)/([^/]+)\.(css|js)$~', $c[2], $m)) { $c[2] = Joomla\CMS\Uri\Uri::root(true) . "/media/{$m[1]}/{$m[3]}/{$m[2]}.{$m[3]}"; }
         $head .= $c[0] === 'style' ? "<link rel=\"stylesheet\" href=\"{$c[2]}?{$c[3]['version']}\">\n" : "<script type=\"module\" src=\"{$c[2]}?{$c[3]['version']}\"$n></script>\n";
     }
     file_put_contents("$out/$file", "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>review</title>\n$head</head><body>\n$html<p id=\"after\">Ende</p></body></html>");

@@ -54,7 +54,7 @@ def main():
         page.screenshot(path=OUT/'mobile.png',full_page=True)
         # Create isolated second/third instances and adversarial configuration as plain data.
         page.evaluate("""async()=>{
-          const {PdfBook}=await import('/media/js/viewer.mjs');
+          const {PdfBook}=await import('/media/js/viewer.js');
           const make=(id,src)=>{const e=document.createElement('div');e.id=id;document.body.append(e);return new PdfBook(e,{src,base:location.origin+'/',title:'<img src=x onerror=alert(1)>',renderer:'flat'});};
           const actions=make('actions','images/actions.pdf');await actions.ready;await actions.go(2,false);
           await make('broken','images/broken.pdf').ready;
