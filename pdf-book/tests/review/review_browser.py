@@ -1,12 +1,12 @@
 """Independent browser review tests for PDF Book 0.1.0-alpha.2 (Playwright + headless Edge)."""
-import json, sys, time, traceback
+import json, os, sys, time, traceback
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 ONLY = set(sys.argv[2:])
-B = 'http://127.0.0.1:8766/sub/page/'
+B = f"http://127.0.0.1:{os.environ.get('REVIEW_PORT', '8766')}/sub/page/"
 results = []
 
 def rec(test, status, detail):
@@ -48,7 +48,7 @@ def t_two_modules(browser):
     css = page.evaluate("({sheets:[...document.styleSheets].map(s=>s.href),radius:getComputedStyle(document.querySelector('[data-pdfbook]')).borderRadius})")
     guest = page.evaluate("[...document.querySelectorAll('section.mod')].slice(3).map(s=>s.innerHTML.trim())")
     ok = all(s[0] == 'ready' for s in st) and not ev['errors'] and inj == {'img': 0, 'b': 0, 't': False} and css['radius'] == '8px' and guest == ['', '']
-    ext = [u for u in ev['requests'] if not u.startswith('http://127.0.0.1:8766/sub/')]
+    ext = [u for u in ev['requests'] if not u.startswith(B.rsplit('/page/', 1)[0] + '/')]
     rec('two modules + cover on one page, subdirectory /sub/', 'PASS' if ok and not ext else 'FAIL',
         {'states': st, 'stylesheet': css, 'guest_error_sections': guest, 'module_scripts': scripts, 'pdf_requests': pdfreq, 'vendor_files': vendor, 'rtl_first_spread': rtl, 'download_links': dl, 'injection': inj, 'external': ext, 'errors': ev['errors'], 'console': ev['console'][:5]})
     page.screenshot(path=OUT / 'two-modules.png', full_page=True)
@@ -229,6 +229,34 @@ def t_jpx_spaces(browser):
     rec('F9 legacy "/images/…" path with spaces', 'PASS' if src == ['images/mit%20leerzeichen.pdf'] else 'FAIL', {'pdf_requests': src})
     ctx.close()
 
+def t_low_dialog(browser):
+    out = {}
+    for w, h in [(320, 225), (640, 300), (568, 320), (844, 390)]:
+        ctx, page, ev = new(browser, B + 'two.html', viewport={'width': w, 'height': h}); ready(page, n=0)
+        page.locator('button[data-pdfbook-open]').click(); page.locator('dialog [data-state="ready"]').wait_for(timeout=30000)
+        m = page.evaluate("""()=>{const d=document.querySelector('dialog').getBoundingClientRect(),t=document.querySelector('dialog .pdfbook-toolbar').getBoundingClientRect(),
+          n=document.querySelector('dialog [aria-label="Nächste Seite"]').getBoundingClientRect();
+          return {dialog:[Math.round(d.top),Math.round(d.bottom)],toolbar:[Math.round(t.top),Math.round(t.bottom)],visible:t.top>=d.top-1&&t.bottom<=d.bottom+1,nextHeight:Math.round(n.height)}}""")
+        before = page.locator('dialog .pdfbook').get_attribute('data-page')
+        page.locator('dialog [aria-label="Nächste Seite"]').click(); page.wait_for_timeout(1200)
+        m['next_click'] = [before, page.locator('dialog .pdfbook').get_attribute('data-page')]
+        out[f'{w}x{h}'] = m; ctx.close()
+    bad = [k for k, m in out.items() if not m['visible'] or m['next_click'][0] == m['next_click'][1]]
+    rec('N1 dialog toolbar visible and usable at low heights', 'FAIL' if bad else 'PASS', {'failed': bad, **out})
+
+def t_render_failure(browser):
+    ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
+    workers_before = len(page.workers)
+    r = page.evaluate("""async()=>{const {PdfBook}=await import(document.querySelector('script[type=module]').src);  // same URL as the page: one module instance
+      const el=document.createElement('div');document.body.append(el);const b=new PdfBook(el,{src:'images/eight.pdf',base:'/sub/',renderer:'flat'});await b.ready;
+      b.pdf.render=async()=>{throw new Error('injected')};await b.go(4,false);await new Promise(r=>setTimeout(r,500));
+      return {state:el.dataset.state,status:el.querySelector('.pdfbook-status').textContent,pdfDisposed:b.pdf.disposed,cache:b.pdf.cache.size,
+        controlsEnabled:[...el.querySelectorAll('.pdfbook-toolbar button')].filter(x=>!x.disabled).length}}""")
+    page.wait_for_timeout(2500); r['workers_before_extra_instance'] = workers_before; r['workers_after'] = len(page.workers)
+    ok = r['state'] == 'error' and r['pdfDisposed'] and r['cache'] == 0 and r['controlsEnabled'] == 0 and r['workers_after'] <= workers_before
+    rec('N2 resources released after a render error', 'PASS' if ok else 'FAIL', r)
+    ctx.close()
+
 def t_webgl(browser, pw):
     ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(150)
@@ -239,7 +267,8 @@ def t_webgl(browser, pw):
     s1['page_after_next'] = page.locator('[data-pdfbook]').get_attribute('data-page'); s1['renderer_after'] = page.locator('[data-pdfbook]').get_attribute('data-renderer')
     rec('WebGL context lost during animation', 'PASS' if s1['page'] == '2' and s1['page_after_next'] == '4' and not ev['errors'] else 'FAIL', {**s1, 'errors': ev['errors']})
     ctx.close()
-    b2 = pw.chromium.launch(channel='msedge', headless=True, args=['--disable-webgl', '--disable-3d-apis'])
+    b2 = (pw.firefox.launch(headless=True, firefox_user_prefs={'webgl.disabled': True}) if os.environ.get('REVIEW_BROWSER') == 'firefox'
+          else pw.chromium.launch(channel='msedge', headless=True, args=['--disable-webgl', '--disable-3d-apis']))
     ctx, page, ev = new(b2, B + 'eight.html'); ready(page)
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(1200)
     rec('WebGL disabled in browser', 'PASS' if page.locator('[data-pdfbook]').get_attribute('data-page') == '2' and not ev['errors'] else 'FAIL',
@@ -330,9 +359,10 @@ def t_csp(browser):
     rec('CSP variants (no bypass)', 'INFO', out)
 
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(channel='msedge', headless=True)
-    rec('environment', 'INFO', {'browser': 'msedge ' + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
-    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('zoom', t_zoom),
+    FIREFOX = os.environ.get('REVIEW_BROWSER', 'msedge') == 'firefox'
+    browser = pw.firefox.launch(headless=True) if FIREFOX else pw.chromium.launch(channel='msedge', headless=True)
+    rec('environment', 'INFO', {'browser': ('firefox ' if FIREFOX else 'msedge ') + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
+    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('renderfail', t_render_failure), ('zoom', t_zoom),
              ('dialog', t_dialog_lifecycle), ('webgl', lambda b: t_webgl(b, pw)), ('autoplay', t_autoplay), ('rtl', t_keyboard_rtl), ('widths', t_widths),
              ('resources', t_resources), ('csp', t_csp), ('slow', t_slow)]
     for key, fn in tests:

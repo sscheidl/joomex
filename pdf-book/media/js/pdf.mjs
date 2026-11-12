@@ -1,9 +1,9 @@
 // Every relative import and the worker URL carry ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { getDocument, GlobalWorkerOptions, version } from '../vendor/pdfjs/build/pdf.mjs?v=0.1.0-alpha.3';
-import { LIMITS, ViewerError, renderDimensions } from './model.mjs?v=0.1.0-alpha.3';
+import { getDocument, GlobalWorkerOptions, version } from '../vendor/pdfjs/build/pdf.mjs?v=0.1.0-alpha.4';
+import { LIMITS, ViewerError, renderDimensions } from './model.mjs?v=0.1.0-alpha.4';
 
 const vendor = new URL('../vendor/pdfjs/', import.meta.url);
-GlobalWorkerOptions.workerSrc = new URL('build/pdf.worker.mjs?v=0.1.0-alpha.3', vendor).href;
+GlobalWorkerOptions.workerSrc = new URL('build/pdf.worker.mjs?v=0.1.0-alpha.4', vendor).href;
 export const pdfVersion = version;
 
 export class PdfDocument {

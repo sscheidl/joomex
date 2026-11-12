@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.mjs?v=0.1.0-alpha.3';
-import { PdfDocument, pdfVersion } from './pdf.mjs?v=0.1.0-alpha.3';
-import { PageTurn } from './turn.mjs?v=0.1.0-alpha.3';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.mjs?v=0.1.0-alpha.4';
+import { PdfDocument, pdfVersion } from './pdf.mjs?v=0.1.0-alpha.4';
+import { PageTurn } from './turn.mjs?v=0.1.0-alpha.4';
 
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -72,6 +72,9 @@ export class PdfBook {
   fail(error){
     console.warn('PDF Book:',error);
     this.el.dataset.state='error';this.status.textContent=messageFor(error);this.pending=null;this.stopAuto();this.updateControls();
+    // The error state is final: release document, worker, render tasks and page cache right away (N2).
+    this.thumbObserver?.disconnect();this.turn?.dispose();this.turn=null;this.overlay=null;
+    this.pdf.dispose().catch(()=>{});
   }
   /** Page the viewer is heading to: a queued request, else the page being rendered, else the page shown. */
   target(){return this.pending?.number??this.inflight??this.page;}
