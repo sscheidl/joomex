@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.4';
+    public const VERSION = '0.1.0-alpha.5';
 
     protected function getLayoutData(): array
     {
@@ -37,13 +37,9 @@ final class Dispatcher extends AbstractModuleDispatcher
             $wa = $this->getApplication()->getDocument()->getWebAssetManager();
             // Relative to /media: Joomla resolves this to {root}/media/mod_pdfbook/css/viewer.css and allows template overrides.
             $wa->registerAndUseStyle('mod_pdfbook.viewer', 'mod_pdfbook/viewer.css', ['version' => self::VERSION]);
-            // Joomla does not resolve .mjs paths, so the root-relative URL is passed through unchanged.
-            $wa->registerAndUseScript(
-                'mod_pdfbook.viewer',
-                Uri::root(true) . '/media/mod_pdfbook/js/viewer.mjs',
-                ['version' => self::VERSION],
-                ['type' => 'module']
-            );
+            // Also relative to /media: resolves to {root}/media/mod_pdfbook/js/viewer.js. A root-relative .js path would be
+            // turned into "//media/…" by Joomla (same resolution path as review finding F1).
+            $wa->registerAndUseScript('mod_pdfbook.viewer', 'mod_pdfbook/viewer.js', ['version' => self::VERSION], ['type' => 'module']);
         } catch (\InvalidArgumentException $exception) {
             $data['bookError'] = $exception->getMessage();
             // Configuration problems are shown only to users who can fix the module, never to guests.

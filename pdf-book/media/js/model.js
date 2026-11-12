@@ -21,7 +21,7 @@ export const MESSAGES = Object.freeze({
   config: 'Ungültige PDF-Konfiguration.',
   generic: 'Das PDF konnte nicht angezeigt werden.',
 });
-// Exception class names of the shipped PDF.js 6.5.438 (checked against vendor/pdfjs/build/pdf.mjs by tests/model.test.mjs).
+// Exception class names of the shipped PDF.js 6.5.438 (checked against vendor/pdfjs/build/pdf.js by tests/model.test.mjs).
 export const PDFJS_ERRORS = Object.freeze({PasswordException: 'password', InvalidPDFException: 'invalid', FormatError: 'invalid',
   ResponseException: 'unreachable'});
 export function messageFor(error) {

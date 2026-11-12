@@ -11,11 +11,13 @@
       },
       {
         "path": "build/pdf.mjs",
-        "sha256": "f1ee2b86d34109a9d3475b23f26882e1c8df38e051a74e4f1e8fd72c9a51885a"
+        "sha256": "f1ee2b86d34109a9d3475b23f26882e1c8df38e051a74e4f1e8fd72c9a51885a",
+        "shipped_as": "build/pdf.js"
       },
       {
         "path": "build/pdf.worker.mjs",
-        "sha256": "43710009ea26bfbcb615524946e46e3aaf8ad927514f5e465e8ff6d18044ffe9"
+        "sha256": "43710009ea26bfbcb615524946e46e3aaf8ad927514f5e465e8ff6d18044ffe9",
+        "shipped_as": "build/pdf.worker.js"
       },
       {
         "path": "web/cmaps/78-EUC-H.bcmap",
@@ -842,6 +844,6 @@
         "reason": "Scripting sandbox; never loaded because no scripting manager is used (F7)."
       }
     ],
-    "note": "files: shipped subset of the official archive, byte-identical; excluded: files of the same archive that are deliberately not shipped."
+    "note": "files: shipped subset of the official archive, byte-identical; shipped_as: renamed .mjs -> .js because many servers deliver .mjs as text/plain and browsers refuse such module scripts; excluded: files of the same archive that are deliberately not shipped."
   }
 }

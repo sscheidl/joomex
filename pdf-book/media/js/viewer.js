@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.mjs?v=0.1.0-alpha.4';
-import { PdfDocument, pdfVersion } from './pdf.mjs?v=0.1.0-alpha.4';
-import { PageTurn } from './turn.mjs?v=0.1.0-alpha.4';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.5';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.5';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.5';
 
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};

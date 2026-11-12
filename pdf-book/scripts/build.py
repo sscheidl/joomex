@@ -4,6 +4,7 @@ Checks before packing:
 * every vendored PDF.js file matches dependencies.json, and media/vendor contains nothing else
 * one version everywhere: manifest <version>, Dispatcher::VERSION, every ?v= suffix in media/js, package.json
 * no dead security options (isEvalSupported does not exist in PDF.js 6.x)
+* no .mjs files (hosts often serve them as text/plain; browsers then refuse the module)
 """
 from pathlib import Path
 import hashlib, json, re, zipfile, xml.etree.ElementTree as ET
@@ -14,9 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def check_vendor() -> None:
     lock = json.loads((ROOT / 'dependencies.json').read_text(encoding='utf-8'))['pdfjs']
     vendor = ROOT / 'media/vendor/pdfjs'
-    listed = {entry['path'] for entry in lock['files']}
+    listed = {entry.get('shipped_as', entry['path']) for entry in lock['files']}
     for entry in lock['files']:
-        path = vendor / entry['path']
+        path = vendor / entry.get('shipped_as', entry['path'])
         assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], path
     present = {p.relative_to(vendor).as_posix() for p in vendor.rglob('*') if p.is_file()}
     assert present == listed, f'vendor files not in lock: {sorted(present - listed)}; missing: {sorted(listed - present)}'
@@ -29,10 +30,12 @@ def check_version() -> tuple[str, tuple[int, int, int]]:
     dispatcher = (ROOT / 'module/src/Dispatcher/Dispatcher.php').read_text(encoding='utf-8')
     assert f"public const VERSION = '{version}';" in dispatcher, 'Dispatcher::VERSION differs from manifest'
     assert json.loads((ROOT / 'package.json').read_text(encoding='utf-8'))['version'] == version, 'package.json version differs'
-    for js in (ROOT / 'media/js').glob('*.mjs'):
+    mjs = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / 'media').rglob('*.mjs'))
+    assert not mjs, f'.mjs files are served as text/plain by many hosts; use .js: {mjs}'
+    for js in (ROOT / 'media/js').glob('*.js'):
         text = js.read_text(encoding='utf-8')
         assert 'isEvalSupported' not in text, f'{js.name}: dead option isEvalSupported'
-        relative = re.findall(r"""(?:from\s+|import\(\s*|new URL\(\s*)['"](\.{1,2}/[^'"]+|build/[^'"]+\.mjs[^'"]*)['"]""", text)
+        relative = re.findall(r"""(?:from\s+|import\(\s*|new URL\(\s*)['"](\.{1,2}/[^'"]+|build/[^'"]+\.js[^'"]*)['"]""", text)
         for spec in relative:
             if spec.endswith('/'):
                 continue  # directory bases (vendor root, cmaps, fonts) carry no query

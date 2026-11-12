@@ -102,7 +102,19 @@ Status: **MEASURED** by source search in PDF.js 6.5.438.
 
 ### 4.1 Joomla installation gate (J1–J12)
 
-**Owner test pending.** The owner tests installation, operation, GUI and display manually on the staging installation. The detailed checklist stays private because it contains site details. It covers J1–J5, J7, J9 and J10 plus operation on a real phone. The results will be added here in neutral form.
+**Owner live test of alpha.4, 2026-11-12** (staging installation: Joomla 6.2.0, PHP 8.4, nginx, HTTP only, a third-party default template):
+
+| Check | Result |
+| --- | --- |
+| J1 installation via the Joomla installer | **PASS** (owner) |
+| Back-end operation: create the module, PDF field, settings | **PASS** (owner) |
+| J2/F1 stylesheet | **PASS**, MEASURED by Claude with read-only requests: `<link href="/media/mod_pdfbook/css/viewer.css?0.1.0-alpha.4">`, HTTP 200 `text/css`, no request to a host `media` |
+| J11 MIME types | **FAIL → L1 (P1)**: every `.mjs` file is delivered as `text/plain`, and the browser refuses the module script ("Failed to load module script … MIME type of text/plain"). The viewer never starts, and the server-rendered placeholder "… wird geladen" stays. `.bcmap` arrives as `video/unknown`, which is harmless because it is fetched as binary data. The PDF arrives as `application/pdf` |
+| Display and operation in the front end | **NOT MEASURED** (blocked by L1) |
+
+**Fixed in 0.1.0-alpha.5** (all JavaScript files renamed to `.js`; see `CHANGELOG.md`). The live test is repeated with alpha.5.
+
+Original plan: the owner tests installation, operation, GUI and display manually on the staging installation. The detailed checklist stays private because it contains site details. It covers J1–J5, J7, J9 and J10 plus operation on a real phone. The results will be added here in neutral form.
 
 | Item | Status |
 | --- | --- |

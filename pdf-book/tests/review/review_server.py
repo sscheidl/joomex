@@ -16,7 +16,7 @@ lock = threading.Lock()
 EIGHT = (REVIEW / 'site/images/eight.pdf').read_bytes()
 
 class H(SimpleHTTPRequestHandler):
-    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.pdf': 'application/pdf'}
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.mjs': 'text/plain', '.wasm': 'application/wasm', '.pdf': 'application/pdf'}
     def log(self, status):
         with lock, LOG.open('a', encoding='utf-8') as f:
             f.write(json.dumps({'t': time.time(), 'path': self.path, 'status': status, 'cookie': bool(self.headers.get('Cookie')), 'ref': self.headers.get('Referer'), 'origin': self.headers.get('Origin')}) + '\n')

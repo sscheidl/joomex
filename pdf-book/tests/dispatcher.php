@@ -41,7 +41,7 @@ check(Dispatcher::VERSION === $version, 'Dispatcher::VERSION equals manifest ver
 [$data, $calls] = run(['pdf' => 'images/test-book.pdf'], null);
 // F1: the stylesheet is registered relative to /media so Joomla resolves it (no leading slash, no root prefix)
 check($calls[0] === ['style', 'mod_pdfbook.viewer', 'mod_pdfbook/viewer.css', ['version' => $version]], 'F1 stylesheet asset URI ' . json_encode($calls[0]));
-check($calls[1][0] === 'script' && $calls[1][2] === '/sub/media/mod_pdfbook/js/viewer.mjs' && $calls[1][3] === ['version' => $version] && $calls[1][4] === ['type' => 'module'], 'module script asset ' . json_encode($calls[1]));
+check($calls[1][0] === 'script' && $calls[1][2] === 'mod_pdfbook/viewer.js' && $calls[1][3] === ['version' => $version] && $calls[1][4] === ['type' => 'module'], 'module script asset ' . json_encode($calls[1]));
 // F8: root-relative base, independent of scheme and Host header
 check($data['bookConfig']['base'] === '/sub/', 'F8 root-relative base ' . $data['bookConfig']['base']);
 check($data['bookError'] === '' && $data['bookConfig']['src'] === 'images/test-book.pdf', 'valid source');

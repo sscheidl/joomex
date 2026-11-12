@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS} from '../media/js/model.mjs';
+import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS} from '../media/js/model.js';
 const base='https://site.example/cms/';
 test('only same-origin public media PDFs, including Joomla subdirectories',()=>{
   assert.equal(safePdfUrl('images/book.pdf',base),'https://site.example/cms/images/book.pdf');
@@ -35,7 +35,7 @@ test('F4: separate, bounded timeouts',()=>{
   assert.ok(LIMITS.responseTimeout<=25000&&LIMITS.idleTimeout<=25000&&LIMITS.parseTimeout>0);
 });
 test('N3: every mapped PDF.js error name exists in the shipped PDF.js build',()=>{
-  const source=readFileSync(new URL('../media/vendor/pdfjs/build/pdf.mjs',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../media/vendor/pdfjs/build/pdf.js',import.meta.url),'utf8');
   const classes=new Set([...source.matchAll(/class (\w+(?:Exception|Error))\b/g)].map(m=>m[1]));
   for(const name of Object.keys(PDFJS_ERRORS))assert.ok(classes.has(name),name);
 });

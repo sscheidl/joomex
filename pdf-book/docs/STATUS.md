@@ -1,4 +1,4 @@
-# Development status 0.1.0-alpha.4
+# Development status 0.1.0-alpha.5
 
 2026-11-12. **Browser prototype runs; fixes for all review findings implemented. Joomla installation NOT MEASURED. Not for production.**
 
@@ -9,7 +9,8 @@
 | 0.1.0-alpha.1 | 2026-11-11 | First candidate; reviewed independently (verdict BLOCKED). Built under an earlier working name and not published. |
 | 0.1.0-alpha.2 | 2026-11-12 | Public package. Same functionality as alpha.1, with neutral identifiers, notice and texts. |
 | 0.1.0-alpha.3 | 2026-11-12 | Fixes for F1–F15 and documentation for F16. [Review](reviews/REVIEW_0.1.0-alpha.3.md): suitable for a limited staging test; new findings N1–N3. |
-| 0.1.0-alpha.4 | 2026-11-12 | Fixes for N1–N3; see [CHANGELOG.md](../CHANGELOG.md). **Next: the owner's live test on the staging installation (Joomla installation gate).** |
+| 0.1.0-alpha.4 | 2026-11-12 | Fixes for N1–N3. Live test on a Joomla 6.2 staging installation: installation and back end OK, F1 confirmed, viewer did not start (`.mjs` served as `text/plain`, L1). |
+| 0.1.0-alpha.5 | 2026-11-12 | Fix for L1: all JavaScript files named `.js`; see [CHANGELOG.md](../CHANGELOG.md). **Next: live test of alpha.5 on the staging installation.** |
 
 ## Implemented
 
