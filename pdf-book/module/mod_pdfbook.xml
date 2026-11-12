@@ -2,7 +2,7 @@
 <extension type="module" client="site" method="upgrade">
   <name>PDF Book (Prototyp)</name>
   <author>Joomex contributors</author>
-  <version>0.1.0-alpha.2</version>
+  <version>0.1.0-alpha.3</version>
   <creationDate>2026-11-12</creationDate>
   <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
   <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
@@ -10,7 +10,7 @@
   <files><folder module="mod_pdfbook">services</folder><folder>src</folder><folder>tmpl</folder><filename>mod_pdfbook.xml</filename><filename>LICENSE.txt</filename><filename>THIRD-PARTY-NOTICES.md</filename></files>
   <media destination="mod_pdfbook" folder="media"><folder>css</folder><folder>js</folder><folder>vendor</folder></media>
   <config><fields name="params"><fieldset name="basic" label="PDF-Flipbook">
-    <field name="pdf" type="text" label="PDF-Datei" description="Relativer Pfad unter images/, z. B. images/broschuere.pdf. Nur öffentliche PDFs, maximal 32 MB; derzeit keine Leerzeichen im Dateinamen." required="true" filter="string" />
+    <field name="pdf" type="media" types="documents" preview="false" label="PDF-Datei" description="Öffentliche PDF unter images/, z. B. images/broschuere.pdf (auch /images/… möglich). Maximal 32 MB. Geschützte Dokumente gehören nicht in den öffentlichen Medienordner." required="true" filter="string" />
     <field name="book_title" type="text" label="Buchtitel" default="PDF-Flipbook" filter="string" />
     <field name="display" type="list" label="Darstellung" default="inline"><option value="inline">Eingebettet</option><option value="cover">Schaltfläche mit Dialog</option></field>
     <field name="page_mode" type="list" label="Seitenansicht" default="auto"><option value="auto">Automatisch</option><option value="single">Einzelseite</option><option value="double">Doppelseite</option></field>

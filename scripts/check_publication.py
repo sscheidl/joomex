@@ -84,6 +84,7 @@ def main() -> int:
     vendor = vendor_hashes(root)
     findings: list[str] = []
     files = repo_files(root)
+    files = [name for name in files if (root / name).is_file()]   # tracked files deleted in the working tree are not published
     for name in files:
         parts = name.split('/')
         if parts[-1] in FORBIDDEN_NAMES or FORBIDDEN_DIRS & set(parts[:-1]):

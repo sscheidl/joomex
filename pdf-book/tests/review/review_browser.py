@@ -28,6 +28,11 @@ def new(browser, url, **kw):
     if url: page.goto(url, wait_until='domcontentloaded')
     return ctx, page, ev
 
+GERMAN = {'Ungültiger PDF-Pfad.', 'Nur PDFs im eigenen Medienverzeichnis sind erlaubt.', 'Die PDF-Datei ist nicht erreichbar.',
+          'Die PDF-Datei konnte nicht geladen werden. Bitte später erneut versuchen.', 'Die PDF-Datei lädt zu langsam. Bitte später erneut versuchen oder das PDF direkt öffnen.',
+          'PDF ist größer als 32 MB.', 'Die Datei ist kein PDF.', 'Das PDF enthält mehr als 1000 Seiten.', 'Dieses PDF ist passwortgeschützt.',
+          'Die PDF-Datei ist beschädigt oder ungültig.', 'Die Seite konnte nicht dargestellt werden.', 'Das PDF konnte nicht angezeigt werden.'}
+
 def t_two_modules(browser):
     ctx, page, ev = new(browser, B + 'two.html')
     ready(page, n=0); ready(page, n=1)
@@ -40,11 +45,17 @@ def t_two_modules(browser):
     page.locator('button[data-pdfbook-open]').click()
     page.locator('dialog [data-state="ready"]').wait_for(timeout=30000)
     inj = page.evaluate("({img:document.querySelectorAll('img').length,b:document.querySelectorAll('[data-pdfbook] b, dialog b').length,t:!!(globalThis.__TITLE__||globalThis.__T2__)})")
-    ok = all(s[0] == 'ready' for s in st) and not ev['errors'] and inj == {'img': 0, 'b': 0, 't': False} and rtl == ['PDF-Seite 1', 'PDF-Seite 0'][:0] + rtl
+    css = page.evaluate("({sheets:[...document.styleSheets].map(s=>s.href),radius:getComputedStyle(document.querySelector('[data-pdfbook]')).borderRadius})")
+    guest = page.evaluate("[...document.querySelectorAll('section.mod')].slice(3).map(s=>s.innerHTML.trim())")
+    ok = all(s[0] == 'ready' for s in st) and not ev['errors'] and inj == {'img': 0, 'b': 0, 't': False} and css['radius'] == '8px' and guest == ['', '']
     ext = [u for u in ev['requests'] if not u.startswith('http://127.0.0.1:8766/sub/')]
     rec('two modules + cover on one page, subdirectory /sub/', 'PASS' if ok and not ext else 'FAIL',
-        {'states': st, 'module_scripts': scripts, 'pdf_requests': pdfreq, 'vendor_files': vendor, 'rtl_first_spread': rtl, 'download_links': dl, 'injection': inj, 'external': ext, 'errors': ev['errors'], 'console': ev['console'][:5]})
+        {'states': st, 'stylesheet': css, 'guest_error_sections': guest, 'module_scripts': scripts, 'pdf_requests': pdfreq, 'vendor_files': vendor, 'rtl_first_spread': rtl, 'download_links': dl, 'injection': inj, 'external': ext, 'errors': ev['errors'], 'console': ev['console'][:5]})
     page.screenshot(path=OUT / 'two-modules.png', full_page=True)
+    ctx.close()
+    ctx, page, ev = new(browser, B + 'two-editor.html')
+    shown = page.evaluate("[...document.querySelectorAll('section.mod')].map(s=>s.textContent.trim())")
+    rec('F15 configuration errors: hidden for guests, shown to editors', 'PASS' if guest == ['', ''] and len(shown) == 2 and all(shown) else 'FAIL', {'guest': guest, 'editor': shown})
     ctx.close()
 
 def t_actions(browser):
@@ -93,14 +104,22 @@ def t_errors(browser):
             out[name]['controls_enabled'] = page.evaluate("[...document.querySelectorAll('.pdfbook-toolbar button')].filter(b=>!b.disabled).map(b=>b.getAttribute('aria-label'))")
             page.screenshot(path=OUT / 'too-many-after-resize.png')
         ctx.close()
-    rec('error fixtures and HTTP edge cases', 'INFO', out)
+    expect = {'password': 'error', 'owner-only': 'ready', 'truncated': 'error', 'fake-header': 'error', 'too-many': 'error', 'net-redirect': 'error',
+              'net-e500': 'error', 'net-html-mime': 'ready', 'net-big-len': 'error', 'net-big-nolen': 'error'}
+    bad = [n for n, r in out.items() if r['state'] != expect[n] or (r['state'] == 'error' and r['status'] not in GERMAN) or r['errors']]
+    tm = out['too-many']
+    if tm.get('state_after_resize') != 'error' or tm.get('status_after_resize') != tm['status'] or tm.get('controls_enabled'):
+        bad.append('too-many after resize (F3)')
+    rec('error fixtures and HTTP edge cases (F3, F5)', 'FAIL' if bad else 'PASS', {'failed': bad, **out})
 
 def t_slow(browser):
     for name in ['net-slow', 'net-hang']:
         ctx, page, ev = new(browser, B + name + '.html'); t0 = time.time()
         try: page.wait_for_function("()=>['ready','error'].includes(document.querySelector('[data-pdfbook]')?.dataset.state)", timeout=70000)
         except Exception: pass
-        rec(f'slow/hanging response ({name})', 'INFO', {'seconds': round(time.time() - t0, 1), 'state': page.locator('[data-pdfbook]').get_attribute('data-state'), 'status': page.locator('.pdfbook-status').text_content(), 'errors': ev['errors'][:2]})
+        r = {'seconds': round(time.time() - t0, 1), 'state': page.locator('[data-pdfbook]').get_attribute('data-state'), 'status': page.locator('.pdfbook-status').text_content(), 'errors': ev['errors'][:2]}
+        ok = r['state'] == 'ready' if name == 'net-slow' else (r['state'] == 'error' and r['seconds'] <= 26 and r['status'].startswith('Die PDF-Datei lädt zu langsam'))
+        rec(f'F4 slow/hanging response ({name})', 'PASS' if ok else 'FAIL', r)
         ctx.close()
 
 def t_lost_input(browser):
@@ -119,8 +138,8 @@ def t_lost_input(browser):
     after = page.evaluate("({spread:document.querySelector('.pdfbook-spread').getBoundingClientRect().width,stage:document.querySelector('.pdfbook-stage').clientWidth,canvas:document.querySelector('.pdfbook-page canvas').width})")
     page.set_viewport_size({'width': 1280, 'height': 900}); page.wait_for_timeout(1500)
     settle = page.evaluate("({spread:document.querySelector('.pdfbook-spread').getBoundingClientRect().width,stage:document.querySelector('.pdfbook-stage').clientWidth})")
-    rec('rapid input / resize while busy', 'FAIL' if (two_clicks == '2' or after['spread'] > after['stage']) else 'PASS',
-        {'after_two_rapid_next_clicks_page': two_clicks, 'expected_if_queued': '4', 'after_two_quick_arrowright_from_2': keys, 'spread_width_before': before, 'after_resize_during_animation_to_900px': after, 'after_resize_back': settle, 'errors': ev['errors']})
+    rec('F2 rapid input / resize while busy', 'PASS' if (two_clicks == '4' and keys == '8' and after['spread'] <= after['stage']) else 'FAIL',
+        {'after_two_rapid_next_clicks_page': two_clicks, 'expected': '4', 'after_two_quick_arrowright_from_4': keys, 'expected_keys': '8', 'spread_width_before': before, 'after_resize_during_animation_to_900px': after, 'after_resize_back': settle, 'errors': ev['errors']})
     ctx.close()
 
 def t_resize2(browser):
@@ -132,7 +151,7 @@ def t_resize2(browser):
     page.screenshot(path=OUT / 'resize-during-animation.png')
     ctx2, page2, _ = new(browser, B + 'eight.html'); ready(page2); page2.set_viewport_size({'width': 520, 'height': 900}); page2.wait_for_timeout(1500)
     ctrl = page2.evaluate("({pages:document.querySelectorAll('.pdfbook-page').length,spread:Math.round(document.querySelector('.pdfbook-spread').getBoundingClientRect().width)})")
-    rec('resize to 520 px during page-turn animation', 'FAIL' if r['pages'] != ctrl['pages'] or r['spread'] > r['stage'] else 'PASS', {'busy_at_resize': busy, 'result': r, 'control_resize_when_idle': ctrl})
+    rec('F2 resize to 520 px during page-turn animation', 'FAIL' if r['pages'] != ctrl['pages'] or r['spread'] > r['stage'] else 'PASS', {'busy_at_resize': busy, 'result': r, 'control_resize_when_idle': ctrl})
     ctx.close(); ctx2.close()
 
 def t_zoom(browser):
@@ -169,6 +188,45 @@ def t_dialog_lifecycle(browser):
     tabs = []
     for _ in range(25): page.keyboard.press('Tab'); tabs.append(page.evaluate("!!document.activeElement.closest('dialog')||document.activeElement===document.body"))
     rec('dialog keeps focus (Tab x25; body = browser UI step)', 'PASS' if all(tabs) else 'FAIL', {'inside_dialog': f'{sum(tabs)}/25'})
+    ctx.close()
+
+def t_mode_swipe(browser):
+    ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
+    labels = []
+    for _ in range(3):
+        b = page.locator('.pdfbook-toolbar button[aria-label^="Seitenansicht"]'); b.click(); page.wait_for_timeout(900)
+        labels.append((b.get_attribute('aria-label'), page.locator('.pdfbook-page').count()))
+    page.set_viewport_size({'width': 500, 'height': 900}); page.wait_for_timeout(1500)
+    auto_narrow = page.locator('.pdfbook-page').count()
+    rec('F11 page-mode switch returns to automatic', 'PASS' if labels[-1][0].endswith('automatisch') and auto_narrow == 1 else 'FAIL', {'cycle': labels, 'pages_at_500px_after_cycle': auto_narrow})
+    page.set_viewport_size({'width': 1280, 'height': 900}); page.wait_for_timeout(1200)
+    for _ in range(6):
+        page.get_by_role('button', name='Vergrößern').click(); page.wait_for_timeout(400)
+    page.wait_for_function("()=>!document.querySelector('[data-pdfbook]').hasAttribute('aria-busy')")
+    touch = page.evaluate("document.querySelector('.pdfbook-stage').style.touchAction")
+
+    def swipe():
+        box = page.locator('.pdfbook-stage').bounding_box(); y = box['y'] + box['height'] / 2; x = box['x'] + box['width'] / 2
+        page.mouse.move(x + 150, y); page.mouse.down(); page.mouse.move(x - 50, y, steps=5); page.mouse.up(); page.wait_for_timeout(1200)
+        return page.locator('[data-pdfbook]').get_attribute('data-page')
+    start = page.locator('[data-pdfbook]').get_attribute('data-page')
+    page.evaluate("document.querySelector('.pdfbook-stage').scrollLeft=0"); mid = swipe()
+    page.evaluate("(()=>{const s=document.querySelector('.pdfbook-stage');s.scrollLeft=s.scrollWidth})()"); edge = swipe()
+    rec('F13 zoomed swipe scrolls first, turns only at the edge', 'PASS' if touch == 'pan-x pan-y' and mid == start and edge != start else 'FAIL',
+        {'touch_action': touch, 'start': start, 'after_swipe_not_at_edge': mid, 'after_swipe_at_right_edge': edge})
+    ctx.close()
+
+def t_jpx_spaces(browser):
+    ctx, page, ev = new(browser, B + 'jpx.html'); ready(page)
+    px = page.evaluate("(()=>{const c=document.querySelector('.pdfbook-page canvas');const d=c.getContext('2d').getImageData(Math.floor(c.width*.5),Math.floor(c.height*.41),1,1).data;return [...d]})()")
+    decoders = [u.split('/sub/')[1] for u in ev['requests'] if 'wasm' in u]
+    errs = [u for u in ev['console'] if '404' in u or 'Failed to load' in u]
+    rec('F7 JPEG 2000 via JavaScript fallback, no .wasm requests', 'PASS' if px[:3] != [255, 255, 255] and not any('.wasm' in u for u in decoders) and not errs else 'FAIL',
+        {'pixel_rgba': px, 'decoder_requests': decoders, 'load_errors': errs[:3]})
+    ctx.close()
+    ctx, page, ev = new(browser, B + 'spaces.html'); ready(page)
+    src = [u.split('/sub/')[1] for u in ev['requests'] if '.pdf' in u]
+    rec('F9 legacy "/images/…" path with spaces', 'PASS' if src == ['images/mit%20leerzeichen.pdf'] else 'FAIL', {'pdf_requests': src})
     ctx.close()
 
 def t_webgl(browser, pw):
@@ -222,9 +280,10 @@ def t_widths(browser):
           pages:[...document.querySelectorAll('[data-pdfbook]')].map(b=>b.querySelectorAll('.pdfbook-page').length),
           smallTargets:[...document.querySelectorAll('.pdfbook-toolbar button')].filter(b=>{const r=b.getBoundingClientRect();return r.width<24||r.height<24}).length})""")
         page.locator('button[data-pdfbook-open]').click(); page.locator('dialog [data-state="ready"]').wait_for(timeout=30000)
-        r['dialog'] = page.evaluate("(()=>{const d=document.querySelector('dialog');return {scrollH:d.scrollHeight,clientH:d.clientHeight,vh:innerHeight}})()")
+        r['dialog'] = page.evaluate("(()=>{const d=document.querySelector('dialog'),t=d.querySelector('.pdfbook-toolbar').getBoundingClientRect(),b=d.getBoundingClientRect();return {scrollH:d.scrollHeight,clientH:d.clientHeight,vh:innerHeight,toolbarInside:t.bottom<=b.bottom+1}})()")
         page.screenshot(path=OUT / f'width-{w}x{h}@{dsf}.png'); out[f'{w}x{h}@{dsf}'] = r; ctx.close()
-    rec('layout at 320/390/768/1280 and 640x450@2 (~200 % zoom)', 'INFO', out)
+    bad = [k for k, r in out.items() if r['docOverflow'] > 0 or r['dialog']['scrollH'] > r['dialog']['clientH'] + 1 or not r['dialog']['toolbarInside']]
+    rec('F10 layout at 320/390/768/1280 and 640x450@2 (~200 % zoom)', 'FAIL' if bad else 'PASS', {'failed': bad, **out})
 
 def t_resources(browser):
     out = {}
@@ -273,7 +332,7 @@ def t_csp(browser):
 with sync_playwright() as pw:
     browser = pw.chromium.launch(channel='msedge', headless=True)
     rec('environment', 'INFO', {'browser': 'msedge ' + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
-    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('zoom', t_zoom),
+    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('zoom', t_zoom),
              ('dialog', t_dialog_lifecycle), ('webgl', lambda b: t_webgl(b, pw)), ('autoplay', t_autoplay), ('rtl', t_keyboard_rtl), ('widths', t_widths),
              ('resources', t_resources), ('csp', t_csp), ('slow', t_slow)]
     for key, fn in tests:
@@ -282,3 +341,4 @@ with sync_playwright() as pw:
         except Exception as e: rec(key, 'ERROR', traceback.format_exc()[-1500:])
     browser.close()
 (OUT / ('results-' + ('-'.join(sorted(ONLY)) or 'all') + '.json')).write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding='utf-8')
+sys.exit(1 if any(r['status'] in ('FAIL', 'ERROR') for r in results) else 0)
