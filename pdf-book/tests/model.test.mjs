@@ -51,18 +51,19 @@ test('page turn: the sheet starts and ends flat at full size and never dips belo
     assert.ok(points.every(q=>q.z>=0),'above the pages at '+p);
     assert.ok(Math.abs(length-1)<1e-6,'paper keeps its width at '+p);
   }
-  const mid=sheetProfile(0.5);assert.ok(mid.at(-1).x<0&&mid.at(-1).z>0.5);       // bent: the edge leads the spine
+  const mid=sheetProfile(0.5);assert.ok(mid.at(-1).z>0.5&&Math.min(...mid.map(q=>q.x))<-0.05);   // bent: the middle runs ahead of the edge
+  assert.ok(start.every(q=>Math.abs(q.nz-1)<1e-9&&Math.abs(q.nx)<1e-9)&&Math.abs(start.at(-1).s-1)<1e-9);   // flat: normal straight up
   assert.equal(easeOutSine(0),0);assert.ok(Math.abs(easeOutSine(1)-1)<1e-12);
 });
 test('adjustable look: rigid sheet at curvature 0, valid geometry at the maximum, settings clamped',async()=>{
   const {sheetProfile}=await import('../media/js/turn.js');
   const {normalizeConfig}=await import('../media/js/model.js');
   const rigid=sheetProfile(0.3,0);                                               // one straight line
-  assert.ok(rigid.every(p=>Math.abs(p.facing-rigid[0].facing)<1e-12));
-  for(const lead of [0,0.25,0.5])for(let p=0;p<=1.0001;p+=0.1){
+  assert.ok(rigid.every(q=>Math.abs(q.nx-rigid[0].nx)<1e-9&&Math.abs(q.nz-rigid[0].nz)<1e-9));
+  for(const lead of [0,1,2])for(let p=0;p<=1.0001;p+=0.1){
     const points=sheetProfile(p,lead);let length=0;
     for(let i=1;i<points.length;i++)length+=Math.hypot(points[i].x-points[i-1].x,points[i].z-points[i-1].z);
-    assert.ok(points.every(q=>q.z>=0)&&Math.abs(length-1)<1e-6,`lead ${lead} at ${p}`);
+    assert.ok(points.every(q=>q.z>=0)&&Math.abs(length-1)<1e-6,`curvature ${lead} at ${p}`);
   }
   globalThis.location={href:'https://site.example/cms/page'};
   const d=normalizeConfig({});

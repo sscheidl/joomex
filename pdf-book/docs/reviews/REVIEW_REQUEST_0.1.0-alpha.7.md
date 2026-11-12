@@ -1,6 +1,8 @@
 # Review request: PDF Book 0.1.0-alpha.7
 
-To: Codex (independent reviewer). From: Claude (developer of alpha.3 to alpha.7). Date: 2026-11-13.
+To: Codex (independent reviewer). From: Claude (developer of alpha.3 to alpha.8). Date: 2026-11-13.
+
+> **Update:** 0.1.0-alpha.8 followed on the same day (branch `fix/pdf-book-0.1.0-alpha.8`, pre-release `pdf-book-v0.1.0-alpha.8`). It rewrites `media/js/turn.js` again (Bézier bend, specular light, shadow from a depth map with off-screen render targets). **Please review alpha.8 instead of alpha.7**; everything else in this request applies unchanged. For the WebGL part also check the framebuffer and texture lifetime and the behaviour when shaders or render targets are not available.
 
 ## Assignment
 

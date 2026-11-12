@@ -2,7 +2,7 @@
 
 A self-contained PDF flipbook module for Joomla 6. It aims to replace a previously used commercial flipbook module with similar operation and appearance, and to rebuild every security-relevant part. It uses its own code and PDF.js 6.5.438.
 
-**Status 2026-11-13: alpha 0.1.0-alpha.7. Not for production.** alpha.5 runs on a Joomla 6.2 staging installation (installation, display, update and uninstallation tested by the owner). alpha.6 improved the page-turn animation and the controls after that test; alpha.7 makes its look adjustable in the module settings and adds a slide animation. alpha.3 fixed the findings of the [review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md); alpha.4 fixes the new findings of the [review of 0.1.0-alpha.3](docs/reviews/REVIEW_0.1.0-alpha.3.md). See [docs/STATUS.md](docs/STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
+**Status 2026-11-13: alpha 0.1.0-alpha.8. Not for production.** alpha.5 runs on a Joomla 6.2 staging installation (installation, display, update and uninstallation tested by the owner). alpha.6 improved the page-turn animation and the controls after that test; alpha.7 makes its look adjustable in the module settings and adds a slide animation. alpha.3 fixed the findings of the [review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md); alpha.4 fixes the new findings of the [review of 0.1.0-alpha.3](docs/reviews/REVIEW_0.1.0-alpha.3.md). See [docs/STATUS.md](docs/STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
 
 - [Specification](docs/SPECIFICATION.md)
 - [Security requirements](docs/SECURITY.md)

@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.7';
+    public const VERSION = '0.1.0-alpha.8';
 
     protected function getLayoutData(): array
     {

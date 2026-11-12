@@ -1,5 +1,24 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.8 (2026-11-13)
+
+Second rewrite of the 3D page turn after a closer analysis of the legacy rendering (`research/legacy-flipbook/FINDINGS.md`, F30 corrected, F34–F40). Own implementation in WebGL 1, no library and no legacy code.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Bend | The sheet follows a cubic Bézier curve. Its middle runs ahead of the free edge, so the paper gets a belly in the turning direction, and it leaves the spine with a rounded fold. The image is mapped along the measured length of the curve and the curve keeps the page width. | `media/js/turn.js` |
+| Light | Ambient, diffuse and specular light from the upper left front. A flat page gets exactly its own colours, so start and end of a turn match the pages in the document; the fold darkening of the stylesheet is repeated on the sheet. | `media/js/turn.js` |
+| Shadow | A depth map is rendered from the light and blurred in two passes; it is laid over the pages and the area around the book. The shadow has the true shape of the bent sheet, fades in and out with its lift and pales where the paper is high. The settings keep their meaning: density, softness (blur radius) and width (slant of the light). | `media/js/turn.js`, `media/js/viewer.js` |
+| Curvature setting | 0 = rigid sheet, 50 = default, 100 = twice the bend. | `media/js/viewer.js` |
+
+Not included:
+- **Self-shadow of the sheet:** implemented but switched off, because it showed a hard band near the free edge after mid-turn.
+- **Sheet thickness and page stack:** seen from straight above they change the picture by well under one percent.
+- **Resting pages in 3D:** they stay in the document so that text stays sharp.
+
+Measured on 2026-11-13 (minimal run at the owner's request): unit 12/12, PHP 32, dispatcher 11, identical SHA-256 from two builds, no shader or page errors in Edge 157, mid-turn frames checked by screenshot. Not run: Firefox, the review suite, real devices.
+
+
 ## 0.1.0-alpha.7 (2026-11-13)
 
 Owner request after the live test of alpha.6 ("clearly better"): make the look of the page turn adjustable in the back end and offer an alternative animation.
