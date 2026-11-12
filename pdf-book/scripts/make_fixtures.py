@@ -30,4 +30,5 @@ def make_book(path,count=8,malicious_actions=False):
 if __name__=='__main__':
     for filename,count,actions in [('test-book.pdf',8,False),('odd-book.pdf',5,False),('one-page.pdf',1,False),('actions.pdf',3,True)]:make_book(ROOT/'images'/filename,count,actions)
     (ROOT/'images/broken.pdf').write_bytes(b'not a PDF')
-    print('Created five bounded PDF test fixtures')
+    (ROOT/'images/mit leerzeichen.pdf').write_bytes((ROOT/'images/one-page.pdf').read_bytes())
+    print('Created six bounded PDF test fixtures')

@@ -15,7 +15,9 @@ final class Wam { public array $calls = [];
     public function registerAndUseStyle($n, $u, $o = []) { $this->calls[] = ['style', $n, $u, $o]; return $this; }
     public function registerAndUseScript($n, $u, $o = [], $a = []) { $this->calls[] = ['script', $n, $u, $o, $a]; return $this; } }
 final class Doc { public Wam $wam; public function __construct() { $this->wam = new Wam(); } public function getWebAssetManager() { return $this->wam; } }
-final class App { public Doc $doc; public function __construct() { $this->doc = new Doc(); } public function getDocument() { return $this->doc; } }
+final class User { public function __construct(private bool $editor) {} public function authorise(string $a, string $b): bool { return $this->editor; } }
+final class App { public Doc $doc; public function __construct(public ?User $user = null) { $this->doc = new Doc(); }
+    public function getDocument() { return $this->doc; } public function getIdentity() { return $this->user; } }
 }
 namespace {
 define('_JEXEC', 1);
@@ -32,13 +34,15 @@ function module(ReviewStub\App $app, string $title, array $params): string {
     (static function (array $displayData) { extract($displayData); include REVIEW_PROJECT . '/module/tmpl/default.php'; })($data);
     return ob_get_clean();
 }
-function page(string $file, array $modules, string $nonce = ''): void {
-    global $out; $app = new ReviewStub\App(); $html = '';
+function page(string $file, array $modules, string $nonce = '', bool $editor = false): void {
+    global $out; $app = new ReviewStub\App($editor ? new ReviewStub\User(true) : null); $html = '';
     foreach ($modules as [$title, $params]) { $html .= "<section class=\"mod\">\n" . module($app, $title, $params) . "\n</section>\n"; }
     $seen = []; $head = '';
     foreach ($app->doc->wam->calls as $c) {   // Joomla renders each named asset once; emulate that
         if (isset($seen[$c[0] . $c[1]])) continue; $seen[$c[0] . $c[1]] = 1;
         $n = $nonce ? " nonce=\"$nonce\"" : '';
+        // Emulates the traced Joomla 6.2 relative media lookup (review F1): "ext/file.css" -> {root}/media/ext/css/file.css
+        if ($c[0] === 'style' && preg_match('~^([a-z0-9_]+)/([^/]+\.css)$~', $c[2], $m)) { $c[2] = Joomla\CMS\Uri\Uri::root(true) . "/media/{$m[1]}/css/{$m[2]}"; }
         $head .= $c[0] === 'style' ? "<link rel=\"stylesheet\" href=\"{$c[2]}?{$c[3]['version']}\">\n" : "<script type=\"module\" src=\"{$c[2]}?{$c[3]['version']}\"$n></script>\n";
     }
     file_put_contents("$out/$file", "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>review</title>\n$head</head><body>\n$html<p id=\"after\">Ende</p></body></html>");
@@ -50,7 +54,9 @@ page('two.html', [['Flyer', ['pdf' => 'images/eight.pdf', 'book_title' => $xss, 
                   ['Cover', ['pdf' => 'images/test-book.pdf', 'display' => 'cover', 'book_title' => 'Broschüre <b>fett</b>']],
                   ['Fehlt', ['pdf' => 'images/missing.pdf']],
                   ['Traversal', ['pdf' => 'images/../configuration.php']]]);
-foreach (['actions-ext', 'outline', 'too-many', 'thousand', 'geometry', 'many-links', 'image-15mp', 'image-25mp', 'cjk', 'password', 'owner-only', 'truncated', 'fake-header', 'two-page', 'four-page', 'eight', 'one-page', 'test-book'] as $f) {
+page('two-editor.html', [['Fehlt', ['pdf' => 'images/missing.pdf']], ['Traversal', ['pdf' => 'images/../configuration.php']]], '', true);
+page('spaces.html', [['Leerzeichen', ['pdf' => '/images/mit leerzeichen.pdf', 'book_title' => 'Leerzeichen']]]);
+foreach (['jpx', 'actions-ext', 'outline', 'too-many', 'thousand', 'geometry', 'many-links', 'image-15mp', 'image-25mp', 'cjk', 'password', 'owner-only', 'truncated', 'fake-header', 'two-page', 'four-page', 'eight', 'one-page', 'test-book'] as $f) {
     page("$f.html", [[$f, ['pdf' => "images/$f.pdf", 'book_title' => $f, 'height' => 560]]]);
 }
 foreach (['redirect', 'e500', 'slow', 'hang', 'big-nolen', 'big-len', 'html-mime'] as $f) {   // runtime HTTP behaviour; PHP check bypassed deliberately

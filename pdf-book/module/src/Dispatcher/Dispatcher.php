@@ -9,17 +9,22 @@ use Joomla\CMS\Uri\Uri;
 
 final class Dispatcher extends AbstractModuleDispatcher
 {
+    /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
+    public const VERSION = '0.1.0-alpha.3';
+
     protected function getLayoutData(): array
     {
         $data = parent::getLayoutData();
         $params = $data['params'];
         $data['bookError'] = '';
+        $data['bookErrorVisible'] = false;
         $data['bookConfig'] = [];
         try {
             $source = Source::resolve((string) $params->get('pdf', ''), JPATH_ROOT);
             $data['bookConfig'] = [
                 'src' => $source,
-                'base' => Uri::root(),
+                // Root-relative on purpose: the viewer resolves it against the page origin (no Host-header/proxy scheme dependency).
+                'base' => Uri::root(true) . '/',
                 'title' => (string) $params->get('book_title', $this->module->title),
                 'mode' => (string) $params->get('page_mode', 'auto'),
                 'direction' => (string) $params->get('direction', 'ltr'),
@@ -30,11 +35,22 @@ final class Dispatcher extends AbstractModuleDispatcher
                 'renderer' => (string) $params->get('renderer', 'webgl'),
             ];
             $wa = $this->getApplication()->getDocument()->getWebAssetManager();
-            $prefix = Uri::root(true) . '/media/mod_pdfbook/';
-            $wa->registerAndUseStyle('mod_pdfbook.viewer', $prefix . 'css/viewer.css', ['version' => '0.1.0-alpha.2']);
-            $wa->registerAndUseScript('mod_pdfbook.viewer', $prefix . 'js/viewer.mjs', ['version' => '0.1.0-alpha.2'], ['type' => 'module']);
+            // Relative to /media: Joomla resolves this to {root}/media/mod_pdfbook/css/viewer.css and allows template overrides.
+            $wa->registerAndUseStyle('mod_pdfbook.viewer', 'mod_pdfbook/viewer.css', ['version' => self::VERSION]);
+            // Joomla does not resolve .mjs paths, so the root-relative URL is passed through unchanged.
+            $wa->registerAndUseScript(
+                'mod_pdfbook.viewer',
+                Uri::root(true) . '/media/mod_pdfbook/js/viewer.mjs',
+                ['version' => self::VERSION],
+                ['type' => 'module']
+            );
         } catch (\InvalidArgumentException $exception) {
             $data['bookError'] = $exception->getMessage();
+            // Configuration problems are shown only to users who can fix the module, never to guests.
+            $user = $this->getApplication()->getIdentity();
+            $data['bookErrorVisible'] = $user !== null
+                && ($user->authorise('core.edit', 'com_modules.module.' . (int) ($this->module->id ?? 0))
+                    || $user->authorise('core.edit', 'com_modules'));
         }
         $data['bookLayout'] = $params->get('display', 'inline') === 'cover' ? 'cover' : 'inline';
         return $data;

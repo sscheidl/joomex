@@ -14,10 +14,6 @@
         "sha256": "f1ee2b86d34109a9d3475b23f26882e1c8df38e051a74e4f1e8fd72c9a51885a"
       },
       {
-        "path": "build/pdf.renderer.mjs",
-        "sha256": "e16505dc5b955910b2ef80e97f6a7ea00f45764ba414d5f8082573d895d1d17c"
-      },
-      {
         "path": "build/pdf.worker.mjs",
         "sha256": "43710009ea26bfbcb615524946e46e3aaf8ad927514f5e465e8ff6d18044ffe9"
       },
@@ -786,49 +782,66 @@
         "sha256": "717fc62da03292dbb4dd0c8280bd4ce7bb8550dcf31d772bc93455fb50313425"
       },
       {
-        "path": "web/wasm/LICENSE_PDFJS_QCMS",
-        "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
-      },
-      {
-        "path": "web/wasm/LICENSE_PDFJS_QUICKJS",
-        "sha256": "7fdaed3d938f3dfce7189db07e74773c23789143a55db81a95d09dcbfda267b0"
-      },
-      {
-        "path": "web/wasm/LICENSE_QCMS",
-        "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
-      },
-      {
-        "path": "web/wasm/LICENSE_QUICKJS",
-        "sha256": "598fd7fc928e4350abce36e337ba5a1346923c5c692f5be92c3d8e29ddd7c18d"
-      },
-      {
-        "path": "web/wasm/jbig2.wasm",
-        "sha256": "466f45c2a61a698152fb5400c27e56ff2ceb73dcb71fde3fc366a502308eaab0"
-      },
-      {
         "path": "web/wasm/jbig2_nowasm_fallback.js",
         "sha256": "70150223396487e1ccfef7eac61fc780074ad7fcc9e843b702a8a3bc23107494"
       },
       {
-        "path": "web/wasm/openjpeg.wasm",
-        "sha256": "7ea4b2b04613370ad4e9c1162da750cc88b4b176eac0d0c164b3caff23fc0a46"
-      },
-      {
         "path": "web/wasm/openjpeg_nowasm_fallback.js",
         "sha256": "2855f1590e7fd7abbbf204cd13a5c09d30c92fe2c9313fb72b64aa763fe8b4f3"
+      }
+    ],
+    "excluded": [
+      {
+        "path": "build/pdf.renderer.mjs",
+        "sha256": "e16505dc5b955910b2ef80e97f6a7ea00f45764ba414d5f8082573d895d1d17c",
+        "reason": "Not imported by the viewer (F7)."
+      },
+      {
+        "path": "web/wasm/LICENSE_PDFJS_QCMS",
+        "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+        "reason": "Licence of the excluded ICC colour management module."
+      },
+      {
+        "path": "web/wasm/LICENSE_PDFJS_QUICKJS",
+        "sha256": "7fdaed3d938f3dfce7189db07e74773c23789143a55db81a95d09dcbfda267b0",
+        "reason": "Licence of the excluded scripting sandbox."
+      },
+      {
+        "path": "web/wasm/LICENSE_QCMS",
+        "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc",
+        "reason": "Licence of the excluded ICC colour management module."
+      },
+      {
+        "path": "web/wasm/LICENSE_QUICKJS",
+        "sha256": "598fd7fc928e4350abce36e337ba5a1346923c5c692f5be92c3d8e29ddd7c18d",
+        "reason": "Licence of the excluded scripting sandbox."
+      },
+      {
+        "path": "web/wasm/jbig2.wasm",
+        "sha256": "466f45c2a61a698152fb5400c27e56ff2ceb73dcb71fde3fc366a502308eaab0",
+        "reason": "Not loaded with useWasm:false; jbig2_nowasm_fallback.js is used instead."
+      },
+      {
+        "path": "web/wasm/openjpeg.wasm",
+        "sha256": "7ea4b2b04613370ad4e9c1162da750cc88b4b176eac0d0c164b3caff23fc0a46",
+        "reason": "Not loaded with useWasm:false; openjpeg_nowasm_fallback.js is used instead."
       },
       {
         "path": "web/wasm/qcms_bg.wasm",
-        "sha256": "663d86126d5f5fcb1c61490f94353e2a8375660b8c5498ab3ebab5a34b08800e"
+        "sha256": "663d86126d5f5fcb1c61490f94353e2a8375660b8c5498ab3ebab5a34b08800e",
+        "reason": "ICC colour management needs WebAssembly; disabled by useWasm:false."
       },
       {
         "path": "web/wasm/quickjs-eval.js",
-        "sha256": "fe7930418e869791ce892567dbd0bc4698152b7e550b5cefa553992c56ddc325"
+        "sha256": "fe7930418e869791ce892567dbd0bc4698152b7e550b5cefa553992c56ddc325",
+        "reason": "Scripting sandbox; never loaded because no scripting manager is used (F7)."
       },
       {
         "path": "web/wasm/quickjs-eval.wasm",
-        "sha256": "7bcacc9f22cacf7e9b23866d2a6d1639693d40c7f144e41b7c69ed37ba9cbe8f"
+        "sha256": "7bcacc9f22cacf7e9b23866d2a6d1639693d40c7f144e41b7c69ed37ba9cbe8f",
+        "reason": "Scripting sandbox; never loaded because no scripting manager is used (F7)."
       }
-    ]
+    ],
+    "note": "files: shipped subset of the official archive, byte-identical; excluded: files of the same archive that are deliberately not shipped."
   }
 }

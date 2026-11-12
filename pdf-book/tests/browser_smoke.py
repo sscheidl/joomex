@@ -27,6 +27,11 @@ def main():
         assert book.get_by_role('button',name='Nächste Seite',exact=True).is_disabled()
         book.get_by_role('button',name='Erste Seite').click()
         expect(book).to_have_attribute('data-page','1')
+        # F2: input during a page turn is queued, not dropped
+        page.evaluate("""()=>{const b=document.querySelector('#main-book [aria-label="Nächste Seite"]');b.click();b.click();}""")
+        expect(book).to_have_attribute('data-page','4',timeout=10000)
+        book.get_by_role('button',name='Erste Seite').click()
+        expect(book).to_have_attribute('data-page','1')
         book.get_by_role('button',name='Vergrößern').click()
         expect(book).not_to_have_attribute('aria-busy','true')
         book.get_by_role('button',name='Seitenübersicht',exact=True).click()
@@ -70,7 +75,7 @@ def main():
         external=[u for u in requests if not u.startswith(('http://127.0.0.1:8765/','blob:','data:'))]
         assert not external,external
         assert not errors,errors
-        result={'status':'PASS','browser':browser.version,'tests':['load PDF.js 6.5.438','navigation and boundaries','WebGL renderer active and curved page screenshot','zoom','outline navigation','dialog escape and focus return','mobile single-page and no horizontal overflow','multiple instances','PDF JavaScript actions not executed','unsafe annotation URLs omitted on displayed page','HTML titles inert','broken PDF rejected','foreign PDF source rejected','single-page PDF','RTL with odd page count and flat renderer','safe PDF annotation URL','no external requests','no uncaught browser errors'], 'external_requests':external,'errors':errors,'desktop_renderer':'webgl','mobile_renderer':book.get_attribute('data-renderer')}
+        result={'status':'PASS','browser':browser.version,'tests':['load PDF.js 6.5.438','navigation and boundaries','queued input during page turn (F2)','WebGL renderer active and curved page screenshot','zoom','outline navigation','dialog escape and focus return','mobile single-page and no horizontal overflow','multiple instances','PDF JavaScript actions not executed','unsafe annotation URLs omitted on displayed page','HTML titles inert','broken PDF rejected','foreign PDF source rejected','single-page PDF','RTL with odd page count and flat renderer','safe PDF annotation URL','no external requests','no uncaught browser errors'], 'external_requests':external,'errors':errors,'desktop_renderer':'webgl','mobile_renderer':book.get_attribute('data-renderer')}
         (OUT/'browser.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps(result,indent=2))
         browser.close()
 

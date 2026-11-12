@@ -111,6 +111,21 @@ p = w.add_blank_page(420, 594); p[N('/Resources')] = D({N('/Font'): D({N('/F1'):
 s = DecodedStreamObject(); s.set_data(b'BT /F1 36 Tf 40 400 Td <65e5672c8a9e> Tj ET'); p[N('/Contents')] = w._add_object(s)
 save(w, 'cjk.pdf')
 
+# 6b) JPEG 2000 image: decoded by the PDF.js JavaScript fallback because the viewer sets useWasm:false
+try:
+    import io
+    from PIL import Image
+    img = Image.new('RGB', (400, 300))
+    img.putdata([(x * 255 // 400, y * 255 // 300, 120) for y in range(300) for x in range(400)])
+    buf = io.BytesIO(); img.save(buf, 'JPEG2000'); jpx = buf.getvalue()
+    w = PdfWriter(); f = font(w); p = page(w, f, 'JPX', extra=b'q 400 0 0 300 10 200 cm /Im1 Do Q')
+    s = StreamObject(); s._data = jpx
+    s.update({N('/Type'): N('/XObject'), N('/Subtype'): N('/Image'), N('/Width'): I(400), N('/Height'): I(300), N('/Filter'): N('/JPXDecode')})
+    p[N('/Resources')][N('/XObject')] = D({N('/Im1'): w._add_object(s)})
+    save(w, 'jpx.pdf')
+except Exception as exc:  # Pillow without JPEG 2000 support
+    print('jpx fixture skipped:', exc)
+
 # 7) encrypted, truncated, fake header
 w = PdfWriter(); f = font(w); page(w, f, 'geheim'); page(w, f, 'geheim 2'); w.encrypt(user_password='test', owner_password='owner', algorithm='RC4-128')
 save(w, 'password.pdf')

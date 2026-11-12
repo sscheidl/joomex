@@ -1,6 +1,6 @@
 # PDF Book: security requirements
 
-Status: 2026-11-12. Binding target requirements from the owner's assignment. **Partly implemented and tested in the alpha; this is not a complete security acceptance.**
+Status: 2026-11-12 (0.1.0-alpha.3). Binding target requirements from the owner's assignment. **Partly implemented and tested in the alpha; this is not a complete security acceptance.**
 
 ## Starting point (legacy module)
 
@@ -38,10 +38,11 @@ In scope: visitors, article authors with limited rights, editors with media acce
 ## Important technical distinctions
 
 - A web worker protects the interface from computation load. On its own it is not a complete security container for untrusted PDFs.
-- Turning off PDF scripting does not replace current libraries or input validation. Security options are checked against the PDF.js version actually used. Example: `isEvalSupported` no longer exists in PDF.js 6.5.438 and has no effect there (review finding F7).
+- Turning off PDF scripting does not replace current libraries or input validation. Security options are checked against the PDF.js version actually used. Example: `isEvalSupported` no longer exists in PDF.js 6.5.438; it was removed from the code in alpha.3, and `scripts/build.py` rejects it (review finding F7).
 - A current version is necessary, but it does not prove the integration is safe. Parser, DOM output, path resolution and access behaviour get their own tests.
 - A strict CSP for the new viewer is tested on a test page first. The site's existing template and page-builder scripts can have other needs, so production headers are never changed in passing. Measured 2026-11-11 in Edge: the viewer works with `style-src 'self'` without `unsafe-inline`, and with `script-src 'nonce-…' 'strict-dynamic'`.
-- `useWasm: false` avoids `wasm-unsafe-eval` but also disables ICC colour management; JPX/JBIG2 use slower JavaScript fallbacks.
+- `useWasm: false` avoids `wasm-unsafe-eval` but also disables ICC colour management; JPEG 2000/JBIG2 use slower JavaScript fallbacks (JPEG 2000 measured working on 2026-11-12). Since alpha.3 the unused `.wasm` decoders, the ICC module and the QuickJS scripting sandbox are not shipped (`dependencies.json`, `excluded`).
+- Images above 16 megapixels inside a PDF are skipped by PDF.js (`LIMITS.imagePixels`) to bound memory; the page is shown without that image (review finding F14, kept by design).
 - Existing public PDF URLs stay public even when the module is not shown. Protected documents need a real access-checked delivery path.
 
 ## Maintenance
@@ -52,4 +53,4 @@ Regular checks and prompt checks after new security advisories are part of opera
 
 ## Release status
 
-[STATUS.md](STATUS.md) records the individual status of the alpha checks. The [independent review](reviews/REVIEW_0.1.0-alpha.1.md) found no exploitable vulnerability in the tested scope. Its verdict is still BLOCKED, because the Joomla installation gate was not run and finding F1 affects it. Full resource stress tests, Joomla access/installation checks and checks on real devices are still open.
+[STATUS.md](STATUS.md) records the individual status of the alpha checks. The [independent review of alpha.1](reviews/REVIEW_0.1.0-alpha.1.md) found no exploitable vulnerability in the tested scope; its verdict was BLOCKED (Joomla installation gate not run, finding F1). alpha.3 contains fixes for all findings and awaits an independent review ([request](reviews/REVIEW_REQUEST_0.1.0-alpha.3.md)). Full resource stress tests, Joomla access/installation checks and checks on real devices are still open.

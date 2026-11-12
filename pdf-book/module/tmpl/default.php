@@ -3,7 +3,10 @@ defined('_JEXEC') or die;
 
 $escape = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 if ($bookError !== '') {
-    echo '<p role="status">' . $escape($bookError) . '</p>';
+    // Guests get no output (an empty module is skipped by Joomla's module chrome); editors see the reason.
+    if ($bookErrorVisible) {
+        echo '<p role="status">' . $escape($bookError) . '</p>';
+    }
     return;
 }
 $json = $escape(json_encode($bookConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR));

@@ -2,7 +2,7 @@
 
 A self-contained PDF flipbook module for Joomla 6. It aims to replace a previously used commercial flipbook module with similar operation and appearance, and to rebuild every security-relevant part. It uses its own code and PDF.js 6.5.438.
 
-**Status 2026-11-12: alpha 0.1.0-alpha.2. Not for production.** Installation in Joomla 6 has not been tested yet. The independent review of the functionally identical 0.1.0-alpha.1 candidate found one install-related defect (P1). See [docs/STATUS.md](docs/STATUS.md) and [docs/reviews/REVIEW_0.1.0-alpha.1.md](docs/reviews/REVIEW_0.1.0-alpha.1.md).
+**Status 2026-11-12: alpha 0.1.0-alpha.3. Not for production.** Installation in Joomla 6 has not been tested yet. alpha.3 fixes the findings of the [independent review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md) and waits for its own review. See [docs/STATUS.md](docs/STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
 
 - [Specification](docs/SPECIFICATION.md)
 - [Security requirements](docs/SECURITY.md)
@@ -24,10 +24,11 @@ Then open `http://127.0.0.1:8765/demo/`. The server binds to the loopback addres
 ```bash
 node --test tests/model.test.mjs
 php tests/source.php
+php tests/dispatcher.php
 python tests/browser_smoke.py
 ```
 
-`browser_smoke.py` needs Playwright with Microsoft Edge and the running preview server. `scripts/get_php.py` can fetch a portable PHP 8.4 for Windows into the ignored folder `.tools/`.
+`browser_smoke.py` needs Playwright with Microsoft Edge and the running preview server. The extended review suite is in `tests/review/` (see `docs/reviews/evidence-0.1.0-alpha.3/README.md`). `scripts/get_php.py` can fetch a portable PHP 8.4 for Windows into the ignored folder `.tools/`.
 
 ## Build
 
@@ -35,13 +36,13 @@ python tests/browser_smoke.py
 python scripts/build.py
 ```
 
-The build checks every PDF.js file against `dependencies.json` and writes `dist/mod_pdfbook-<version>.zip`, `dist/SHA256SUMS.txt` and `dist/manifest.json`. Release packages are published as GitHub pre-releases, not committed.
+The build checks every PDF.js file against `dependencies.json` (and that nothing else is vendored), checks that the manifest, `Dispatcher::VERSION`, `package.json` and every `?v=` import suffix carry the same version, and writes `dist/mod_pdfbook-<version>.zip`, `dist/SHA256SUMS.txt` and `dist/manifest.json`. Release packages are published as GitHub pre-releases, not committed.
 
 ## Module use (test installations only)
 
-Install the ZIP through the Joomla installer of a **test** installation. Create a site module **PDF Book (Prototyp)**, enter a public PDF path such as `images/brochure.pdf`, then choose a position, menu assignment and publish. PDFs are not part of the package.
+Install the ZIP through the Joomla installer of a **test** installation. Create a site module **PDF Book (Prototyp)**, choose a public PDF under `images/` with the media picker (or enter `images/brochure.pdf` / `/images/brochure.pdf`), then choose a position, menu assignment and publish. PDFs are not part of the package.
 
-Current limits: public local PDFs up to 32 MB, no spaces in file names, no external PDFs. The user interface is German only. Hiding the download button is not access control.
+Current limits: public local PDFs up to 32 MB and 1000 pages, images inside a PDF up to 16 megapixels, no external PDFs. Configuration errors are shown to module editors only. The user interface is German only. Hiding the download button is not access control.
 
 ## License
 
