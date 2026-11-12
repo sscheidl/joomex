@@ -39,3 +39,18 @@ test('N3: every mapped PDF.js error name exists in the shipped PDF.js build',()=
   const classes=new Set([...source.matchAll(/class (\w+(?:Exception|Error))\b/g)].map(m=>m[1]));
   for(const name of Object.keys(PDFJS_ERRORS))assert.ok(classes.has(name),name);
 });
+test('page turn: the sheet starts and ends flat at full size and never dips below the pages',async()=>{
+  const {sheetProfile,SEGMENTS,easeOutSine}=await import('../media/js/turn.js');
+  const start=sheetProfile(0),end=sheetProfile(1);
+  assert.equal(start.length,SEGMENTS+1);
+  assert.ok(Math.abs(start.at(-1).x-1)<1e-9&&start.every(p=>p.z===0));          // exactly the flat source page
+  assert.ok(Math.abs(end.at(-1).x+1)<1e-9&&end.every(p=>Math.abs(p.z)<1e-9));    // exactly the flat target page
+  for(let p=0;p<=1;p+=0.05){
+    const points=sheetProfile(p);let length=0;
+    for(let i=1;i<points.length;i++)length+=Math.hypot(points[i].x-points[i-1].x,points[i].z-points[i-1].z);
+    assert.ok(points.every(q=>q.z>=0),'above the pages at '+p);
+    assert.ok(Math.abs(length-1)<1e-6,'paper keeps its width at '+p);
+  }
+  const mid=sheetProfile(0.5);assert.ok(mid.at(-1).x<0&&mid.at(-1).z>0.5);       // bent: the edge leads the spine
+  assert.equal(easeOutSine(0),0);assert.ok(Math.abs(easeOutSine(1)-1)<1e-12);
+});

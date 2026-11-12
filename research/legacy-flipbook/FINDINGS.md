@@ -66,6 +66,10 @@ Evidence levels: **observed** = directly present in the supplied files; **derive
 | F27 | The inline wrapper does not set `isEvalSupported`; the bundled PDF.js default is `true` | observed | `[ENGINE]:1762-1782`; `[LIB-PDFJS]:1953-1954` | Page-level overrides/CSP and actual production files not checked |
 | F28 | The library URLs of the examined inline layout need no vendor request | observed | `[TPL-INLINE-PDF]:59-65` | Bounded observation; not proof that there is no outgoing traffic or licence check at all |
 | F29 | Development baseline on 2026-11-11: PDF.js 6.5.438 and Joomla 6.2.0 | observed | official release APIs | Release metadata only; integration/security acceptance still pending |
+| F30 | [LIB] A turning sheet is driven by two angles: the angle at the spine runs evenly from start to end, while the angle of the free edge runs ahead (a quarter turn after a quarter of the time, three eighths at half time, flat on the target side after three quarters). The paper therefore bends during the turn | observed | `[ENGINE]:1098-1147` | Keyframe values read from source; rendered motion not measured |
+| F31 | [LIB] The turn uses a sinusoidal ease-out; a stiffness value shapes the bend and is animated along with the angles | observed | `[ENGINE]:1139-1154`, `:209` | Exact curve construction inside the bundled 3D helper not reconstructed |
+| F32 | [LIB] Lighting: perspective camera centred on the book, ambient light 0.8, one spot light from the upper left at intensity 0.22 that casts shadows onto a ground plane with shadow opacity 0.15 | observed | `[ENGINE]:214-217`, `:893-902` | Defaults; the live configuration enables 3D shadows |
+| F33 | [LIB] A click on a page turns it: forwards or backwards depending on the side the clicked sheet lies on | observed | `[ENGINE]:1041-1057` | Basis for the click-to-turn behaviour of the replacement |
 
 Static checks: **MEASURED 2026-11-11**, nine checks passed (archive hash preserved, extracted files byte-identical, identical JS in both packages, two selectable layouts, invalid page-mode default, reconstructed fallback fails a syntax check, CMap assets missing, eval support not set, no vendor URL needed in the inline library paths). A PASS can confirm a defect; it does not show product safety.
 
@@ -120,5 +124,7 @@ Public GET requests, no back-end access, no production changes, legacy engine no
 | Q9 | Is front-end text search a requirement? | Existing use or owner decision | Not exposed in the inspected form/toolbar; not assumed |
 
 ## Consequences for the replacement
+
+F30–F33 informed the independently written page-turn renderer of `mod_pdfbook` 0.1.0-alpha.6 (two-angle bend with a leading edge, sine ease-out, cast shadow from the upper left, click to turn). Only the behaviour was taken over, not code.
 
 These findings feed the [specification](../../pdf-book/docs/SPECIFICATION.md) and the [security requirements](../../pdf-book/docs/SECURITY.md) of `mod_pdfbook`: namespaced module architecture (F16), context-safe output (F17), no import of executable settings (F18), validated defaults (F19), complete CMap resources (F20), no vendor update endpoint (F21), media-root containment (F22), current PDF.js without eval paths (F26, F27), and a decision on splitting wide spreads using real documents (F13).

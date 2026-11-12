@@ -1,4 +1,4 @@
-# Development status 0.1.0-alpha.5
+# Development status 0.1.0-alpha.6
 
 2026-11-12. **Browser prototype runs; fixes for all review findings implemented. Joomla installation NOT MEASURED. Not for production.**
 
@@ -10,7 +10,8 @@
 | 0.1.0-alpha.2 | 2026-11-12 | Public package. Same functionality as alpha.1, with neutral identifiers, notice and texts. |
 | 0.1.0-alpha.3 | 2026-11-12 | Fixes for F1–F15 and documentation for F16. [Review](reviews/REVIEW_0.1.0-alpha.3.md): suitable for a limited staging test; new findings N1–N3. |
 | 0.1.0-alpha.4 | 2026-11-12 | Fixes for N1–N3. Live test on a Joomla 6.2 staging installation: installation and back end OK, F1 confirmed, viewer did not start (`.mjs` served as `text/plain`, L1). |
-| 0.1.0-alpha.5 | 2026-11-12 | Fix for L1: all JavaScript files named `.js`; see [CHANGELOG.md](../CHANGELOG.md). **Next: live test of alpha.5 on the staging installation.** |
+| 0.1.0-alpha.5 | 2026-11-12 | Fix for L1: all JavaScript files named `.js`; see [CHANGELOG.md](../CHANGELOG.md). Live test: viewer works; installation, update and uninstallation OK. |
+| 0.1.0-alpha.6 | 2026-11-13 | New page-turn renderer (curvature, shadows, no size jump), larger icons, page click and arrow keys; see [CHANGELOG.md](../CHANGELOG.md). **Next: live test of alpha.6.** |
 
 ## Implemented
 
@@ -18,7 +19,7 @@
 - Own viewer with PDF.js 6.5.438 and its own WebGL page mesh and shading, without jQuery or Three.js. A static fallback is used in single-page view, with animation turned off, or when WebGL is missing.
 - Next/previous, first/last page, page input, page mode (automatic/single/double), RTL, zoom, fullscreen button, thumbnails, PDF bookmarks and links. Input during rendering or page turns is queued.
 - Dialog view with Escape and focus return; the book fills the dialog. Several independent instances.
-- Autoplay with a fixed 3-second interval. A swipe gesture turns the page (when zoomed, only at the scroll edge); interactive dragging of a curved page is not implemented yet.
+- Autoplay with a fixed 3-second interval. A click or tap on a page, the arrow keys or a swipe gesture turn the page (when zoomed, a swipe only at the scroll edge); interactive dragging of a curved page is not implemented yet.
 - Limits:
   - only the site's own public media PDFs
   - 32 MB download, 1000 pages

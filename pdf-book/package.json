@@ -1,6 +1,6 @@
 {
   "name": "joomex-pdf-book",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "private": true,
   "type": "module",
   "scripts": {"test": "node --test tests/model.test.mjs"},
