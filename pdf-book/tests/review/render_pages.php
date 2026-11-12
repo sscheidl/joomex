@@ -55,6 +55,9 @@ page('two.html', [['Flyer', ['pdf' => 'images/eight.pdf', 'book_title' => $xss, 
                   ['Fehlt', ['pdf' => 'images/missing.pdf']],
                   ['Traversal', ['pdf' => 'images/../configuration.php']]]);
 page('two-editor.html', [['Fehlt', ['pdf' => 'images/missing.pdf']], ['Traversal', ['pdf' => 'images/../configuration.php']]], '', true);
+page('slide.html', [['Schieben', ['pdf' => 'images/eight.pdf', 'book_title' => 'Schieben', 'renderer' => 'slide', 'duration' => 600]]]);
+page('look.html', [['Optik', ['pdf' => 'images/eight.pdf', 'book_title' => 'Optik', 'curvature' => 100, 'shadow_density' => 60, 'shadow_softness' => 0, 'shadow_width' => 100, 'duration' => 1800]],
+                   ['Steif', ['pdf' => 'images/eight.pdf', 'book_title' => 'Steif', 'curvature' => 0, 'shadow_density' => 0, 'duration' => 1800]]]);
 page('spaces.html', [['Leerzeichen', ['pdf' => '/images/mit leerzeichen.pdf', 'book_title' => 'Leerzeichen']]]);
 foreach (['jpx', 'actions-ext', 'outline', 'too-many', 'thousand', 'geometry', 'many-links', 'image-15mp', 'image-25mp', 'cjk', 'password', 'owner-only', 'truncated', 'fake-header', 'two-page', 'four-page', 'eight', 'one-page', 'test-book'] as $f) {
     page("$f.html", [[$f, ['pdf' => "images/$f.pdf", 'book_title' => $f, 'height' => 560]]]);

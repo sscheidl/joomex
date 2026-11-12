@@ -45,6 +45,12 @@ check($calls[1][0] === 'script' && $calls[1][2] === 'mod_pdfbook/viewer.js' && $
 // F8: root-relative base, independent of scheme and Host header
 check($data['bookConfig']['base'] === '/sub/', 'F8 root-relative base ' . $data['bookConfig']['base']);
 check($data['bookError'] === '' && $data['bookConfig']['src'] === 'images/test-book.pdf', 'valid source');
+// Animation settings: defaults and clamping
+$c = $data['bookConfig'];
+check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c['shadowSoftness'], $c['shadowWidth']] === ['webgl', 800, 50, 22, 50, 50], 'animation defaults ' . json_encode($c));
+[$data] = run(['pdf' => 'images/test-book.pdf', 'renderer' => 'slide', 'duration' => 99999, 'curvature' => -3, 'shadow_density' => 100, 'shadow_softness' => 0, 'shadow_width' => 250], null);
+$c = $data['bookConfig'];
+check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c['shadowSoftness'], $c['shadowWidth']] === ['slide', 1800, 0, 60, 0, 100], 'animation clamping ' . json_encode($c));
 Joomla\CMS\Uri\Uri::$root = 'http://proxy.internal/';
 [$data] = run(['pdf' => 'images/test-book.pdf'], null);
 check($data['bookConfig']['base'] === '/', 'F8 root install base');

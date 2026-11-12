@@ -81,6 +81,12 @@ export function renderDimensions(width, height, desiredWidth) {
   return {scale, width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale))};
 }
 
+/** Integer setting within [min, max]; anything missing or not numeric gives the default (0 is a valid value). */
+const setting = (value, min, max, fallback) => {
+  const n = value === null || value === undefined || value === '' ? NaN : Number(value);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback;
+};
+
 export function normalizeConfig(data = {}) {
   return {
     src: String(data.src || ''), title: String(data.title || 'PDF-Flipbook').slice(0, 200),
@@ -89,7 +95,10 @@ export function normalizeConfig(data = {}) {
     mode: ['single', 'double', 'auto'].includes(data.mode) ? data.mode : 'auto',
     direction: data.direction === 'rtl' ? 'rtl' : 'ltr',
     duration: Math.max(150, Math.min(1800, Number(data.duration) || 800)),
-    download: data.download !== false, renderer: data.renderer === 'flat' ? 'flat' : 'webgl',
+    download: data.download !== false, renderer: ['flat', 'slide'].includes(data.renderer) ? data.renderer : 'webgl',
+    // Look of the 3D turn, as set in the back end: curvature 0–100, shadow density 0–60 %, softness and width 0–100.
+    curvature: setting(data.curvature, 0, 100, 50), shadowDensity: setting(data.shadowDensity, 0, 60, 22),
+    shadowSoftness: setting(data.shadowSoftness, 0, 100, 50), shadowWidth: setting(data.shadowWidth, 0, 100, 50),
     height: Math.max(320, Math.min(1000, Number(data.height) || 560)),
     background: /^#[a-f0-9]{6}$/i.test(data.background) ? data.background : '#f2f2f2',
   };

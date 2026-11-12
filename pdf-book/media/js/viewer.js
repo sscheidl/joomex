@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.6';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.6';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.6';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.7';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.7';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.7';
 
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -114,22 +114,27 @@ export class PdfBook {
       const items=[];
       for(const n of numbers)items.push(n?await this.pdf.render(n,width):null);
       if(this.disposed)return;
-      const canAnimate=animate&&!this.pending&&!single&&!this.single&&previous.length===2&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&this.config.renderer!=='flat';
+      const wasSingle=this.single,kind=this.config.renderer;
+      const motion=animate&&!this.pending&&previous.length>0&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
       this.single=single;this.page=target;this.items=items;
-      if(canAnimate&&this.turn?.available){
-        const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
+      if(motion&&kind==='slide'&&single===wasSingle){
+        await this.slide(items,direction);
+        if(this.disposed)return;
+      }else if(motion&&kind==='webgl'&&!single&&!wasSingle&&previous.length===2&&this.turn?.available){
         const from=direction>0?1:0,to=1-from;
         // While the sheet turns, the side it leaves already shows the new page and the side it lands on still shows
         // the old one; the sheet carries the old page on its front and the new page on its back.
         const during=[];during[from]=items[from];during[to]=previous[to];
         this.mountPages(during,false);
-        await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,this.config.duration,this.spread);
+        const c=this.config,look={lead:c.curvature/100*.5,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.05,shift:c.shadowWidth/100*.6};
+        await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,c.duration,this.spread,look);
         if(this.disposed)return;
-      }
-      this.mountPages(items);
+        this.mountPages(items);
+      }else this.mountPages(items);
       if(this.disposed)return;
       this.status.textContent=statusText(numbers);
-      this.el.dataset.state='ready';this.el.dataset.page=String(target);this.el.dataset.renderer=this.turn?.available&&!single?'webgl':'flat';
+      this.el.dataset.state='ready';this.el.dataset.page=String(target);this.el.dataset.renderer=kind==='slide'?'slide':this.turn?.available&&!single?'webgl':'flat';
     }catch(error){if(!this.disposed)this.fail(error instanceof ViewerError?error:new ViewerError('render',error));}
     finally{
       this.busy=false;this.inflight=null;this.el.removeAttribute('aria-busy');
@@ -139,9 +144,26 @@ export class PdfBook {
       }
     }
   }
+  /** Alternative to the 3D turn: the old pages slide out and the new ones slide in. Works without WebGL and for single pages. */
+  async slide(items,direction){
+    const old=make('div','pdfbook-slide');old.append(...this.spread.children);
+    this.mountPages(items);
+    const fresh=make('div','pdfbook-slide');fresh.append(...this.spread.children);
+    this.spread.append(old,fresh);this.spread.classList.add('is-sliding');
+    const options={duration:this.config.duration,easing:'cubic-bezier(.3,0,.2,1)'};
+    try{
+      await Promise.all([
+        old.animate([{transform:'translateX(0)'},{transform:`translateX(${-direction*100}%)`}],options).finished,
+        fresh.animate([{transform:`translateX(${direction*100}%)`},{transform:'translateX(0)'}],options).finished,
+      ]);
+    }catch{/* cancelled: fall through to the final state */}
+    old.remove();
+    if(fresh.parentNode===this.spread){this.spread.append(...fresh.children);fresh.remove();}
+    this.spread.classList.remove('is-sliding');
+  }
   mountPages(items,interactive=true){
     this.pageAbort?.abort();this.pageAbort=new AbortController();
-    if(this.single||this.config.renderer==='flat'){this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;}
+    if(this.single||this.config.renderer!=='webgl'){this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;}
     const first=items.find(Boolean),ratio=first?first.canvas.width/first.canvas.height:.707;
     const availableHeight=Math.max(220,this.stage.clientHeight-48),availableWidth=Math.max(200,this.stage.clientWidth-48);
     const pageWidth=Math.min(availableWidth/items.length,availableHeight*ratio)*this.zoom;
@@ -168,7 +190,7 @@ export class PdfBook {
       }
       this.spread.append(wrapper);
     }
-    if(!this.single&&this.config.renderer!=='flat'){
+    if(!this.single&&this.config.renderer==='webgl'){
       if(!this.overlay){this.overlay=make('canvas','pdfbook-turn');this.overlay.hidden=true;this.overlay.setAttribute('aria-hidden','true');this.turn=new PageTurn(this.overlay);}
       if(this.overlay.parentNode!==this.stageWrap)this.stageWrap.append(this.overlay);
     }
