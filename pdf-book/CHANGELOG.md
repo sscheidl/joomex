@@ -1,5 +1,23 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.4 (2026-11-12)
+
+Fixes for the new findings of the [alpha.3 review](docs/reviews/REVIEW_0.1.0-alpha.3.md). Not reviewed independently; the owner's live test on the staging installation is the deciding check.
+
+| Finding | Change | Files |
+| --- | --- | --- |
+| N1 (P2) | Dialog: the book scrolls vertically when space is short, the toolbar sticks to its bottom edge, and the body may shrink to 120 px. Below 420 px viewport height, the heading is visually hidden (it stays available to screen readers) and dialog and toolbar padding shrink. | `media/css/viewer.css` |
+| N2 (P3) | `fail()` releases document, worker, render tasks, page cache, thumbnail observer and WebGL overlay as soon as the error state is set. | `media/js/viewer.mjs` |
+| N3 (P3) | Error-name mapping reduced to class names that exist in PDF.js 6.5.438; a unit test checks the mapping against the shipped `pdf.mjs`. | `media/js/model.mjs`, `tests/model.test.mjs` |
+| D4 | Review suite: `REVIEW_BROWSER=firefox` and `REVIEW_PORT`; new regression tests for N1 (320×225, 640×300, 568×320, 844×390) and N2. | `tests/review/` |
+
+Measured on 2026-11-12, deliberately shortened at the owner's request:
+- unit 10/10, PHP 32, dispatcher 9
+- two builds with identical SHA-256
+- in Edge 157 and Firefox 159: two modules + cover, F15, F2, N1, N2, and the dialog lifecycle and focus checks all PASS
+- the full review suite was not re-run for alpha.4
+
+
 ## 0.1.0-alpha.3 (2026-11-12)
 
 Fixes for the findings of the [independent review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md). Not reviewed independently yet; see [the review request](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.3.md).

@@ -11,3 +11,5 @@ All runs on 2026-11-12, Windows 11, loopback server `tests/review/review_server.
 | `claude-recheck-n1-n2.json`, `claude-recheck-n1-n2.py` | Re-check of findings N1 (dialog at 320×225, 640×300, 568×320, 844×390) and N2 (render failure) in Edge and Firefox | Claude |
 
 Codex's read-only staging preflight is not included here, because it contains site details. Its neutral summary is in the review, section 2.
+
+**Note on the Firefox run and the re-check:** both ran while a second loopback review server from Codex's session was still listening on the same port. That server served a clone at the same commit `86d884d` (identical alpha.3 code), so the results apply to alpha.3. Since alpha.4 the suite accepts `REVIEW_PORT` to avoid such collisions.

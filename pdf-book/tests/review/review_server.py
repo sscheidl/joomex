@@ -1,5 +1,5 @@
 """Loopback-only review server emulating a Joomla subdirectory layout (/sub/), with network edge cases."""
-import json, sys, time, threading
+import json, os, sys, time, threading
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlsplit, unquote
@@ -72,5 +72,6 @@ class H(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     LOG.write_text('')
-    print('review server http://127.0.0.1:8766/sub/page/two.html', flush=True)
-    ThreadingHTTPServer(('127.0.0.1', 8766), H).serve_forever()
+    port = int(os.environ.get('REVIEW_PORT', '8766'))
+    print(f'review server http://127.0.0.1:{port}/sub/page/two.html', flush=True)
+    ThreadingHTTPServer(('127.0.0.1', port), H).serve_forever()
