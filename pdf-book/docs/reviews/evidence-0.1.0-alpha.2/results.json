@@ -1,0 +1,543 @@
+[
+ {
+  "test": "environment",
+  "status": "INFO",
+  "detail": {
+   "browser": "msedge 157.0.4341.46",
+   "playwright": "1.65.0",
+   "date": "2026-11-12 20:33"
+  }
+ },
+ {
+  "test": "two modules + cover on one page, subdirectory /sub/",
+  "status": "PASS",
+  "detail": {
+   "states": [
+    [
+     "ready",
+     "webgl",
+     "1",
+     "\"><img src=x onerror=globalThis.__TITLE_"
+    ],
+    [
+     "ready",
+     "flat",
+     "1",
+     "Zweites Buch mit sehr langem Titel, der "
+    ]
+   ],
+   "module_scripts": [
+    "http://127.0.0.1:8766/sub/media/mod_pdfbook/js/viewer.mjs?0.1.0-alpha.2"
+   ],
+   "pdf_requests": [
+    "http://127.0.0.1:8766/sub/images/eight.pdf",
+    "http://127.0.0.1:8766/sub/images/odd-book.pdf"
+   ],
+   "vendor_files": [
+    "media/mod_pdfbook/vendor/pdfjs/build/pdf.mjs",
+    "media/mod_pdfbook/vendor/pdfjs/build/pdf.worker.mjs"
+   ],
+   "rtl_first_spread": [
+    "PDF-Seite 1"
+   ],
+   "download_links": [
+    [
+     false,
+     "http://127.0.0.1:8766/sub/images/eight.pdf"
+    ],
+    [
+     true,
+     "http://127.0.0.1:8766/sub/images/odd-book.pdf"
+    ]
+   ],
+   "injection": {
+    "img": 0,
+    "b": 0,
+    "t": false
+   },
+   "external": [],
+   "errors": [],
+   "console": [
+    "error: Failed to load resource: the server responded with a status of 404 (File not found)"
+   ]
+  }
+ },
+ {
+  "test": "PDF actions (OpenAction/AA/JS link/Launch/SubmitForm/GoToR/XFA/doc JS) inert",
+  "status": "PASS",
+  "detail": {
+   "annotation_elements": [
+    [
+     "A",
+     "https://safe.example/a?b=%22%3E%3Cimg%20src=x%20onerror=globalThis.__ATTR__=1%3E",
+     "noopener noreferrer",
+     "_blank"
+    ],
+    [
+     "BUTTON",
+     null,
+     null,
+     null
+    ],
+    [
+     "BUTTON",
+     null,
+     null,
+     null
+    ]
+   ],
+   "executed_flags": [],
+   "evil_requests": [],
+   "dialogs": [],
+   "popups": [],
+   "page_after_internal_clicks": "1",
+   "internal_button_targets": [
+    "3",
+    "1"
+   ],
+   "errors": []
+  }
+ },
+ {
+  "test": "outline titles inert, entries capped, repeated toggling",
+  "status": "PASS",
+  "detail": {
+   "entries_rendered": 300,
+   "first_titles": [
+    "<img src=x onerror=globalThis.__OUTLINE__=1>",
+    "</script><script>globalThis.__OUTLINE2__=1</script>",
+    "\"><svg onload=globalThis.__OUTLINE3__=1>",
+    "Umlaute äöü ß – € 漢字 ‮evil"
+   ],
+   "injection": {
+    "img": 0,
+    "f": []
+   },
+   "errors": []
+  }
+ },
+ {
+  "test": "error fixtures and HTTP edge cases",
+  "status": "INFO",
+  "detail": {
+   "password": {
+    "state": "error",
+    "status": "Dieses PDF ist passwortgeschützt.",
+    "errors": [],
+    "console": []
+   },
+   "owner-only": {
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "console": []
+   },
+   "truncated": {
+    "state": "error",
+    "status": "Invalid PDF structure.",
+    "errors": [],
+    "console": [
+     "warning: Warning: Indexing all PDF objects"
+    ]
+   },
+   "fake-header": {
+    "state": "error",
+    "status": "Invalid PDF structure.",
+    "errors": [],
+    "console": [
+     "warning: Warning: Indexing all PDF objects"
+    ]
+   },
+   "too-many": {
+    "state": "error",
+    "status": "Das PDF enthält mehr als 1000 Seiten.",
+    "errors": [],
+    "console": [],
+    "status_after_resize": "Seiten ",
+    "state_after_resize": "ready",
+    "pages_after_resize": 2,
+    "controls_enabled": [
+     "Erste Seite",
+     "Vorherige Seite",
+     "Nächste Seite",
+     "Letzte Seite",
+     "Seitenübersicht",
+     "Inhaltsverzeichnis",
+     "Verkleinern",
+     "Vergrößern",
+     "Einzel-/Doppelseite",
+     "Vollbild",
+     "Automatisch blättern"
+    ]
+   },
+   "net-redirect": {
+    "state": "error",
+    "status": "Failed to fetch",
+    "errors": [],
+    "console": [
+     "error: Failed to load resource: net::ERR_FAILED"
+    ]
+   },
+   "net-e500": {
+    "state": "error",
+    "status": "Die PDF-Datei ist nicht erreichbar.",
+    "errors": [],
+    "console": [
+     "error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    ]
+   },
+   "net-html-mime": {
+    "state": "ready",
+    "status": "Seiten 1",
+    "errors": [],
+    "console": []
+   },
+   "net-big-len": {
+    "state": "error",
+    "status": "PDF ist größer als 32 MB.",
+    "errors": [],
+    "console": []
+   },
+   "net-big-nolen": {
+    "state": "error",
+    "status": "PDF ist größer als 32 MB.",
+    "errors": [],
+    "console": []
+   }
+  }
+ },
+ {
+  "test": "rapid input / resize while busy",
+  "status": "FAIL",
+  "detail": {
+   "after_two_rapid_next_clicks_page": "2",
+   "expected_if_queued": "4",
+   "after_two_quick_arrowright_from_2": "4",
+   "spread_width_before": 724.4375,
+   "after_resize_during_animation_to_900px": {
+    "spread": 724.4375,
+    "stage": 882,
+    "canvas": 607
+   },
+   "after_resize_back": {
+    "spread": 724.4375,
+    "stage": 1262
+   },
+   "errors": []
+  }
+ },
+ {
+  "test": "resize to 520 px during page-turn animation",
+  "status": "FAIL",
+  "detail": {
+   "busy_at_resize": "true",
+   "result": {
+    "pages": 2,
+    "stage": 502,
+    "spread": 724,
+    "docOverflow": 0,
+    "page": "2"
+   },
+   "control_resize_when_idle": {
+    "pages": 1,
+    "spread": 362
+   }
+  }
+ },
+ {
+  "test": "zoom 250 % reachable by scrolling",
+  "status": "PASS",
+  "detail": {
+   "stageLeft": 9,
+   "spreadLeft": 33,
+   "stageTop": 54.296875,
+   "spreadTop": 78.296875,
+   "scrollW": 1858,
+   "clientW": 1262,
+   "spreadW": 1809.5,
+   "canvasW": 1302
+  }
+ },
+ {
+  "test": "dialog open/close x12 during load/animation/thumbnails",
+  "status": "PASS",
+  "detail": {
+   "workers_before": 2,
+   "workers_after": 2,
+   "dialogs_left": 0,
+   "focus_returned": true,
+   "webgl_warnings": [],
+   "errors": []
+  }
+ },
+ {
+  "test": "dialog keeps focus (Tab x25; body = browser UI step)",
+  "status": "PASS",
+  "detail": {
+   "inside_dialog": "25/25"
+  }
+ },
+ {
+  "test": "WebGL context lost during animation",
+  "status": "PASS",
+  "detail": {
+   "page": "2",
+   "renderer": "flat",
+   "busy": null,
+   "overlay_hidden": true,
+   "page_after_next": "4",
+   "renderer_after": "flat",
+   "errors": []
+  }
+ },
+ {
+  "test": "WebGL disabled in browser",
+  "status": "PASS",
+  "detail": {
+   "renderer": "flat",
+   "page": "2",
+   "errors": []
+  }
+ },
+ {
+  "test": "prefers-reduced-motion disables animation",
+  "status": "PASS",
+  "detail": {
+   "overlay_visible_100ms_after_click": false
+  }
+ },
+ {
+  "test": "autoplay stops at end and on hidden tab",
+  "status": "PASS",
+  "detail": {
+   "page": "4",
+   "pressed": "false",
+   "pressed_after_hidden": "false"
+  }
+ },
+ {
+  "test": "RTL keyboard navigation (module 2, double, flat)",
+  "status": "INFO",
+  "detail": [
+   [
+    "ArrowLeft",
+    "2",
+    [
+     "PDF-Seite 3",
+     "PDF-Seite 2"
+    ]
+   ],
+   [
+    "ArrowLeft",
+    "4",
+    [
+     "PDF-Seite 5",
+     "PDF-Seite 4"
+    ]
+   ],
+   [
+    "End",
+    "5",
+    [
+     "PDF-Seite 5",
+     "PDF-Seite 4"
+    ]
+   ],
+   [
+    "ArrowRight",
+    "2",
+    [
+     "PDF-Seite 3",
+     "PDF-Seite 2"
+    ]
+   ],
+   [
+    "Home",
+    "1",
+    [
+     "PDF-Seite 1"
+    ]
+   ]
+  ]
+ },
+ {
+  "test": "layout at 320/390/768/1280 and 640x450@2 (~200 % zoom)",
+  "status": "INFO",
+  "detail": {
+   "320x640@1": {
+    "docOverflow": 0,
+    "toolbars": [
+     123,
+     86
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 713,
+     "clientH": 638,
+     "vh": 640
+    }
+   },
+   "390x844@3": {
+    "docOverflow": 0,
+    "toolbars": [
+     86,
+     86
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 880,
+     "clientH": 834,
+     "vh": 844
+    }
+   },
+   "768x1024@2": {
+    "docOverflow": 0,
+    "toolbars": [
+     53,
+     53
+    ],
+    "pages": [
+     2,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 1011,
+     "clientH": 1007,
+     "vh": 1024
+    }
+   },
+   "1280x900@1": {
+    "docOverflow": 0,
+    "toolbars": [
+     53,
+     53
+    ],
+    "pages": [
+     2,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 887,
+     "clientH": 887,
+     "vh": 900
+    }
+   },
+   "640x450@2": {
+    "docOverflow": 0,
+    "toolbars": [
+     93,
+     53
+    ],
+    "pages": [
+     1,
+     2
+    ],
+    "smallTargets": 0,
+    "dialog": {
+     "scrollH": 527,
+     "clientH": 456,
+     "vh": 450
+    }
+   }
+  }
+ },
+ {
+  "test": "resource/geometry fixtures",
+  "status": "INFO",
+  "detail": {
+   "many-links": {
+    "s": 0.2,
+    "state": "ready",
+    "status": "Seite 1",
+    "annotation_nodes": 2000,
+    "errors": [],
+    "warnings": []
+   },
+   "image-15mp": {
+    "s": 0.3,
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "warnings": []
+   },
+   "image-25mp": {
+    "s": 0.2,
+    "state": "ready",
+    "status": "Seite 1",
+    "errors": [],
+    "warnings": [
+     "warning: Warning: Image exceeded maximum allowed size and was removed."
+    ]
+   },
+   "thousand": {
+    "s": 0.2,
+    "state": "ready",
+    "status": "Seiten 1",
+    "thumb_buttons": 1000,
+    "thumb_canvases": 5,
+    "thumb_canvases_after_scroll": 10,
+    "last_page": "1000",
+    "heap_mb": 7,
+    "errors": [],
+    "warnings": []
+   }
+  }
+ },
+ {
+  "test": "CSP variants (no bypass)",
+  "status": "INFO",
+  "detail": {
+   "default": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   },
+   "strictstyle": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   },
+   "nonce": {
+    "state": "ready",
+    "page": "2",
+    "violations": [],
+    "spread_style": "width: 724.438px; height: 512px;",
+    "errors": []
+   }
+  }
+ },
+ {
+  "test": "slow/hanging response (net-slow)",
+  "status": "INFO",
+  "detail": {
+   "seconds": 30.0,
+   "state": "error",
+   "status": "signal is aborted without reason",
+   "errors": []
+  }
+ },
+ {
+  "test": "slow/hanging response (net-hang)",
+  "status": "INFO",
+  "detail": {
+   "seconds": 30.0,
+   "state": "error",
+   "status": "signal is aborted without reason",
+   "errors": []
+  }
+ }
+]
