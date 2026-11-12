@@ -1,5 +1,25 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.6 (2026-11-13)
+
+Changes after the owner's live test of alpha.5 on a Joomla 6.2 staging installation (viewer works; installation, update and uninstallation OK).
+
+| Item | Change | Files |
+| --- | --- | --- |
+| L2: page looked squashed while turning, then jumped to full height | New page-turn renderer. At the start and end of a turn the sheet coincides exactly with the flat page (the projection is the identity at height 0), so there is no size jump. A unit test checks the geometry. | `media/js/turn.js`, `tests/model.test.mjs` |
+| L3: centre shadow vanished while turning; animation less smooth than the legacy module; no paper curvature | The sheet is a 40-segment strip whose free edge leads the spine, so the paper bends slightly. Both faces are textured, shaded by their angle and darkened towards the spine. A soft cast shadow falls on the pages. The side the sheet lands on keeps showing the old page until the sheet arrives. Sine ease-out. Textures are uploaded once per turn instead of every frame. The overlay now covers the whole stage, and the viewing distance is chosen so that the lifted page fits. | `media/js/turn.js`, `media/js/viewer.js`, `media/css/viewer.css` |
+| L4: toolbar symbols too small | Own SVG line icons (24 px) instead of Unicode glyphs; buttons 44 px (40 px on narrow screens, 34 px in the compact dialog layout). | `media/js/viewer.js`, `media/css/viewer.css` |
+| L5: turn pages by mouse click and arrow keys | A click or tap on the right half of the spread turns forwards, on the left half backwards (links inside pages keep working). The arrow keys work without focusing the stage: they go to the book that last had the pointer or the focus, not while typing in a field, and not for books behind an open dialog. | `media/js/viewer.js` |
+
+The behaviour of the legacy animation was analysed locally and is described in `research/legacy-flipbook/FINDINGS.md` (F30–F33). The implementation is our own; no legacy code was used.
+
+Measured on 2026-11-13 (short run):
+- unit 11/11, PHP 32, dispatcher 9
+- two builds with identical SHA-256
+- in Edge 157 and Firefox 159: two modules + cover, F15, F2, F11, F13, N1, page click and arrow keys, dialog lifecycle and focus, WebGL loss/disabled and reduced motion all PASS
+- visual check of mid-turn frames by screenshot
+
+
 ## 0.1.0-alpha.5 (2026-11-12)
 
 Fix for the first live finding on a real Joomla 6.2 staging installation (owner test of alpha.4).

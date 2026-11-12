@@ -257,6 +257,23 @@ def t_render_failure(browser):
     rec('N2 resources released after a render error', 'PASS' if ok else 'FAIL', r)
     ctx.close()
 
+def t_click_keys(browser):
+    ctx, page, ev = new(browser, B + 'two.html'); ready(page, n=0); ready(page, n=1)
+    book = page.locator('[data-pdfbook]').nth(0); other = page.locator('[data-pdfbook]').nth(1)
+    def settled(): page.wait_for_function("()=>!document.querySelector('[aria-busy]')", timeout=10000); page.wait_for_timeout(250)
+    box = book.locator('.pdfbook-spread').bounding_box(); seq = []
+    page.mouse.click(box['x'] + box['width'] * 0.75, box['y'] + box['height'] / 2); settled(); seq.append(('click right half', book.get_attribute('data-page')))
+    page.mouse.click(box['x'] + box['width'] * 0.75, box['y'] + box['height'] / 2); settled(); seq.append(('click right half', book.get_attribute('data-page')))
+    page.mouse.click(box['x'] + box['width'] * 0.25, box['y'] + box['height'] / 2); settled(); seq.append(('click left half', book.get_attribute('data-page')))
+    page.evaluate("document.activeElement.blur()"); page.mouse.move(box['x'] + 5, box['y'] + 5)
+    page.keyboard.press('ArrowRight'); settled(); seq.append(('ArrowRight without focus', book.get_attribute('data-page')))
+    page.keyboard.press('ArrowLeft'); settled(); seq.append(('ArrowLeft without focus', book.get_attribute('data-page')))
+    untouched = other.get_attribute('data-page')
+    book.locator('input[aria-label="Seitennummer"]').focus(); page.keyboard.press('ArrowRight'); settled(); in_input = book.get_attribute('data-page')
+    ok = [s[1] for s in seq] == ['2', '4', '2', '4', '2'] and untouched == '1' and in_input == '2' and not ev['errors']
+    rec('page click and arrow keys (active book only, not while typing)', 'PASS' if ok else 'FAIL', {'sequence': seq, 'second_book_page': untouched, 'arrow_inside_page_input': in_input, 'errors': ev['errors']})
+    ctx.close()
+
 def t_webgl(browser, pw):
     ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(150)
@@ -362,7 +379,7 @@ with sync_playwright() as pw:
     FIREFOX = os.environ.get('REVIEW_BROWSER', 'msedge') == 'firefox'
     browser = pw.firefox.launch(headless=True) if FIREFOX else pw.chromium.launch(channel='msedge', headless=True)
     rec('environment', 'INFO', {'browser': ('firefox ' if FIREFOX else 'msedge ') + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
-    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('renderfail', t_render_failure), ('zoom', t_zoom),
+    tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('clickkeys', t_click_keys), ('renderfail', t_render_failure), ('zoom', t_zoom),
              ('dialog', t_dialog_lifecycle), ('webgl', lambda b: t_webgl(b, pw)), ('autoplay', t_autoplay), ('rtl', t_keyboard_rtl), ('widths', t_widths),
              ('resources', t_resources), ('csp', t_csp), ('slow', t_slow)]
     for key, fn in tests:

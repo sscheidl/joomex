@@ -112,7 +112,22 @@ Status: **MEASURED** by source search in PDF.js 6.5.438.
 | J11 MIME types | **FAIL → L1 (P1)**: every `.mjs` file is delivered as `text/plain`, and the browser refuses the module script ("Failed to load module script … MIME type of text/plain"). The viewer never starts, and the server-rendered placeholder "… wird geladen" stays. `.bcmap` arrives as `video/unknown`, which is harmless because it is fetched as binary data. The PDF arrives as `application/pdf` |
 | Display and operation in the front end | **NOT MEASURED** (blocked by L1) |
 
-**Fixed in 0.1.0-alpha.5** (all JavaScript files renamed to `.js`; see `CHANGELOG.md`). The live test is repeated with alpha.5.
+**Fixed in 0.1.0-alpha.5** (all JavaScript files renamed to `.js`; see `CHANGELOG.md`).
+
+**Owner live test of alpha.5, 2026-11-12/13** (same staging installation; backward-compatibility plugin disabled for the test and restored afterwards):
+
+| Check | Result |
+| --- | --- |
+| Update over alpha.4; viewer starts, PDF displayed as a double spread | **PASS** |
+| Front-end operation (navigation, zoom, thumbnails, toolbar) | **PASS** ("works in principle") |
+| J5 second module as cover dialog on the same page; Escape; single stylesheet and script | **PASS** |
+| J7/F15 wrong PDF path | Guest: module produces no output, **PASS**. Message for users with edit rights: **not confirmed** (the module also showed nothing in the owner's check; whether a front-end login with module edit rights was active is open) |
+| Phone, portrait and landscape, including the dialog (N1) | **PASS** |
+| Joomla default template (Cassiopeia) in addition to the site template | **PASS** |
+| J9 reinstall/update, uninstall (media folder and module removed, `images/` and other modules unchanged) | **PASS** |
+| New observations | L2: page content looked slightly squashed while turning and then jumped to full height. L3: centre shadow vanished while turning; animation less smooth than the legacy module, no paper curvature. L4: toolbar symbols too small. L5: wish for page click and arrow keys. Addressed in 0.1.0-alpha.6 |
+
+Still NOT RUN: J6 (subdirectory installation), J8 (full access matrix), J12 (CSP; the staging installation is HTTP only).
 
 Original plan: the owner tests installation, operation, GUI and display manually on the staging installation. The detailed checklist stays private because it contains site details. It covers J1–J5, J7, J9 and J10 plus operation on a real phone. The results will be added here in neutral form.
 

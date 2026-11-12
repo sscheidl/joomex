@@ -1,21 +1,30 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.5';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.5';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.5';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.6';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.6';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.6';
 
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
 const MODE_LABEL={auto:'Seitenansicht: automatisch',single:'Seitenansicht: Einzelseite',double:'Seitenansicht: Doppelseite'};
+// Own line icons (24 px grid), drawn as SVG paths so that they are large and look the same on every platform.
+const ICONS={first:'M6 5v14M19 6l-8 6 8 6',prev:'M15 5l-7 7 7 7',next:'M9 5l7 7-7 7',last:'M18 5v14M5 6l8 6-8 6',
+  thumbs:'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',outline:'M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11',
+  zoomOut:'M5 12h14',zoomIn:'M12 5v14M5 12h14',mode:'M3 5h8v14H3zM13 5h8v14h-8z',full:'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',auto:'M8 5l11 7-11 7z'};
+const icon=name=>{const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
+  svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');path.setAttribute('d',ICONS[name]);svg.append(path);return svg;};
 let serial=0;
+// The book that last had the pointer or the focus receives the arrow keys.
+let activeBook=null;
 
 export class PdfBook {
   constructor(element, config) {
     this.el=element;this.config=normalizeConfig(config);this.page=1;this.zoom=1;this.id=++serial;this.abort=new AbortController();
     this.pdf=new PdfDocument();this.items=[];this.busy=false;this.pending=null;this.disposed=false;this.single=true;this.autoTimer=null;
+    this.previousActive=activeBook;if(this.config.fill||!activeBook)activeBook=this;
     this.build();this.ready=this.load();
   }
   on(el,type,fn){el.addEventListener(type,fn,{signal:this.abort.signal});}
-  button(label,text,action){const b=make('button','pdfbook-button',text);b.type='button';b.title=label;b.setAttribute('aria-label',label);this.on(b,'click',action);return b;}
+  button(label,name,action){const b=make('button','pdfbook-button');b.append(icon(name));b.type='button';b.title=label;b.setAttribute('aria-label',label);this.on(b,'click',action);return b;}
   build(){
     this.el.classList.add('pdfbook');this.el.classList.toggle('is-fill',this.config.fill);this.el.dataset.state='loading';this.el.setAttribute('role','region');this.el.setAttribute('aria-label',this.config.title);
     this.el.style.setProperty('--pdfbook-height',`${this.config.height}px`);this.el.style.setProperty('--pdfbook-bg',this.config.background);
@@ -23,30 +32,43 @@ export class PdfBook {
     this.status=make('span','pdfbook-status','PDF wird geladen …');this.status.setAttribute('role','status');heading.append(this.status);
     this.body=make('div','pdfbook-body');this.sidebar=make('aside','pdfbook-sidebar');this.sidebar.hidden=true;
     this.stage=make('div','pdfbook-stage');this.stage.tabIndex=0;this.stage.setAttribute('aria-label','Buchseiten. Mit Pfeiltasten blättern.');
-    this.spread=make('div','pdfbook-spread');this.stage.append(this.spread);this.body.append(this.sidebar,this.stage);
+    this.spread=make('div','pdfbook-spread');this.stage.append(this.spread);
+    // The turn overlay covers the whole stage area (not only the spread), so a lifted page is not clipped at the page edges.
+    this.stageWrap=make('div','pdfbook-stagewrap');this.stageWrap.append(this.stage);this.body.append(this.sidebar,this.stageWrap);
     this.toolbar=make('div','pdfbook-toolbar');this.toolbar.setAttribute('role','group');this.toolbar.setAttribute('aria-label','PDF-Steuerung');
-    this.first=this.button('Erste Seite','⇤',()=>this.go(1));this.prev=this.button('Vorherige Seite','‹',()=>this.move(-1));
+    this.first=this.button('Erste Seite','first',()=>this.go(1));this.prev=this.button('Vorherige Seite','prev',()=>this.move(-1));
     const label=make('label','pdfbook-page-label','Seite ');this.input=make('input');this.input.type='number';this.input.min='1';this.input.value='1';this.input.setAttribute('aria-label','Seitennummer');
     this.total=make('span','',' / –');label.append(this.input,this.total);
     this.on(this.input,'change',()=>this.go(Number(this.input.value)));this.on(this.input,'keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.go(Number(this.input.value));}});
-    this.next=this.button('Nächste Seite','›',()=>this.move(1));this.last=this.button('Letzte Seite','⇥',()=>this.go(this.pdf.count));
-    this.thumbs=this.button('Seitenübersicht','▦',()=>this.showSidebar('thumbs'));this.outline=this.button('Inhaltsverzeichnis','☷',()=>this.showSidebar('outline'));
-    this.zoomOut=this.button('Verkleinern','−',()=>this.setZoom(this.zoom-.25));this.zoomIn=this.button('Vergrößern','+',()=>this.setZoom(this.zoom+.25));
+    this.next=this.button('Nächste Seite','next',()=>this.move(1));this.last=this.button('Letzte Seite','last',()=>this.go(this.pdf.count));
+    this.thumbs=this.button('Seitenübersicht','thumbs',()=>this.showSidebar('thumbs'));this.outline=this.button('Inhaltsverzeichnis','outline',()=>this.showSidebar('outline'));
+    this.zoomOut=this.button('Verkleinern','zoomOut',()=>this.setZoom(this.zoom-.25));this.zoomIn=this.button('Vergrößern','zoomIn',()=>this.setZoom(this.zoom+.25));
     // Cycles auto → single → double → auto, so the automatic mode can always be restored.
-    this.mode=this.button(MODE_LABEL[this.config.mode],'▣',()=>{this.config.mode=nextMode(this.config.mode);this.updateModeButton();this.go(this.target(),false);});
-    this.full=this.button('Vollbild','⛶',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await this.el.requestFullscreen();}catch{this.status.textContent='Vollbild ist hier nicht verfügbar.';}});
-    this.auto=this.button('Automatisch blättern','▷',()=>this.toggleAuto());this.auto.setAttribute('aria-pressed','false');
-    this.download=make('a','pdfbook-button','PDF öffnen');this.download.target='_blank';this.download.rel='noopener noreferrer';this.download.hidden=!this.config.download;
+    this.mode=this.button(MODE_LABEL[this.config.mode],'mode',()=>{this.config.mode=nextMode(this.config.mode);this.updateModeButton();this.go(this.target(),false);});
+    this.full=this.button('Vollbild','full',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await this.el.requestFullscreen();}catch{this.status.textContent='Vollbild ist hier nicht verfügbar.';}});
+    this.auto=this.button('Automatisch blättern','auto',()=>this.toggleAuto());this.auto.setAttribute('aria-pressed','false');
+    this.download=make('a','pdfbook-button pdfbook-download','PDF öffnen');this.download.target='_blank';this.download.rel='noopener noreferrer';this.download.hidden=!this.config.download;
     this.toolbar.append(this.first,this.prev,label,this.next,this.last,this.thumbs,this.outline,this.zoomOut,this.zoomIn,this.mode,this.full,this.auto,this.download);
     this.el.replaceChildren(heading,this.body,this.toolbar);
-    this.on(this.stage,'keydown',e=>{if(e.target!==this.stage)return;const rtl=this.config.direction==='rtl';if(e.key==='ArrowRight'){e.preventDefault();this.move(rtl?-1:1);}if(e.key==='ArrowLeft'){e.preventDefault();this.move(rtl?1:-1);}if(e.key==='Home'){e.preventDefault();this.go(1);}if(e.key==='End'){e.preventDefault();this.go(this.pdf.count);}});
+    // Home/End need focus on the stage; the arrow keys also work without focus for the active book (see onKey).
+    this.on(this.stage,'keydown',e=>{if(e.target!==this.stage)return;if(e.key==='Home'){e.preventDefault();this.go(1);}if(e.key==='End'){e.preventDefault();this.go(this.pdf.count);}});
+    this.on(document,'keydown',e=>this.onKey(e));
+    for(const type of ['pointerenter','pointerdown','focusin'])this.on(this.el,type,()=>{activeBook=this;});
     this.on(this.stage,'pointerdown',e=>{if(e.button===0&&!e.target.closest('a,button'))this.pointer={x:e.clientX,y:e.clientY};});
     this.on(this.stage,'pointerup',e=>{
       if(!this.pointer)return;const dx=e.clientX-this.pointer.x,dy=e.clientY-this.pointer.y;this.pointer=null;
+      const rtl=this.config.direction==='rtl'?-1:1;
+      if(Math.abs(dx)<8&&Math.abs(dy)<8){
+        // A plain click or tap on a page turns it: right half forwards, left half backwards.
+        const box=this.spread.getBoundingClientRect(),area=this.stage.getBoundingClientRect();
+        if(e.clientX-area.left>this.stage.clientWidth||e.clientY-area.top>this.stage.clientHeight)return;   // scrollbars
+        if(e.clientX<box.left||e.clientX>box.right||e.clientY<box.top||e.clientY>box.bottom)return;
+        this.move((e.clientX<box.left+box.width/2?-1:1)*rtl);return;
+      }
       if(Math.abs(dx)<=65||Math.abs(dx)<=Math.abs(dy)*1.5)return;
       // When zoomed, a horizontal swipe scrolls the page first and only turns it at the scroll edge.
       if(this.zoom>1){const s=this.stage,max=s.scrollWidth-s.clientWidth;if(max>1&&(dx<0?s.scrollLeft<max-1:s.scrollLeft>1))return;}
-      this.move((dx<0?1:-1)*(this.config.direction==='rtl'?-1:1));
+      this.move((dx<0?1:-1)*rtl);
     });
     this.on(this.stage,'pointercancel',()=>this.pointer=null);
     this.on(document,'visibilitychange',()=>{if(document.hidden)this.stopAuto();});
@@ -73,7 +95,7 @@ export class PdfBook {
     console.warn('PDF Book:',error);
     this.el.dataset.state='error';this.status.textContent=messageFor(error);this.pending=null;this.stopAuto();this.updateControls();
     // The error state is final: release document, worker, render tasks and page cache right away (N2).
-    this.thumbObserver?.disconnect();this.turn?.dispose();this.turn=null;this.overlay=null;
+    this.thumbObserver?.disconnect();this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;
     this.pdf.dispose().catch(()=>{});
   }
   /** Page the viewer is heading to: a queued request, else the page being rendered, else the page shown. */
@@ -94,13 +116,17 @@ export class PdfBook {
       if(this.disposed)return;
       const canAnimate=animate&&!this.pending&&!single&&!this.single&&previous.length===2&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&this.config.renderer!=='flat';
       this.single=single;this.page=target;this.items=items;
-      this.mountPages(items);
       if(canAnimate&&this.turn?.available){
         const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
         const from=direction>0?1:0,to=1-from;
-        // Destination spread underneath; the animated sheet supplies its front and back.
-        await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,this.config.duration);
+        // While the sheet turns, the side it leaves already shows the new page and the side it lands on still shows
+        // the old one; the sheet carries the old page on its front and the new page on its back.
+        const during=[];during[from]=items[from];during[to]=previous[to];
+        this.mountPages(during,false);
+        await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,this.config.duration,this.spread);
+        if(this.disposed)return;
       }
+      this.mountPages(items);
       if(this.disposed)return;
       this.status.textContent=statusText(numbers);
       this.el.dataset.state='ready';this.el.dataset.page=String(target);this.el.dataset.renderer=this.turn?.available&&!single?'webgl':'flat';
@@ -113,9 +139,9 @@ export class PdfBook {
       }
     }
   }
-  mountPages(items){
+  mountPages(items,interactive=true){
     this.pageAbort?.abort();this.pageAbort=new AbortController();
-    if(this.single||this.config.renderer==='flat'){this.turn?.dispose();this.turn=null;this.overlay=null;}
+    if(this.single||this.config.renderer==='flat'){this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;}
     const first=items.find(Boolean),ratio=first?first.canvas.width/first.canvas.height:.707;
     const availableHeight=Math.max(220,this.stage.clientHeight-48),availableWidth=Math.max(200,this.stage.clientWidth-48);
     const pageWidth=Math.min(availableWidth/items.length,availableHeight*ratio)*this.zoom;
@@ -126,7 +152,7 @@ export class PdfBook {
       if(item){
         const canvas=make('canvas');canvas.width=item.canvas.width;canvas.height=item.canvas.height;canvas.getContext('2d').drawImage(item.canvas,0,0);
         canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`PDF-Seite ${item.number}`);wrapper.append(canvas);
-        for(const annotation of item.annotations){
+        for(const annotation of interactive?item.annotations:[]){
           if(annotation.subtype!=='Link'||!annotation.rect)continue;
           const href=safeLink(annotation.url);
           if(!href&&!annotation.dest)continue;
@@ -144,10 +170,18 @@ export class PdfBook {
     }
     if(!this.single&&this.config.renderer!=='flat'){
       if(!this.overlay){this.overlay=make('canvas','pdfbook-turn');this.overlay.hidden=true;this.overlay.setAttribute('aria-hidden','true');this.turn=new PageTurn(this.overlay);}
-      this.spread.append(this.overlay);
+      if(this.overlay.parentNode!==this.stageWrap)this.stageWrap.append(this.overlay);
     }
   }
   async navigateDestination(dest){try{const n=await this.pdf.destination(dest);if(n)await this.go(n);}catch{this.status.textContent='Verknüpfte Seite nicht verfügbar.';}}
+  onKey(e){
+    if(activeBook!==this||this.disposed||e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'))return;
+    const target=e.target;
+    if(target instanceof Element&&(target.closest('input,textarea,select,[contenteditable]')||(target.closest('.pdfbook')&&!this.el.contains(target))))return;
+    const modal=document.querySelector('dialog[open]');if(modal&&!modal.contains(this.el))return;
+    const box=this.el.getBoundingClientRect();if(box.bottom<0||box.top>innerHeight)return;   // not on screen
+    e.preventDefault();this.move((e.key==='ArrowRight'?1:-1)*(this.config.direction==='rtl'?-1:1));
+  }
   move(delta){return this.go(nextPage(this.target(),this.pdf.count,this.single,delta));}
   setZoom(value){
     this.zoom=Math.max(.75,Math.min(2.5,value));
@@ -191,7 +225,7 @@ export class PdfBook {
   }
   toggleAuto(){if(this.autoTimer){this.stopAuto();return;}this.auto.setAttribute('aria-pressed','true');this.autoTimer=setInterval(()=>{if(this.busy||this.pending)return;if(this.next.disabled)this.stopAuto();else this.move(1);},3000);}
   stopAuto(){clearInterval(this.autoTimer);this.autoTimer=null;this.auto.setAttribute('aria-pressed','false');}
-  async dispose(){if(this.disposed)return;this.disposed=true;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();await this.pdf.dispose();}
+  async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();await this.pdf.dispose();}
 }
 
 const instances=new WeakMap();
