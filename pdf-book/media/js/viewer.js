@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.12';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.12';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.12';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.13';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.13';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.13';
 
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
@@ -179,11 +179,11 @@ export class PdfBook {
    * Flip-board fold: the spread (or the single page) is split in the middle and one half folds over like a rigid
    * board, with perspective and shading. CSS 3D only, so it needs no WebGL and works for single pages too.
    * Horizontal: forward the right half folds onto the left (mirrored for right-to-left books). Vertical: forward the
-   * bottom half folds up, backward the top half folds down. "auto" folds vertically in single-page view.
+   * top half folds down, backward the bottom half folds up (owner preference since alpha.13). "auto" folds vertically in single-page view.
    */
   async flip(items,direction,ahead){
     const vertical=this.config.flipAxis==='vertical'||(this.config.flipAxis==='auto'&&this.single);
-    const moverB=vertical?ahead:direction>0;   // A = left/top half, B = right/bottom half; the mover half folds over
+    const moverB=vertical?!ahead:direction>0;   // A = left/top half, B = right/bottom half; the mover half folds over
     const old=make('div','pdfbook-slide');old.append(...this.spread.children);
     const oldCopy=copyLayer(old);
     this.mountPages(items);

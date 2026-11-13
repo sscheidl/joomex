@@ -1,5 +1,17 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.13 (2026-11-13)
+
+Owner findings after the live test of alpha.12.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Vertical fold swapped | Forward the top half now folds down, backward the bottom half folds up (alpha.11/12: the other way round). Horizontal fold unchanged. | `media/js/viewer.js`, `module/mod_pdfbook.xml` |
+| On/off switches in the back end | The selected option of the seven on/off settings was hard to see in the dark administrator theme. They now use Joomla's yes/no button group: "on" options (Ja, An, Anzeigen) green, "off" options (Nein, Aus, Verbergen) red; the selected one is filled. This also applies to "PDF-Öffnen anzeigen", which was a plain radio list. | `module/mod_pdfbook.xml` |
+
+Measured on 2026-11-13: mid-animation screenshot of a forward and a backward vertical fold in headless Chrome, no page errors. The yes/no colouring was checked against the radio button layout of the current Joomla source (`layouts/joomla/form/field/radio/buttons.php`), not in a running back end. Nothing else run.
+
+
 ## 0.1.0-alpha.12 (2026-11-13)
 
 Owner findings from the live test of alpha.11.
