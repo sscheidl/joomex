@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.11';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.11';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.11';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.12';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.12';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.12';
 
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
@@ -44,12 +44,14 @@ export class PdfBook {
     this.next=this.button('Nächste Seite','next',()=>this.move(1));this.last=this.button('Letzte Seite','last',()=>this.go(this.pdf.count));
     this.thumbs=this.button('Seitenübersicht','thumbs',()=>this.showSidebar('thumbs'));this.outline=this.button('Inhaltsverzeichnis','outline',()=>this.showSidebar('outline'));
     this.zoomOut=this.button('Verkleinern','zoomOut',()=>this.setZoom(this.zoom-.25));this.zoomIn=this.button('Vergrößern','zoomIn',()=>this.setZoom(this.zoom+.25));
+    // Shows the current zoom; a click restores the original size.
+    this.zoomReset=make('button','pdfbook-button pdfbook-zoom','100 %');this.zoomReset.type='button';this.zoomReset.title='Originalgröße (100 %)';this.zoomReset.setAttribute('aria-label','Originalgröße wiederherstellen, Zoom 100 %');this.on(this.zoomReset,'click',()=>this.setZoom(1));
     // Cycles auto → single → double → auto, so the automatic mode can always be restored.
     this.mode=this.button(MODE_LABEL[this.config.mode],'mode',()=>{this.config.mode=nextMode(this.config.mode);this.updateModeButton();this.go(this.target(),false);});
     this.full=this.button('Vollbild','full',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await this.el.requestFullscreen();}catch{this.status.textContent='Vollbild ist hier nicht verfügbar.';}});
     this.auto=this.button('Automatisch blättern','auto',()=>this.toggleAuto());this.auto.setAttribute('aria-pressed','false');
     this.download=make('a','pdfbook-button pdfbook-download','PDF öffnen');this.download.target='_blank';this.download.rel='noopener noreferrer';this.download.hidden=!this.config.download;
-    this.toolbar.append(this.first,this.prev,label,this.next,this.last,this.thumbs,this.outline,this.zoomOut,this.zoomIn,this.mode,this.full,this.auto,this.download);
+    this.toolbar.append(this.first,this.prev,label,this.next,this.last,this.thumbs,this.outline,this.zoomOut,this.zoomReset,this.zoomIn,this.mode,this.full,this.auto,this.download);
     // Cinema mode: without heading the status becomes an overlay on the stage (visible while loading or on error,
     // otherwise only for screen readers); without toolbar the controls stay as detached state holders.
     this.el.classList.toggle('no-heading',!this.config.showHeading);
@@ -110,8 +112,9 @@ export class PdfBook {
   target(){return this.pending?.number??this.inflight??this.page;}
   async go(number, animate=true){
     if(this.disposed||!this.pdf.doc||this.el.dataset.state==='error')return;
-    // Input that arrives while a page renders or turns is queued (latest request wins) instead of being dropped.
-    if(this.busy){this.pending={number,animate:false};this.updateControls();return;}
+    // Input that arrives while a page renders or turns is queued (latest page wins) instead of being dropped. The queued
+    // request keeps its animation: after the running turn has finished, one complete turn goes straight to that page.
+    if(this.busy){this.pending={number,animate:animate||!!this.pending?.animate};this.updateControls();return;}
     const target=Math.max(1,Math.min(this.pdf.count,Math.trunc(number)||1));
     const single=this.config.mode==='single'||(this.config.mode==='auto'&&(this.stage.clientWidth<640||this.pdf.count<=2));
     const numbers=spreadFor(target,this.pdf.count,single,this.config.direction==='rtl');
@@ -122,11 +125,13 @@ export class PdfBook {
       const items=[];
       for(const n of numbers)items.push(n?await this.pdf.render(n,width):null);
       if(this.disposed)return;
+      // Newer input arrived while rendering and before anything moved: skip this page and turn once to the newest one.
+      if(animate&&this.pending&&this.pending.number!==target){this.pending.animate=true;return;}
       const wasSingle=this.single,kind=this.config.renderer;
-      const motion=animate&&!this.pending&&previous.length>0&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const motion=animate&&previous.length>0&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
       const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
       this.single=single;this.page=target;this.items=items;
-      if(animate&&!this.pending&&previous.length>0&&target!==oldPage)this.rustle();
+      if(animate&&previous.length>0&&target!==oldPage)this.rustle();
       if(motion&&(kind==='slide'||kind==='flip'||kind==='fade')&&single===wasSingle){
         await (kind==='slide'?this.slide(items,direction):kind==='flip'?this.flip(items,direction,target>oldPage):this.fade(items));
         if(this.disposed)return;
@@ -312,6 +317,8 @@ export class PdfBook {
     for(const button of this.toolbar.querySelectorAll('button,input'))button.disabled=unavailable;
     if(!unavailable){const page=this.target();this.first.disabled=this.prev.disabled=page===1;this.next.disabled=this.last.disabled=spreadFor(page,this.pdf.count,this.single).includes(this.pdf.count);}
     if(document.activeElement!==this.input)this.input.value=String(this.target());
+    const percent=Math.round(this.zoom*100);this.zoomReset.textContent=`${percent} %`;this.zoomReset.setAttribute('aria-label',`Originalgröße wiederherstellen, Zoom ${percent} %`);
+    if(!unavailable){this.zoomReset.disabled=percent===100;this.zoomOut.disabled=this.zoom<=.75;this.zoomIn.disabled=this.zoom>=2.5;}
   }
   async showSidebar(kind){
     if(!this.pdf.doc||this.disposed)return;

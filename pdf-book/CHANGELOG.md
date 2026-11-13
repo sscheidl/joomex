@@ -1,5 +1,17 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.12 (2026-11-13)
+
+Owner findings from the live test of alpha.11.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Rapid page turning | Several clicks (or keys) during a turn used to switch to the last requested page without animation, which looked like a jump. Now the running turn finishes completely, and then one complete turn goes straight to the page shown in the counter; intermediate pages are skipped. Input that arrives while the next page is still rendering, before anything moves, is merged into that one turn. Zoom, mode and resize changes still switch without animation. | `media/js/viewer.js` |
+| Zoom 100 % | New button between "Verkleinern" and "Vergrößern". It shows the current zoom (75–250 %) and restores the original size; it is disabled at 100 %, and minus/plus are disabled at their limits. | `media/js/viewer.js`, `media/css/viewer.css` |
+
+Measured on 2026-11-13 (short headless Chrome run, demo PDF): five rapid clicks give at most the running turn plus one complete turn to the last page in 3D, fold, slide and cross-fade, no page errors; 100 % button resets 125 % to 100 %. Not run: unit, PHP and dispatcher tests, Firefox, Safari, real devices.
+
+
 ## 0.1.0-alpha.11 (2026-11-13)
 
 Owner request after the live test of alpha.10. All new settings default to the behaviour of alpha.10.
