@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.10';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.10';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.10';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.11';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.11';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.11';
 
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
@@ -50,7 +50,13 @@ export class PdfBook {
     this.auto=this.button('Automatisch blättern','auto',()=>this.toggleAuto());this.auto.setAttribute('aria-pressed','false');
     this.download=make('a','pdfbook-button pdfbook-download','PDF öffnen');this.download.target='_blank';this.download.rel='noopener noreferrer';this.download.hidden=!this.config.download;
     this.toolbar.append(this.first,this.prev,label,this.next,this.last,this.thumbs,this.outline,this.zoomOut,this.zoomIn,this.mode,this.full,this.auto,this.download);
-    this.el.replaceChildren(heading,this.body,this.toolbar);
+    // Cinema mode: without heading the status becomes an overlay on the stage (visible while loading or on error,
+    // otherwise only for screen readers); without toolbar the controls stay as detached state holders.
+    this.el.classList.toggle('no-heading',!this.config.showHeading);
+    if(!this.config.showHeading)this.stageWrap.append(this.status);
+    this.el.replaceChildren(...(this.config.showHeading?[heading]:[]),this.body,...(this.config.showToolbar?[this.toolbar]:[]));
+    // Audio may only start after a user gesture in the page; prepare it on the first one.
+    for(const type of ['pointerdown','keydown'])this.on(this.el,type,()=>this.unlockSound());
     // Home/End need focus on the stage; the arrow keys also work without focus for the active book (see onKey).
     this.on(this.stage,'keydown',e=>{if(e.target!==this.stage)return;if(e.key==='Home'){e.preventDefault();this.go(1);}if(e.key==='End'){e.preventDefault();this.go(this.pdf.count);}});
     this.on(document,'keydown',e=>this.onKey(e));
@@ -90,6 +96,7 @@ export class PdfBook {
       if(this.disposed)return;
       this.total.textContent=` / ${this.pdf.count}`;this.input.max=String(this.pdf.count);
       await this.go(1,false);this.el.dataset.pdfjs=pdfVersion;
+      if(this.config.autoplay&&!this.disposed&&this.el.dataset.state==='ready')this.startAuto();
     }catch(error){if(!this.disposed){this.fail(error);await this.pdf.dispose();}}
   }
   fail(error){
@@ -119,8 +126,9 @@ export class PdfBook {
       const motion=animate&&!this.pending&&previous.length>0&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
       const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
       this.single=single;this.page=target;this.items=items;
+      if(animate&&!this.pending&&previous.length>0&&target!==oldPage)this.rustle();
       if(motion&&(kind==='slide'||kind==='flip'||kind==='fade')&&single===wasSingle){
-        await (kind==='slide'?this.slide(items,direction):kind==='flip'?this.flip(items,direction):this.fade(items));
+        await (kind==='slide'?this.slide(items,direction):kind==='flip'?this.flip(items,direction,target>oldPage):this.fade(items));
         if(this.disposed)return;
       }else if(motion&&kind==='webgl'&&!single&&!wasSingle&&previous.length===2&&this.turn?.available){
         const from=direction>0?1:0,to=1-from;
@@ -165,37 +173,48 @@ export class PdfBook {
   /**
    * Flip-board fold: the spread (or the single page) is split in the middle and one half folds over like a rigid
    * board, with perspective and shading. CSS 3D only, so it needs no WebGL and works for single pages too.
+   * Horizontal: forward the right half folds onto the left (mirrored for right-to-left books). Vertical: forward the
+   * bottom half folds up, backward the top half folds down. "auto" folds vertically in single-page view.
    */
-  async flip(items,direction){
-    const forward=direction>0,turn=forward?-180:180;
+  async flip(items,direction,ahead){
+    const vertical=this.config.flipAxis==='vertical'||(this.config.flipAxis==='auto'&&this.single);
+    const moverB=vertical?ahead:direction>0;   // A = left/top half, B = right/bottom half; the mover half folds over
     const old=make('div','pdfbook-slide');old.append(...this.spread.children);
     const oldCopy=copyLayer(old);
     this.mountPages(items);
     const fresh=make('div','pdfbook-slide');fresh.append(...this.spread.children);
     const freshCopy=copyLayer(fresh);
+    const half=b=>vertical?(b?'inset(50% 0 0 0)':'inset(0 0 50% 0)'):(b?'inset(0 0 0 50%)':'inset(0 50% 0 0)');
     // The half the board leaves shows the new pages at once; the half it lands on keeps the old ones until covered.
-    const left='inset(0 50% 0 0)',right='inset(0 0 0 50%)';
-    old.style.clipPath=forward?left:right;fresh.style.clipPath=forward?right:left;
-    const shade=(side)=>{const s=make('div','pdfbook-fold-shade');s.style.left=side==='left'?'0':'50%';return s;};
-    // Empty page slots (beside the cover) stay transparent: no shade over them.
-    const blank=(layer,rightHalf)=>{const pages=layer.children;return !!pages[pages.length>1&&rightHalf?1:0]?.classList.contains('is-blank');};
-    const revealed=shade(forward?'right':'left'),covered=shade(forward?'left':'right');
-    revealed.hidden=blank(fresh,forward);covered.hidden=blank(old,!forward);
-    const board=make('div','pdfbook-fold');board.style.left=forward?'50%':'0';board.style.transformOrigin=forward?'left center':'right center';
-    const face=(layer,showRight,back)=>{
-      const f=make('div',`pdfbook-fold-face${back?' is-back':''}`);
-      layer.classList.add('pdfbook-fold-pages');layer.style.left=showRight?'-100%':'0';
-      const dark=make('div','pdfbook-fold-dark');dark.hidden=blank(layer,showRight);f.append(layer,dark);board.append(f);return dark;
+    old.style.clipPath=half(!moverB);fresh.style.clipPath=half(moverB);
+    // Horizontal part of a half that holds a page, as [left, width] fractions; empty page slots (beside the cover) get no shade.
+    const filled=(layer,b)=>{const p=[...layer.children].map(e=>!e.classList.contains('is-blank'));
+      if(p.length<2)return p[0]?[0,1]:null;
+      if(!vertical)return p[b?1:0]?[0,1]:null;
+      return p[0]&&p[1]?[0,1]:p[0]?[0,.5]:p[1]?[.5,.5]:null;};
+    const shade=(b,span)=>{const el=make('div','pdfbook-fold-shade');if(!span){el.hidden=true;return el;}
+      Object.assign(el.style,vertical?{top:b?'50%':'0',height:'50%',left:`${span[0]*100}%`,width:`${span[1]*100}%`}:{top:'0',height:'100%',left:b?'50%':'0',width:'50%'});return el;};
+    const revealed=shade(moverB,filled(fresh,moverB)),covered=shade(!moverB,filled(old,!moverB));
+    const board=make('div','pdfbook-fold');
+    Object.assign(board.style,vertical?{left:'0',width:'100%',top:moverB?'50%':'0',height:'50%',transformOrigin:moverB?'center top':'center bottom'}
+      :{top:'0',height:'100%',left:moverB?'50%':'0',width:'50%',transformOrigin:moverB?'left center':'right center'});
+    const axis=vertical?'rotateX':'rotateY',turn=(vertical?1:-1)*(moverB?180:-180);
+    const face=(layer,b,back)=>{
+      const f=make('div','pdfbook-fold-face');if(back)f.style.transform=`${axis}(180deg)`;
+      layer.classList.add('pdfbook-fold-pages');layer.classList.toggle('is-vertical',vertical);layer.style[vertical?'top':'left']=b?'-100%':'0';
+      const dark=make('div','pdfbook-fold-dark'),span=filled(layer,b);
+      if(!span)dark.hidden=true;else if(vertical){dark.style.left=`${span[0]*100}%`;dark.style.width=`${span[1]*100}%`;}
+      f.append(layer,dark);board.append(f);return dark;
     };
     // Front: the old half that lifts; back: the new half that comes down on the other side.
-    const frontDark=face(oldCopy,forward,false),backDark=face(freshCopy,!forward,true);
+    const frontDark=face(oldCopy,moverB,false),backDark=face(freshCopy,!moverB,true);
     this.spread.append(old,fresh,revealed,covered,board);
     this.spread.classList.add('is-folding');this.stage.classList.add('is-folding');
-    this.spread.style.perspective=`${Math.round(this.spread.offsetWidth*3.5)}px`;
+    this.spread.style.perspective=`${Math.round((vertical?this.spread.offsetHeight:this.spread.offsetWidth)*3.5)}px`;
     const options={duration:this.config.duration,easing:'cubic-bezier(.45,0,.25,1)'};
     try{
       await Promise.all([
-        board.animate([{transform:'rotateY(0deg)'},{transform:`rotateY(${turn/2}deg)`},{transform:`rotateY(${turn}deg)`}],options).finished,
+        board.animate([{transform:`${axis}(0deg)`},{transform:`${axis}(${turn/2}deg)`},{transform:`${axis}(${turn}deg)`}],options).finished,
         frontDark.animate([{opacity:0},{opacity:.35},{opacity:.35}],options).finished,
         backDark.animate([{opacity:.35},{opacity:.35},{opacity:0}],options).finished,
         revealed.animate([{opacity:.3},{opacity:0},{opacity:0}],options).finished,
@@ -227,6 +246,7 @@ export class PdfBook {
     this.pageAbort?.abort();this.pageAbort=new AbortController();
     if(this.single||this.config.renderer!=='webgl'){this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;}
     const first=items.find(Boolean),ratio=first?first.canvas.width/first.canvas.height:.707;
+    if(this.config.autoHeight&&!this.config.fill&&document.fullscreenElement!==this.el)this.fitHeight(ratio,items.length);
     const availableHeight=Math.max(220,this.stage.clientHeight-48),availableWidth=Math.max(200,this.stage.clientWidth-48);
     const pageWidth=Math.min(availableWidth/items.length,availableHeight*ratio)*this.zoom;
     this.spread.style.width=`${pageWidth*items.length}px`;this.spread.style.height=`${pageWidth/ratio}px`;
@@ -257,6 +277,18 @@ export class PdfBook {
       if(this.overlay.parentNode!==this.stageWrap)this.stageWrap.append(this.overlay);
     }
   }
+  /**
+   * Automatic height: the stage gets the height at which the pages fill its width, using the format of the first page
+   * shown (kept for the whole document, so the book does not jump between pages). At most the window height.
+   * Width changes below 20 px keep the height, so a page scrollbar that appears or disappears cannot make it oscillate.
+   */
+  fitHeight(ratio,count){
+    this.autoRatio??=ratio;const width=this.stage.clientWidth;
+    if(this.autoFit&&this.autoFit.count===count&&Math.abs(this.autoFit.width-width)<20)return;
+    const chrome=this.el.offsetHeight-this.body.offsetHeight,cap=Math.max(320,innerHeight-chrome-16);
+    const height=Math.round(Math.min(cap,Math.max(280,Math.max(200,width-48)/count/this.autoRatio+48)));
+    this.autoFit={count,width};this.el.style.setProperty('--pdfbook-height',`${height}px`);
+  }
   async navigateDestination(dest){try{const n=await this.pdf.destination(dest);if(n)await this.go(n);}catch{this.status.textContent='Verknüpfte Seite nicht verfügbar.';}}
   onKey(e){
     if(activeBook!==this||this.disposed||e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||(e.key!=='ArrowLeft'&&e.key!=='ArrowRight'))return;
@@ -264,7 +296,7 @@ export class PdfBook {
     if(target instanceof Element&&(target.closest('input,textarea,select,[contenteditable]')||(target.closest('.pdfbook')&&!this.el.contains(target))))return;
     const modal=document.querySelector('dialog[open]');if(modal&&!modal.contains(this.el))return;
     const box=this.el.getBoundingClientRect();if(box.bottom<0||box.top>innerHeight)return;   // not on screen
-    e.preventDefault();this.move((e.key==='ArrowRight'?1:-1)*(this.config.direction==='rtl'?-1:1));
+    e.preventDefault();this.unlockSound();this.move((e.key==='ArrowRight'?1:-1)*(this.config.direction==='rtl'?-1:1));
   }
   move(delta){return this.go(nextPage(this.target(),this.pdf.count,this.single,delta));}
   setZoom(value){
@@ -307,9 +339,37 @@ export class PdfBook {
       for(let n=1;n<=this.pdf.count;n++){const b=sidebarButton(`Seite ${n}`,String(n),()=>this.go(n));b.classList.add('pdfbook-thumbnail');b.dataset.number=String(n);this.sidebar.append(b);this.thumbObserver.observe(b);}
     }
   }
-  toggleAuto(){if(this.autoTimer){this.stopAuto();return;}this.auto.setAttribute('aria-pressed','true');this.autoTimer=setInterval(()=>{if(this.busy||this.pending)return;if(this.next.disabled)this.stopAuto();else this.move(1);},3000);}
+  toggleAuto(){if(this.autoTimer)this.stopAuto();else this.startAuto();}
+  startAuto(){
+    if(this.autoTimer||this.disposed)return;this.auto.setAttribute('aria-pressed','true');
+    // The interval never falls below the turn itself, so turns do not queue up.
+    const every=Math.max(this.config.autoplayInterval*1000,this.config.duration+300);
+    this.autoTimer=setInterval(()=>{
+      if(this.busy||this.pending||this.el.dataset.state!=='ready')return;
+      if(this.next.disabled){if(this.config.autoplayLoop)this.go(1);else this.stopAuto();}else this.move(1);
+    },every);
+  }
+  unlockSound(){
+    if(!this.config.sound||this.disposed)return;
+    try{if(!this.audio){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;this.audio=new Context();}
+      if(this.audio.state==='suspended')this.audio.resume().catch(()=>{});}catch{this.audio=null;}
+  }
+  /** Page sound, synthesised (no audio file): band-passed noise with an irregular grain, a quick rise and a long fade. */
+  rustle(){
+    const ctx=this.audio;if(!this.config.sound||!ctx||ctx.state!=='running')return;
+    try{
+      const length=Math.min(.7,Math.max(.18,this.config.duration/1000*.6)),rate=ctx.sampleRate,n=Math.floor(length*rate);
+      const buffer=ctx.createBuffer(1,n,rate),data=buffer.getChannelData(0),decay=Math.exp(-1/(rate*.04));
+      let grain=0;
+      for(let i=0;i<n;i++){const t=i/n;if(Math.random()<240/rate)grain=.5+Math.random()*.8;grain*=decay;data[i]=(Math.random()*2-1)*Math.min(1,t/.08)*Math.pow(1-t,1.6)*(.55+grain);}
+      const source=ctx.createBufferSource(),band=ctx.createBiquadFilter(),high=ctx.createBiquadFilter(),gain=ctx.createGain(),now=ctx.currentTime;
+      source.buffer=buffer;band.type='bandpass';band.Q.value=.7;high.type='highpass';high.frequency.value=500;gain.gain.value=.5;
+      band.frequency.setValueAtTime(1400,now);band.frequency.linearRampToValueAtTime(3800,now+length*.35);band.frequency.linearRampToValueAtTime(2000,now+length);
+      source.connect(band).connect(high).connect(gain).connect(ctx.destination);source.start(now);
+    }catch{/* sound is optional */}
+  }
   stopAuto(){clearInterval(this.autoTimer);this.autoTimer=null;this.auto.setAttribute('aria-pressed','false');}
-  async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();await this.pdf.dispose();}
+  async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();this.audio?.close().catch(()=>{});this.audio=null;await this.pdf.dispose();}
 }
 
 const instances=new WeakMap();

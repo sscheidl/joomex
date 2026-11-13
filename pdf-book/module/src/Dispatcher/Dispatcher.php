@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.10';
+    public const VERSION = '0.1.0-alpha.11';
 
     protected function getLayoutData(): array
     {
@@ -38,6 +38,14 @@ final class Dispatcher extends AbstractModuleDispatcher
                 'shadowDensity' => max(0, min(60, (int) $params->get('shadow_density', 22))),
                 'shadowSoftness' => max(0, min(100, (int) $params->get('shadow_softness', 50))),
                 'shadowWidth' => max(0, min(100, (int) $params->get('shadow_width', 50))),
+                'flipAxis' => (string) $params->get('flip_axis', 'auto'),
+                'autoHeight' => (int) $params->get('auto_height', 0) === 1,
+                'showHeading' => (int) $params->get('show_heading', 1) === 1,
+                'showToolbar' => (int) $params->get('show_toolbar', 1) === 1,
+                'sound' => (int) $params->get('sound', 0) === 1,
+                'autoplay' => (int) $params->get('autoplay', 0) === 1,
+                'autoplayInterval' => max(1, min(60, (int) $params->get('autoplay_interval', 3))),
+                'autoplayLoop' => (int) $params->get('autoplay_loop', 0) === 1,
             ];
             $wa = $this->getApplication()->getDocument()->getWebAssetManager();
             // Relative to /media: Joomla resolves this to {root}/media/mod_pdfbook/css/viewer.css and allows template overrides.

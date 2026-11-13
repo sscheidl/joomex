@@ -1,5 +1,22 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.11 (2026-11-13)
+
+Owner request after the live test of alpha.10. All new settings default to the behaviour of alpha.10.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Fold direction | New setting "Klapprichtung" for the mode "Klappen": horizontal, vertical or automatic (default: vertical in single-page view, horizontal in double-page view). Vertical: forward the bottom half folds up, backward the top half folds down, independent of the reading direction. Empty page slots get no shade in either direction. | `media/js/viewer.js`, `media/css/viewer.css`, `module/mod_pdfbook.xml` |
+| Automatic height | New setting "Höhe automatisch nach PDF" (default off): the stage height follows the module width and the format of the first page shown, for single or double view, capped at the window height. The format is kept for the whole document so the book does not jump; width changes below 20 px keep the height, so an appearing scrollbar cannot make it oscillate. Dialog and fullscreen fill their space as before. | `media/js/viewer.js`, `media/js/model.js`, `module/mod_pdfbook.xml` |
+| Cinema mode | New settings "Titelzeile anzeigen" and "Navigationsleiste anzeigen" (default on). Without heading the status becomes an overlay on the stage while loading or on error and stays available to screen readers; without toolbar pages turn by click, swipe and arrow keys. | `media/js/viewer.js`, `media/css/viewer.css`, `module/mod_pdfbook.xml` |
+| Page sound | New setting "Blättergeräusch" (default off). The sound is synthesised in the browser (band-passed noise with a paper-like grain, length follows the tempo); there is no audio file. The audio context starts on the first click or key press in the book, as browsers require. | `media/js/viewer.js`, `module/mod_pdfbook.xml` |
+| Autoplay | New settings: start on load (default off), interval 1–60 s (default 3, as before) and restart at the end (default off). The interval never falls below the turn duration plus 300 ms. | `media/js/viewer.js`, `media/js/model.js`, `module/mod_pdfbook.xml` |
+
+The dispatcher passes the new settings (`flipAxis`, `autoHeight`, `showHeading`, `showToolbar`, `sound`, `autoplay`, `autoplayInterval`, `autoplayLoop`); the viewer validates them again.
+
+Measured on 2026-11-13 (one short smoke run, Chrome headless, demo PDF): fold vertical in single view, horizontal and vertical in double view, cross-fade, and cinema mode with automatic height, sound and autoplay with restart load and turn without page errors; mid-animation screenshots checked. Not run: unit, PHP and dispatcher tests, the browser suite, Firefox, Safari, real devices; the sound was not listened to.
+
+
 ## 0.1.0-alpha.10 (2026-11-13)
 
 Owner request after the live test of alpha.9: two more page-change modes; the self-shadow switch is dropped.

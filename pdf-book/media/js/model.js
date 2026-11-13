@@ -99,7 +99,11 @@ export function normalizeConfig(data = {}) {
     // Look of the 3D turn, as set in the back end: curvature 0–100, shadow density 0–60 %, softness and width 0–100.
     curvature: setting(data.curvature, 0, 100, 50), shadowDensity: setting(data.shadowDensity, 0, 60, 22),
     shadowSoftness: setting(data.shadowSoftness, 0, 100, 50), shadowWidth: setting(data.shadowWidth, 0, 100, 50),
-    height: Math.max(320, Math.min(1000, Number(data.height) || 560)),
+    flipAxis: ['horizontal', 'vertical'].includes(data.flipAxis) ? data.flipAxis : 'auto',
+    height: Math.max(320, Math.min(1000, Number(data.height) || 560)), autoHeight: data.autoHeight === true,
+    // Cinema mode = heading and toolbar off; navigation by click, swipe and arrow keys stays.
+    showHeading: data.showHeading !== false, showToolbar: data.showToolbar !== false, sound: data.sound === true,
+    autoplay: data.autoplay === true, autoplayInterval: setting(data.autoplayInterval, 1, 60, 3), autoplayLoop: data.autoplayLoop === true,
     background: /^#[a-f0-9]{6}$/i.test(data.background) ? data.background : '#f2f2f2',
   };
 }
