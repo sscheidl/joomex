@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS} from '../media/js/model.js';
+import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS,setting} from '../media/js/model.js';
+test('numeric settings follow the shared vectors (same as the dispatcher, N18-5)',()=>{const v=JSON.parse(readFileSync(new URL('./numeric-vectors.json',import.meta.url),'utf8'));for(const c of v.cases)assert.equal(setting(c.in,v.min,v.max,v.default),c.out,JSON.stringify(c.in));});
 const base='https://site.example/cms/';
 test('only same-origin public media PDFs, including Joomla subdirectories',()=>{
   assert.equal(safePdfUrl('images/book.pdf',base),'https://site.example/cms/images/book.pdf');

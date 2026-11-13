@@ -81,10 +81,15 @@ export function renderDimensions(width, height, desiredWidth) {
   return {scale, width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale))};
 }
 
-/** Integer setting within [min, max]; anything missing or not numeric gives the default (0 is a valid value). */
-const setting = (value, min, max, fallback) => {
-  const n = value === null || value === undefined || value === '' ? NaN : Number(value);
-  return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback;
+/**
+ * Integer setting within [min, max]. Same rule as the dispatcher (PHP), checked against the shared vectors in
+ * tests/numeric-vectors.json (N18-5): a finite number, or a string of decimal digits with an optional sign, fraction
+ * and surrounding whitespace, is rounded half away from zero and clamped (0 is a valid value); anything else (empty,
+ * hexadecimal, exponent notation, text) gives the default.
+ */
+export const setting = (value, min, max, fallback) => {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*[+-]?\d+(\.\d+)?\s*$/.test(value) ? Number(value) : NaN;
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.sign(n) * Math.round(Math.abs(n)))) : fallback;
 };
 
 export function normalizeConfig(data = {}) {
@@ -94,13 +99,13 @@ export function normalizeConfig(data = {}) {
     base: new URL(String(data.base || '.'), location.href).href, mediaRoot: 'images/', fill: data.fill === true,
     mode: ['single', 'double', 'auto'].includes(data.mode) ? data.mode : 'auto',
     direction: data.direction === 'rtl' ? 'rtl' : 'ltr',
-    duration: Math.max(150, Math.min(1800, Number(data.duration) || 800)),
+    duration: setting(data.duration, 150, 1800, 800),
     download: data.download !== false, renderer: ['flat', 'slide', 'flip', 'fade'].includes(data.renderer) ? data.renderer : 'webgl',
     // Look of the 3D turn, as set in the back end: curvature 0–100, shadow density 0–60 %, softness and width 0–100.
     curvature: setting(data.curvature, 0, 100, 50), shadowDensity: setting(data.shadowDensity, 0, 60, 22),
     shadowSoftness: setting(data.shadowSoftness, 0, 100, 50), shadowWidth: setting(data.shadowWidth, 0, 100, 50),
     flipAxis: ['horizontal', 'vertical'].includes(data.flipAxis) ? data.flipAxis : 'auto',
-    height: Math.max(320, Math.min(1000, Number(data.height) || 500)), autoHeight: data.autoHeight === true,
+    height: setting(data.height, 320, 1000, 500), autoHeight: data.autoHeight === true,
     // Cinema mode = heading and toolbar off; navigation by click, swipe and arrow keys stays.
     showHeading: data.showHeading !== false, showToolbar: data.showToolbar !== false, showFrame: data.showFrame !== false, sound: data.sound === true,
     autoplay: data.autoplay === true, autoplayInterval: setting(data.autoplayInterval, 1, 60, 3), autoplayLoop: data.autoplayLoop === true,

@@ -1,0 +1,92 @@
+{
+ "note": "Shared vectors for numeric settings (review finding N18-5). Range 320-1000, default 500. Used by tests/model.test.mjs (setting) and tests/dispatcher.php (Dispatcher, parameter height).",
+ "min": 320,
+ "max": 1000,
+ "default": 500,
+ "cases": [
+  {
+   "in": "",
+   "out": 500
+  },
+  {
+   "in": "   ",
+   "out": 500
+  },
+  {
+   "in": null,
+   "out": 500
+  },
+  {
+   "in": "0",
+   "out": 320
+  },
+  {
+   "in": 0,
+   "out": 320
+  },
+  {
+   "in": "320",
+   "out": 320
+  },
+  {
+   "in": " 640 ",
+   "out": 640
+  },
+  {
+   "in": "640.4",
+   "out": 640
+  },
+  {
+   "in": "640.5",
+   "out": 641
+  },
+  {
+   "in": "+700",
+   "out": 700
+  },
+  {
+   "in": "-5",
+   "out": 320
+  },
+  {
+   "in": "2000",
+   "out": 1000
+  },
+  {
+   "in": "1e3",
+   "out": 500
+  },
+  {
+   "in": "1e309",
+   "out": 500
+  },
+  {
+   "in": "0x10",
+   "out": 500
+  },
+  {
+   "in": "abc",
+   "out": 500
+  },
+  {
+   "in": "12px",
+   "out": 500
+  },
+  {
+   "in": "1 000",
+   "out": 500
+  },
+  {
+   "in": 777,
+   "out": 777
+  },
+  {
+   "in": 999.5,
+   "out": 1000
+  },
+  {
+   "in": "\t800\n",
+   "out": 800
+  }
+ ]
+}

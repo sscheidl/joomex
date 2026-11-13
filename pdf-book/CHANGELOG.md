@@ -1,5 +1,24 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.19 (2026-11-13)
+
+Corrections for the [follow-up review of alpha.18](docs/reviews/REVIEW_0.1.0-alpha.18.md) (Codex, verdict: pre-release on hold because of the archive check). Both review reports and the alpha.18 evidence are now part of this branch, so the relative links from README and changelog work.
+
+| Finding | Change | Files |
+| --- | --- | --- |
+| N18-1 (P1) directory entries bypassed the archive check | Every directory record is a finding (with or without content, also `./`), because the builder writes regular files only. Entry count (5000) and declared uncompressed sizes (64 MiB per entry, 256 MiB in total) are checked before anything is read; duplicates are counted with a `Counter` instead of a quadratic scan; an unreadable archive or entry is a finding instead of an uncaught exception. | `../scripts/check_publication.py` |
+| N18-2 (P2) symlink and special-file modes | An entry whose Unix mode is not a regular file (or that carries the DOS directory attribute) is a finding. Entries without type bits (mode 0) stay allowed for archives made on Windows. | `../scripts/check_publication.py` |
+| N18-3 (P2) untracked files counted as package sources | Archive membership now comes from `git ls-files` (committed files only), and a package source file that differs from `HEAD` is a finding, so an archive can only be vouched for by a committed state. The broad repository scan still includes untracked files. | `../scripts/check_publication.py` |
+| N18-1–3 regression tests | `tests/publication_zip.py` runs the CLI on 12 archives: genuine and recompressed pass; unlisted binary, changed vendor file, missing file, duplicate, empty directory, directory with payload, `./` with payload, more than 5000 entries, symlink mode and an untracked source file fail. | `tests/publication_zip.py` |
+| N18-4 (P2) mixed formats stretched in the 3D turn | Before the turn, each face is letterboxed on white into the format of the page slot, as `object-fit: contain` shows it statically. | `media/js/viewer.js` |
+| N18-5 (P3) numbers parsed differently in PHP and JS | One rule in both: a number, or a string of decimal digits with optional sign, fraction and surrounding whitespace, is rounded half away from zero and clamped (0 is clamped, not replaced by the default); empty values, hexadecimal, exponent notation and text give the default. Shared vectors in `tests/numeric-vectors.json` (21 cases) are checked by the JavaScript unit tests and the dispatcher test. Height and tempo now use the same `setting()` as the other numbers. | `media/js/model.js`, `module/src/Dispatcher/Dispatcher.php`, `tests/numeric-vectors.json`, `tests/model.test.mjs`, `tests/dispatcher.php` |
+| N18-6 (P3) legacy test scoping | F7 counts only failed loads of the module's own media and PDF resources (with URL), not an unrelated favicon 404; the rapid-click check waits for the settled queue; the smoke test expects the flat fallback where the browser has no WebGL. | `tests/review/review_browser.py`, `tests/browser_smoke.py` |
+| Page sounds: same origin | The sound files are fetched with `mode: 'same-origin'` and `redirect: 'error'`, and only when their URL has the page's origin; otherwise the book stays silent. | `media/js/viewer.js` |
+| Provenance | `THIRD-PARTY-NOTICES.md` says that the archive was used as received from the mirror and is not byte-identical to the official download; `dependencies.json` records the official download, its hashes and the reviewer's comparison (recordings byte-identical, licence identical apart from line endings). | `THIRD-PARTY-NOTICES.md`, `dependencies.json` |
+
+Measured on 2026-11-13 (Linux container, Chrome for Testing 153 headless, Playwright 1.63, Python 3.13 with zlib-ng, PHP 8.3): `tests/publication_zip.py` 12/12; the reviewer's `docs/reviews/evidence-0.1.0-alpha.18/archive_gate_probe.py` on the alpha.19 package: genuine accepted, directory payload, symlink mode and untracked source rejected; unit 13, PHP 32, dispatcher 34 (including the 21 shared numeric vectors); `tests/alpha17_regressions.py` 9/9; browser smoke test pass; legacy review suite 26 PASS, 4 INFO; N18-4: mixed-format test page, red rectangle aspect 3.32 statically and 3.44 in the first 3D frame (alpha.18: 1.19). Generic publication check of repository and package: 0 findings. Not run: private deny-list, Firefox, Edge, Safari, real devices, screen reader, real Joomla.
+
+
 ## 0.1.0-alpha.18 (2026-11-13)
 
 The remaining points of the [independent review of alpha.15](docs/reviews/REVIEW_0.1.0-alpha.15.md): T1 and the minor points of section 7.

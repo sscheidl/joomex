@@ -19,7 +19,9 @@ def main():
         page.locator('#main-book[data-state="ready"]').wait_for(timeout=30000)
         page.screenshot(path=OUT/'desktop.png',full_page=True)
         book=page.locator('#main-book')
-        assert book.get_attribute('data-renderer')=='webgl'
+        # The 3D renderer is expected where the browser offers WebGL; without it the flat fallback must be active.
+        webgl=page.evaluate("!!document.createElement('canvas').getContext('webgl')")
+        assert book.get_attribute('data-renderer')==('webgl' if webgl else 'flat')
         book.get_by_role('button',name='Nächste Seite',exact=True).click()
         page.wait_for_timeout(280)
         page.screenshot(path=OUT/'turn.png')

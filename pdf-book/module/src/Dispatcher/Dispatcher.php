@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.18';
+    public const VERSION = '0.1.0-alpha.19';
 
     protected function getLayoutData(): array
     {
@@ -21,10 +21,18 @@ final class Dispatcher extends AbstractModuleDispatcher
         $data['bookConfig'] = [];
         try {
             $source = Source::resolve((string) $params->get('pdf', ''), JPATH_ROOT);
-            // Same rules as normalizeConfig() in media/js/model.js: an empty or non-numeric value means the default,
-            // a number is clamped, and a choice outside its list falls back to the first (default) entry.
+            // Same rules as setting() and normalizeConfig() in media/js/model.js, checked against the shared vectors in
+            // tests/numeric-vectors.json (N18-5): a number, or a string of decimal digits with optional sign, fraction and
+            // surrounding whitespace, is rounded half away from zero and clamped; anything else gives the default. A choice
+            // outside its list falls back to the first (default) entry.
             $int = static function ($value, int $default, int $min, int $max): int {
-                return is_numeric($value) ? max($min, min($max, (int) $value)) : $default;
+                $numeric = is_int($value) || (is_float($value) && is_finite($value))
+                    || (is_string($value) && preg_match('/^\s*[+-]?\d+(\.\d+)?\s*$/D', $value) === 1);
+                if (!$numeric) {
+                    return $default;
+                }
+                $number = (float) $value;
+                return $number > $max ? $max : ($number < $min ? $min : (int) round($number, 0, PHP_ROUND_HALF_UP));
             };
             $enum = static function ($value, array $allowed): string {
                 return in_array((string) $value, $allowed, true) ? (string) $value : $allowed[0];

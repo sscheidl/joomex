@@ -1,12 +1,20 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.18';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.18';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.18';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.19';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.19';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.19';
 
 // Page sounds: CC0 recordings from Kenney's "RPG Audio" (see THIRD-PARTY-NOTICES.md), trimmed, softened and normalised.
-const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.18',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.18',import.meta.url).href];
+const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.19',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.19',import.meta.url).href];
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
+// The 3D turn maps a face over the whole page slot. A page of another format is letterboxed into the slot's format
+// first, on white like .pdfbook-page, so it looks the same as the static page (object-fit: contain) during the turn (N18-4).
+const letterbox=(source,ratio)=>{
+  const own=source.width/source.height;if(!(ratio>0)||Math.abs(own/ratio-1)<.005)return source;
+  const c=make('canvas');c.width=own>ratio?source.width:Math.round(source.height*ratio);c.height=own>ratio?Math.round(source.width/ratio):source.height;
+  const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+  ctx.drawImage(source,(c.width-source.width)/2,(c.height-source.height)/2);return c;
+};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
 const MODE_LABEL={auto:'Seitenansicht: automatisch',single:'Seitenansicht: Einzelseite',double:'Seitenansicht: Doppelseite'};
 // Own line icons (24 px grid), drawn as SVG paths so that they are large and look the same on every platform.
@@ -159,7 +167,7 @@ export class PdfBook {
         const during=[];during[from]=items[from];during[to]=previous[to];
         this.mountPages(during,false);
         const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8};
-        await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,c.duration,this.spread,look);
+        await this.turn.play(letterbox(previous[from]?.canvas||blank(),this.slotRatio),letterbox(items[to]?.canvas||blank(),this.slotRatio),direction,c.duration,this.spread,look);
         if(this.disposed)return;
         this.mountPages(items);
       }else this.mountPages(items);
@@ -275,6 +283,7 @@ export class PdfBook {
     this.pageAbort?.abort();this.pageAbort=new AbortController();
     if(this.single||this.config.renderer!=='webgl'){this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;}
     const first=items.find(Boolean),ratio=first?first.canvas.width/first.canvas.height:.707;
+    this.slotRatio=ratio;
     if(this.config.autoHeight&&!this.config.fill&&document.fullscreenElement!==this.el)this.fitHeight(ratio,items.length);
     const availableHeight=Math.max(220,this.stage.clientHeight-48),availableWidth=Math.max(200,this.stage.clientWidth-48);
     const pageWidth=Math.min(availableWidth/items.length,availableHeight*ratio)*this.zoom;
@@ -403,10 +412,12 @@ export class PdfBook {
       ctx.resume().catch(()=>{});
     }catch{this.audio=null;}
   }
-  /** Loads the page sounds once per book (same origin, only when the sound is switched on and after a user gesture). */
+  /** Loads the page sounds once per book (same origin, no redirects, only when the sound is on and after a user gesture). */
   loadSounds(ctx){
-    this.sounds=Promise.all(SOUNDS.map(url=>fetch(url,{credentials:'same-origin'})
-      .then(r=>{if(!r.ok)throw new Error(String(r.status));return r.arrayBuffer();})
+    // Same origin only, also against redirects or a module served from another host (alpha.18 review): the files are
+    // skipped then, and the book stays silent.
+    this.sounds=Promise.all(SOUNDS.filter(url=>new URL(url).origin===location.origin).map(url=>fetch(url,{mode:'same-origin',credentials:'same-origin',redirect:'error'})
+      .then(r=>{if(!r.ok||r.redirected)throw new Error(String(r.status));return r.arrayBuffer();})
       .then(data=>ctx.decodeAudioData(data)).catch(()=>null)))
       .then(list=>list.filter(Boolean));
   }

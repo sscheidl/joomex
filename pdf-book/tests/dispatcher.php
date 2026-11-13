@@ -51,6 +51,12 @@ check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c[
 [$data] = run(['pdf' => 'images/test-book.pdf', 'renderer' => 'slide', 'duration' => 99999, 'curvature' => -3, 'shadow_density' => 100, 'shadow_softness' => 0, 'shadow_width' => 250], null);
 $c = $data['bookConfig'];
 check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c['shadowSoftness'], $c['shadowWidth']] === ['slide', 1800, 0, 60, 0, 100], 'animation clamping ' . json_encode($c));
+// Shared numeric vectors with the JavaScript test (N18-5).
+$vectors = json_decode(file_get_contents(__DIR__ . '/numeric-vectors.json'), true);
+foreach ($vectors['cases'] as $case) {
+    [$data] = run(['pdf' => 'images/test-book.pdf', 'height' => $case['in']], null);
+    check($data['bookConfig']['height'] === $case['out'], 'numeric vector ' . json_encode($case['in']) . ' -> ' . json_encode($data['bookConfig']['height']));
+}
 // Empty, non-numeric and unknown values fall back to the defaults, as in normalizeConfig() (review section 7, alpha.15).
 [$data] = run(['pdf' => 'images/test-book.pdf', 'height' => '', 'duration' => 'abc', 'autoplay_interval' => '', 'renderer' => 'evil',
     'page_mode' => 'triple', 'direction' => 'up', 'flip_axis' => 'diagonal', 'background' => 'red;x:y', 'curvature' => ' '], null);

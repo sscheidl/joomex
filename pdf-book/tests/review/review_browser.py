@@ -46,7 +46,10 @@ def ready(page, sel='[data-pdfbook]', state='ready', timeout=30000, n=0):
 
 def new(browser, url, **kw):
     ctx = browser.new_context(**{'viewport': {'width': 1280, 'height': 900}, **kw})
-    page = ctx.new_page(); ev = {'errors': [], 'console': [], 'requests': [], 'dialogs': [], 'popups': [], 'csp': []}
+    page = ctx.new_page(); ev = {'errors': [], 'console': [], 'requests': [], 'dialogs': [], 'popups': [], 'csp': [], 'failed': []}
+    # Failed loads with their URL, so a check can count only its own resources (N18-6: not the favicon).
+    page.on('response', lambda r: ev['failed'].append(f'{r.status} {r.url}') if r.status >= 400 else None)
+    page.on('requestfailed', lambda r: ev['failed'].append(f'failed {r.url}'))
     page.on('pageerror', lambda e: ev['errors'].append(str(e)))
     page.on('console', lambda m: ev['console'].append(f'{m.type}: {m.text}') if m.type in ('error', 'warning') else None)
     page.on('request', lambda r: ev['requests'].append(r.url))
@@ -155,8 +158,7 @@ def t_lost_input(browser):
     ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
     el = page.locator('[data-pdfbook]')
     page.evaluate("()=>{const b=document.querySelector('[aria-label=\"Nächste Seite\"]');b.click();b.click();}")
-    page.wait_for_function("()=>!document.querySelector('[data-pdfbook]').hasAttribute('aria-busy')", timeout=10000); page.wait_for_timeout(300)
-    two_clicks = el.get_attribute('data-page')
+    two_clicks = settle_book(page)   # waits until the queue has settled (N18-6), not a fixed delay
     # keyboard: two quick ArrowRight
     page.locator('.pdfbook-stage').focus(); page.keyboard.press('ArrowRight'); page.wait_for_timeout(50); page.keyboard.press('ArrowRight')
     keys = settle_book(page)
@@ -249,7 +251,7 @@ def t_jpx_spaces(browser):
     ctx, page, ev = new(browser, B + 'jpx.html'); ready(page)
     px = page.evaluate("(()=>{const c=document.querySelector('.pdfbook-page canvas');const d=c.getContext('2d').getImageData(Math.floor(c.width*.5),Math.floor(c.height*.41),1,1).data;return [...d]})()")
     decoders = [u.split('/sub/')[1] for u in ev['requests'] if 'wasm' in u]
-    errs = [u for u in ev['console'] if '404' in u or 'Failed to load' in u]
+    errs = [u for u in ev['failed'] if '/media/' in u or '/images/' in u]   # decoder and PDF resources only (N18-6)
     rec('F7 JPEG 2000 via JavaScript fallback, no .wasm requests', 'PASS' if px[:3] != [255, 255, 255] and not any('.wasm' in u for u in decoders) and not errs else 'FAIL',
         {'pixel_rgba': px, 'decoder_requests': decoders, 'load_errors': errs[:3]})
     ctx.close()

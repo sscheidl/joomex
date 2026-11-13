@@ -873,6 +873,12 @@
       }
     ],
     "excluded": [],
-    "note": "License.txt is byte-identical to the archive. derived: processed copy of the source file (sha256 = shipped file, source_sha256 = file in the archive), made with ffmpeg: mixed to mono, silence trimmed, high-pass 150 Hz, low-pass 7 kHz, peak-normalised to -3 dB, 6 ms fade-in, 80 ms fade-out, MP3 64 kbit/s 44.1 kHz without metadata. bookFlip1 (ends in a slap) and all other sounds of the pack are not shipped."
+    "note": "License.txt is byte-identical to the archive. derived: processed copy of the source file (sha256 = shipped file, source_sha256 = file in the archive), made with ffmpeg: mixed to mono, silence trimmed, high-pass 150 Hz, low-pass 7 kHz, peak-normalised to -3 dB, 6 ms fade-in, 80 ms fade-out, MP3 64 kbit/s 44.1 kHz without metadata. bookFlip1 (ends in a slap) and all other sounds of the pack are not shipped.",
+    "official_download": {
+      "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+      "archive_sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+      "License.txt_sha256": "5735dfd72cb64cbbceda4ebc00c380c41ca680edb82ff153aa7c9ab97614c539",
+      "compared": "2026-11-13 by the independent alpha.18 review: bookFlip2.ogg and bookFlip3.ogg byte-identical to the shipped sources; License.txt identical after newline normalisation (CRLF there, LF in the mirror)"
+    }
   }
 }
