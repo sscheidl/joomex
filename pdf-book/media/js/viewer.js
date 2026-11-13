@@ -1,8 +1,10 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.15';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.15';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.15';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.16';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.16';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.16';
 
+// Page sounds: CC0 recordings from Kenney's "RPG Audio" (see THIRD-PARTY-NOTICES.md), trimmed, softened and normalised.
+const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.16',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.16',import.meta.url).href];
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -368,31 +370,31 @@ export class PdfBook {
   unlockSound(){
     if(!this.config.sound||this.disposed)return;
     try{
-      if(!this.audio){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;this.audio=new Context();}
+      if(!this.audio){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;this.audio=new Context();this.loadSounds(this.audio);}
       const ctx=this.audio;if(ctx.state==='running'||ctx.state==='closed')return;
       // Older iOS versions release Web Audio only when something plays inside the gesture: one silent sample.
       const silent=ctx.createBufferSource();silent.buffer=ctx.createBuffer(1,1,ctx.sampleRate);silent.connect(ctx.destination);silent.start(0);
       ctx.resume().catch(()=>{});
     }catch{this.audio=null;}
   }
-  /** Page sound, synthesised (no audio file): band-passed noise with an irregular grain, a quick rise and a long fade. */
-  rustle(){
-    const ctx=this.audio;if(!this.config.sound||!ctx||this.disposed)return;
-    // The first tap may turn the page before the context has finished resuming: wait for it instead of staying silent.
-    if(ctx.state==='running')this.playRustle(ctx);
-    else if(ctx.state!=='closed')ctx.resume().then(()=>{if(ctx.state==='running'&&!this.disposed)this.playRustle(ctx);}).catch(()=>{});
+  /** Loads the page sounds once per book (same origin, only when the sound is switched on and after a user gesture). */
+  loadSounds(ctx){
+    this.sounds=Promise.all(SOUNDS.map(url=>fetch(url,{credentials:'same-origin'})
+      .then(r=>{if(!r.ok)throw new Error(String(r.status));return r.arrayBuffer();})
+      .then(data=>ctx.decodeAudioData(data)).catch(()=>null)))
+      .then(list=>list.filter(Boolean));
   }
-  playRustle(ctx){
-    try{
-      const length=Math.min(.7,Math.max(.18,this.config.duration/1000*.6)),rate=ctx.sampleRate,n=Math.floor(length*rate);
-      const buffer=ctx.createBuffer(1,n,rate),data=buffer.getChannelData(0),decay=Math.exp(-1/(rate*.04));
-      let grain=0;
-      for(let i=0;i<n;i++){const t=i/n;if(Math.random()<240/rate)grain=.5+Math.random()*.8;grain*=decay;data[i]=(Math.random()*2-1)*Math.min(1,t/.08)*Math.pow(1-t,1.6)*(.55+grain);}
-      const source=ctx.createBufferSource(),band=ctx.createBiquadFilter(),high=ctx.createBiquadFilter(),gain=ctx.createGain(),now=ctx.currentTime;
-      source.buffer=buffer;band.type='bandpass';band.Q.value=.7;high.type='highpass';high.frequency.value=500;gain.gain.value=.5;
-      band.frequency.setValueAtTime(1400,now);band.frequency.linearRampToValueAtTime(3800,now+length*.35);band.frequency.linearRampToValueAtTime(2000,now+length);
-      source.connect(band).connect(high).connect(gain).connect(ctx.destination);source.start(now);
-    }catch{/* sound is optional */}
+  /** Page sound: one of the recordings at random, quiet, with a slight variation of pitch and volume. */
+  rustle(){
+    const ctx=this.audio;if(!this.config.sound||!ctx||!this.sounds||this.disposed)return;
+    // The first tap may turn the page before the context has resumed or the files have loaded: wait instead of staying silent.
+    const ready=ctx.state==='running'?Promise.resolve():ctx.resume();
+    Promise.all([this.sounds,ready]).then(([list])=>{
+      if(this.disposed||ctx.state!=='running'||!list.length)return;
+      const source=ctx.createBufferSource(),gain=ctx.createGain();
+      source.buffer=list[Math.floor(Math.random()*list.length)];source.playbackRate.value=.94+Math.random()*.12;
+      gain.gain.value=.32+Math.random()*.08;source.connect(gain).connect(ctx.destination);source.start();
+    }).catch(()=>{/* sound is optional */});
   }
   stopAuto(){clearInterval(this.autoTimer);this.autoTimer=null;this.auto.setAttribute('aria-pressed','false');}
   async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();this.audio?.close().catch(()=>{});this.audio=null;await this.pdf.dispose();}

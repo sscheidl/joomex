@@ -1,7 +1,7 @@
 """Build a deterministic Joomla module ZIP, excluding tests, originals and local tools.
 
 Checks before packing:
-* every vendored PDF.js file matches dependencies.json, and media/vendor contains nothing else
+* every vendored file (PDF.js, page sounds) matches dependencies.json, and media/vendor contains nothing else
 * one version everywhere: manifest <version>, Dispatcher::VERSION, every ?v= suffix in media/js, package.json
 * no dead security options (isEvalSupported does not exist in PDF.js 6.x)
 * no .mjs files (hosts often serve them as text/plain; browsers then refuse the module)
@@ -13,14 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def check_vendor() -> None:
-    lock = json.loads((ROOT / 'dependencies.json').read_text(encoding='utf-8'))['pdfjs']
-    vendor = ROOT / 'media/vendor/pdfjs'
-    listed = {entry.get('shipped_as', entry['path']) for entry in lock['files']}
-    for entry in lock['files']:
-        path = vendor / entry.get('shipped_as', entry['path'])
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], path
-    present = {p.relative_to(vendor).as_posix() for p in vendor.rglob('*') if p.is_file()}
-    assert present == listed, f'vendor files not in lock: {sorted(present - listed)}; missing: {sorted(listed - present)}'
+    locks = json.loads((ROOT / 'dependencies.json').read_text(encoding='utf-8'))
+    dirs = {p.name for p in (ROOT / 'media/vendor').iterdir()}
+    assert dirs == set(locks), f'media/vendor folders without lock entry: {sorted(dirs - set(locks))}; missing: {sorted(set(locks) - dirs)}'
+    for name, lock in locks.items():
+        vendor = ROOT / 'media/vendor' / name
+        listed = {entry.get('shipped_as', entry['path']) for entry in lock['files']}
+        for entry in lock['files']:
+            path = vendor / entry.get('shipped_as', entry['path'])
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == entry['sha256'], path
+        present = {p.relative_to(vendor).as_posix() for p in vendor.rglob('*') if p.is_file()}
+        assert present == listed, f'{name}: vendor files not in lock: {sorted(present - listed)}; missing: {sorted(listed - present)}'
 
 
 def check_version() -> tuple[str, tuple[int, int, int]]:

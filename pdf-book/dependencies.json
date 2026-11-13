@@ -845,5 +845,34 @@
       }
     ],
     "note": "files: shipped subset of the official archive, byte-identical; shipped_as: renamed .mjs -> .js because many servers deliver .mjs as text/plain and browsers refuse such module scripts; excluded: files of the same archive that are deliberately not shipped."
+  },
+  "kenney-rpg-audio": {
+    "version": "RPG Audio (kenney.nl), pack as mirrored on 2026-11-13",
+    "source": "https://kenney.nl/assets/rpg-audio; archive taken unmodified from https://github.com/sigco3111/assets-audio (commit eb369bc, file kenney_rpgaudio.zip)",
+    "archive_sha256": "4aa23e821281bdeeea8105511e47e08281f37141328b09405fcd512ecdb44786",
+    "license": "CC0-1.0",
+    "files": [
+      {
+        "path": "kenney_rpgaudio/License.txt",
+        "sha256": "842c42cc1942963f6fcdc18fe57e9e0631e8a4936f9803688e8152e830088eb9",
+        "shipped_as": "License.txt"
+      },
+      {
+        "path": "kenney_rpgaudio/Audio/bookFlip2.ogg",
+        "source_sha256": "3409042acbfaebc24c1a6327dc073e36f9250841712e96c5040da566a97df73c",
+        "sha256": "fb3fc1733cbcb1c0efb169d734e9d4c9463129c0f3d8a982f70f1d00bac48939",
+        "shipped_as": "page-turn-1.mp3",
+        "derived": true
+      },
+      {
+        "path": "kenney_rpgaudio/Audio/bookFlip3.ogg",
+        "source_sha256": "c85db5dceb3f1df073e960630277eaa88a5afda0477c1ddd68dad707621767be",
+        "sha256": "95d4a0ceb92f5629de82c636d95df8bd49a92515b60ca8ed25bf790e571fe6c1",
+        "shipped_as": "page-turn-2.mp3",
+        "derived": true
+      }
+    ],
+    "excluded": [],
+    "note": "License.txt is byte-identical to the archive. derived: processed copy of the source file (sha256 = shipped file, source_sha256 = file in the archive), made with ffmpeg: mixed to mono, silence trimmed, high-pass 150 Hz, low-pass 7 kHz, peak-normalised to -3 dB, 6 ms fade-in, 80 ms fade-out, MP3 64 kbit/s 44.1 kHz without metadata. bookFlip1 (ends in a slap) and all other sounds of the pack are not shipped."
   }
 }

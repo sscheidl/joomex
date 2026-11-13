@@ -1,5 +1,17 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.16 (2026-11-13)
+
+Owner finding from the live test of alpha.15: the synthesised page sound sounded like a shot in an 8-bit game. Wanted: a quiet, discreet page turn of a book or magazine.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Page sound from recordings | The synthesis is removed. Two short CC0 recordings of a turning book page (Kenney, "RPG Audio": `bookFlip2`, `bookFlip3`; the third flip ends in a slap and was left out) are trimmed, filtered (150 Hz–7 kHz), normalised, faded and shipped as mono MP3 (3.3 KB and 1.9 KB, 0.37 s and 0.18 s). Each turn plays one of them at random at about a third of full volume, with ±6 % pitch and slight volume variation. The files are fetched from the module's own media folder only when the sound is on and after the first user gesture; the first turn waits for loading instead of staying silent. Origin, licence and processing: `THIRD-PARTY-NOTICES.md`; the files are third-party material and therefore live under `media/vendor/kenney-rpg-audio/` with archive, source and shipped hashes in `dependencies.json` (RULES.md). | `media/vendor/kenney-rpg-audio/`, `dependencies.json`, `media/js/viewer.js`, `module/mod_pdfbook.xml`, `THIRD-PARTY-NOTICES.md` |
+| Build check | `build.py` checked only the PDF.js lock; it now checks every lock entry in `dependencies.json` and that `media/vendor` holds no folder without one. | `scripts/build.py` |
+
+Measured on 2026-11-13 (headless Chrome 153, touch emulation, `--autoplay-policy=user-gesture-required`): with sound on, no audio request before the first tap, then both files load from `media/vendor/kenney-rpg-audio/` (HTTP 200, `audio/mpeg`) and each of four turns starts one of the two recordings (rates 0.95–1.06); with sound off no audio request and no playback; no page errors. `build.py` and the generic publication check pass (0 findings). Not run: listening on real speakers, iOS, Android, Firefox, Safari.
+
+
 ## 0.1.0-alpha.15 (2026-11-13)
 
 Fixes the developer findings D1 and D2 of the [review request for alpha.14](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.14.md), confirmed by the owner.

@@ -2,7 +2,7 @@
 <extension type="module" client="site" method="upgrade">
   <name>PDF Book (Prototyp)</name>
   <author>Joomex contributors</author>
-  <version>0.1.0-alpha.15</version>
+  <version>0.1.0-alpha.16</version>
   <creationDate>2026-11-13</creationDate>
   <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
   <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
@@ -24,7 +24,7 @@
     <field name="shadow_density" type="number" label="Schatten: Dichte in Prozent (0–60)" description="0 = kein Schatten. Standard 22." default="22" min="0" max="60" step="1" filter="integer" showon="renderer:webgl" />
     <field name="shadow_softness" type="number" label="Schatten: Weichheit (0–100)" description="0 = harte Kante, 100 = sehr weicher Rand. Standard 50." default="50" min="0" max="100" step="5" filter="integer" showon="renderer:webgl" />
     <field name="shadow_width" type="number" label="Schatten: Breite (0–100)" description="Wie weit der Schatten neben das angehobene Blatt fällt. Standard 50." default="50" min="0" max="100" step="5" filter="integer" showon="renderer:webgl" />
-    <field name="sound" type="radio" label="Blättergeräusch" description="Leises Papiergeräusch beim Seitenwechsel, im Browser erzeugt (keine Audiodatei). Browser erlauben Ton erst nach dem ersten Klick oder Tastendruck im Buch." default="0" class="btn-group btn-group-yesno"><option value="1">JON</option><option value="0">JOFF</option></field>
+    <field name="sound" type="radio" label="Blättergeräusch" description="Leises Umblättergeräusch beim Seitenwechsel (zwei kurze Aufnahmen, zusammen etwa 5 KB, vom eigenen Server; erst geladen, wenn der Ton eingeschaltet ist). Browser erlauben Ton erst nach dem ersten Klick, Tippen oder Tastendruck im Buch; ein lautlos gestelltes Handy bleibt stumm." default="0" class="btn-group btn-group-yesno"><option value="1">JON</option><option value="0">JOFF</option></field>
     <field name="show_heading" type="radio" label="Titelzeile anzeigen" description="Titel und Seitenanzeige über dem Buch. Titelzeile und Navigationsleiste aus = Kinomodus." default="1" class="btn-group btn-group-yesno"><option value="1">JSHOW</option><option value="0">JHIDE</option></field>
     <field name="show_toolbar" type="radio" label="Navigationsleiste anzeigen" description="Ohne Leiste wird per Klick, Wischen und Pfeiltasten geblättert; Seitenübersicht, Zoom, Vollbild und PDF-Öffnen entfallen dann." default="1" class="btn-group btn-group-yesno"><option value="1">JSHOW</option><option value="0">JHIDE</option></field>
     <field name="autoplay" type="radio" label="Automatisch blättern beim Laden" default="0" class="btn-group btn-group-yesno"><option value="1">JYES</option><option value="0">JNO</option></field>
