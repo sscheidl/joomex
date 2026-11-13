@@ -1,5 +1,19 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.10 (2026-11-13)
+
+Owner request after the live test of alpha.9: two more page-change modes; the self-shadow switch is dropped.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Mode "Klappen" (flip-board fold) | The spread, or the single page, is split in the middle; one half folds over around the middle like a rigid board, with perspective, darkening of the board while it stands and a shade on the half it uncovers and the half it covers. Forward folds the right half to the left, backward the left half to the right (mirrored for right-to-left books). CSS 3D only: no WebGL, works in single-page view. | `media/js/viewer.js`, `media/css/viewer.css` |
+| Mode "Überblenden" (cross-fade) | The new pages fade in under the old ones, then the old ones fade out; blank page slots change without a hard cut. Works in single-page view. | `media/js/viewer.js` |
+| Settings | "Blätteranimation" offers 3D-Blättern, Klappen, Schieben, Überblenden, Ohne Animation; "Tempo" applies to all four animations. Stored values of earlier versions stay valid. Like "Schieben", both new modes animate only when the view (single or double) stays the same, and not at all with reduced motion. | `module/mod_pdfbook.xml`, `media/js/model.js` |
+| Self-shadow switch removed | The alpha.9 test switch is gone. Live result: the self-shadow was visible only frame by frame, so it stays off; the shader lookup remains. | `module/mod_pdfbook.xml`, `module/src/Dispatcher/Dispatcher.php`, `media/js/model.js`, `media/js/viewer.js`, `media/js/turn.js` |
+
+Not tested: no unit, PHP, dispatcher or browser runs. Only syntax checks and the build checks of `scripts/build.py` ran.
+
+
 ## 0.1.0-alpha.9 (2026-11-13)
 
 Owner request: test version with a back-end switch for the self-shadow of the turning sheet.

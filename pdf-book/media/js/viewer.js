@@ -1,8 +1,9 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.9';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.9';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.9';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.10';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.10';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.10';
 
+const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
 const MODE_LABEL={auto:'Seitenansicht: automatisch',single:'Seitenansicht: Einzelseite',double:'Seitenansicht: Doppelseite'};
@@ -118,8 +119,8 @@ export class PdfBook {
       const motion=animate&&!this.pending&&previous.length>0&&target!==oldPage&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
       const direction=(target>oldPage?1:-1)*(this.config.direction==='rtl'?-1:1);
       this.single=single;this.page=target;this.items=items;
-      if(motion&&kind==='slide'&&single===wasSingle){
-        await this.slide(items,direction);
+      if(motion&&(kind==='slide'||kind==='flip'||kind==='fade')&&single===wasSingle){
+        await (kind==='slide'?this.slide(items,direction):kind==='flip'?this.flip(items,direction):this.fade(items));
         if(this.disposed)return;
       }else if(motion&&kind==='webgl'&&!single&&!wasSingle&&previous.length===2&&this.turn?.available){
         const from=direction>0?1:0,to=1-from;
@@ -127,14 +128,14 @@ export class PdfBook {
         // the old one; the sheet carries the old page on its front and the new page on its back.
         const during=[];during[from]=items[from];during[to]=previous[to];
         this.mountPages(during,false);
-        const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8,selfShadow:c.selfShadow?1:0};
+        const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8};
         await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,c.duration,this.spread,look);
         if(this.disposed)return;
         this.mountPages(items);
       }else this.mountPages(items);
       if(this.disposed)return;
       this.status.textContent=statusText(numbers);
-      this.el.dataset.state='ready';this.el.dataset.page=String(target);this.el.dataset.renderer=kind==='slide'?'slide':this.turn?.available&&!single?'webgl':'flat';
+      this.el.dataset.state='ready';this.el.dataset.page=String(target);this.el.dataset.renderer=kind==='slide'||kind==='flip'||kind==='fade'?kind:this.turn?.available&&!single?'webgl':'flat';
     }catch(error){if(!this.disposed)this.fail(error instanceof ViewerError?error:new ViewerError('render',error));}
     finally{
       this.busy=false;this.inflight=null;this.el.removeAttribute('aria-busy');
@@ -155,6 +156,67 @@ export class PdfBook {
       await Promise.all([
         old.animate([{transform:'translateX(0)'},{transform:`translateX(${-direction*100}%)`}],options).finished,
         fresh.animate([{transform:`translateX(${direction*100}%)`},{transform:'translateX(0)'}],options).finished,
+      ]);
+    }catch{/* cancelled: fall through to the final state */}
+    old.remove();
+    if(fresh.parentNode===this.spread){this.spread.append(...fresh.children);fresh.remove();}
+    this.spread.classList.remove('is-sliding');
+  }
+  /**
+   * Flip-board fold: the spread (or the single page) is split in the middle and one half folds over like a rigid
+   * board, with perspective and shading. CSS 3D only, so it needs no WebGL and works for single pages too.
+   */
+  async flip(items,direction){
+    const forward=direction>0,turn=forward?-180:180;
+    const old=make('div','pdfbook-slide');old.append(...this.spread.children);
+    const oldCopy=copyLayer(old);
+    this.mountPages(items);
+    const fresh=make('div','pdfbook-slide');fresh.append(...this.spread.children);
+    const freshCopy=copyLayer(fresh);
+    // The half the board leaves shows the new pages at once; the half it lands on keeps the old ones until covered.
+    const left='inset(0 50% 0 0)',right='inset(0 0 0 50%)';
+    old.style.clipPath=forward?left:right;fresh.style.clipPath=forward?right:left;
+    const shade=(side)=>{const s=make('div','pdfbook-fold-shade');s.style.left=side==='left'?'0':'50%';return s;};
+    // Empty page slots (beside the cover) stay transparent: no shade over them.
+    const blank=(layer,rightHalf)=>{const pages=layer.children;return !!pages[pages.length>1&&rightHalf?1:0]?.classList.contains('is-blank');};
+    const revealed=shade(forward?'right':'left'),covered=shade(forward?'left':'right');
+    revealed.hidden=blank(fresh,forward);covered.hidden=blank(old,!forward);
+    const board=make('div','pdfbook-fold');board.style.left=forward?'50%':'0';board.style.transformOrigin=forward?'left center':'right center';
+    const face=(layer,showRight,back)=>{
+      const f=make('div',`pdfbook-fold-face${back?' is-back':''}`);
+      layer.classList.add('pdfbook-fold-pages');layer.style.left=showRight?'-100%':'0';
+      const dark=make('div','pdfbook-fold-dark');dark.hidden=blank(layer,showRight);f.append(layer,dark);board.append(f);return dark;
+    };
+    // Front: the old half that lifts; back: the new half that comes down on the other side.
+    const frontDark=face(oldCopy,forward,false),backDark=face(freshCopy,!forward,true);
+    this.spread.append(old,fresh,revealed,covered,board);
+    this.spread.classList.add('is-folding');this.stage.classList.add('is-folding');
+    this.spread.style.perspective=`${Math.round(this.spread.offsetWidth*3.5)}px`;
+    const options={duration:this.config.duration,easing:'cubic-bezier(.45,0,.25,1)'};
+    try{
+      await Promise.all([
+        board.animate([{transform:'rotateY(0deg)'},{transform:`rotateY(${turn/2}deg)`},{transform:`rotateY(${turn}deg)`}],options).finished,
+        frontDark.animate([{opacity:0},{opacity:.35},{opacity:.35}],options).finished,
+        backDark.animate([{opacity:.35},{opacity:.35},{opacity:0}],options).finished,
+        revealed.animate([{opacity:.3},{opacity:0},{opacity:0}],options).finished,
+        covered.animate([{opacity:0},{opacity:0},{opacity:.3}],options).finished,
+      ]);
+    }catch{/* cancelled: fall through to the final state */}
+    old.remove();revealed.remove();covered.remove();board.remove();
+    if(fresh.parentNode===this.spread){fresh.style.clipPath='';this.spread.append(...fresh.children);fresh.remove();}
+    this.spread.classList.remove('is-folding');this.stage.classList.remove('is-folding');this.spread.style.perspective='';
+  }
+  /** Cross-fade: the new pages fade in under the old ones, then the old ones fade out. Works for single pages too. */
+  async fade(items){
+    const old=make('div','pdfbook-slide');old.append(...this.spread.children);
+    this.mountPages(items);
+    const fresh=make('div','pdfbook-slide');fresh.append(...this.spread.children);
+    this.spread.append(fresh,old);this.spread.classList.add('is-sliding');
+    const options={duration:this.config.duration,easing:'ease-in-out'};
+    try{
+      await Promise.all([
+        fresh.animate([{opacity:0},{opacity:1,offset:.35},{opacity:1}],options).finished,
+        old.animate([{opacity:1},{opacity:1,offset:.15},{opacity:0}],options).finished,
       ]);
     }catch{/* cancelled: fall through to the final state */}
     old.remove();

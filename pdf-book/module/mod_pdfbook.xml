@@ -2,7 +2,7 @@
 <extension type="module" client="site" method="upgrade">
   <name>PDF Book (Prototyp)</name>
   <author>Joomex contributors</author>
-  <version>0.1.0-alpha.9</version>
+  <version>0.1.0-alpha.10</version>
   <creationDate>2026-11-13</creationDate>
   <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
   <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
@@ -15,14 +15,13 @@
     <field name="display" type="list" label="Darstellung" default="inline"><option value="inline">Eingebettet</option><option value="cover">Schaltfläche mit Dialog</option></field>
     <field name="page_mode" type="list" label="Seitenansicht" default="auto"><option value="auto">Automatisch</option><option value="single">Einzelseite</option><option value="double">Doppelseite</option></field>
     <field name="direction" type="list" label="Leserichtung" default="ltr"><option value="ltr">Links nach rechts</option><option value="rtl">Rechts nach links</option></field>
-    <field name="renderer" type="list" label="Blätteranimation" description="3D-Blättern braucht WebGL und die Doppelseitenansicht; sonst wird ohne Animation gewechselt. Schieben funktioniert überall, auch bei Einzelseiten." default="webgl"><option value="webgl">3D-Blättern</option><option value="slide">Schieben</option><option value="flat">Ohne Animation</option></field>
+    <field name="renderer" type="list" label="Blätteranimation" description="3D-Blättern braucht WebGL und die Doppelseitenansicht; sonst wird ohne Animation gewechselt. Klappen, Schieben und Überblenden funktionieren überall, auch bei Einzelseiten. Klappen: die Seite wird in der Mitte geteilt und eine Hälfte klappt um." default="webgl"><option value="webgl">3D-Blättern</option><option value="flip">Klappen</option><option value="slide">Schieben</option><option value="fade">Überblenden</option><option value="flat">Ohne Animation</option></field>
     <field name="height" type="number" label="Höhe in Pixeln" default="500" min="320" max="1000" filter="integer" />
-    <field name="duration" type="number" label="Tempo: Dauer des Blätterns in Millisekunden" description="150 bis 1800, Standard 800." default="800" min="150" max="1800" step="50" filter="integer" showon="renderer:webgl,slide" />
+    <field name="duration" type="number" label="Tempo: Dauer des Blätterns in Millisekunden" description="150 bis 1800, Standard 800." default="800" min="150" max="1800" step="50" filter="integer" showon="renderer:webgl,flip,slide,fade" />
     <field name="curvature" type="number" label="Wölbung des Papiers (0–100)" description="0 = steifes Blatt, 100 = stark gewölbt. Standard 50." default="50" min="0" max="100" step="5" filter="integer" showon="renderer:webgl" />
     <field name="shadow_density" type="number" label="Schatten: Dichte in Prozent (0–60)" description="0 = kein Schatten. Standard 22." default="22" min="0" max="60" step="1" filter="integer" showon="renderer:webgl" />
     <field name="shadow_softness" type="number" label="Schatten: Weichheit (0–100)" description="0 = harte Kante, 100 = sehr weicher Rand. Standard 50." default="50" min="0" max="100" step="5" filter="integer" showon="renderer:webgl" />
     <field name="shadow_width" type="number" label="Schatten: Breite (0–100)" description="Wie weit der Schatten neben das angehobene Blatt fällt. Standard 50." default="50" min="0" max="100" step="5" filter="integer" showon="renderer:webgl" />
-    <field name="self_shadow" type="radio" label="Eigenschatten des Blatts (Test)" description="Das Blatt beschattet sich selbst, wo es sich über sich wölbt. Testfunktion: kann nahe der freien Kante ein Band zeigen. Wirkt nur, wenn die Schattendichte über 0 liegt. Standard: aus." default="0" showon="renderer:webgl"><option value="1">JON</option><option value="0">JOFF</option></field>
     <field name="background" type="color" label="Hintergrund" default="#f2f2f2" />
     <field name="download" type="radio" label="PDF-Öffnen anzeigen" default="1"><option value="1">JYES</option><option value="0">JNO</option></field>
   </fieldset></fields></config>
