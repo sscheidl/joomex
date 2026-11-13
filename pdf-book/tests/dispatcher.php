@@ -51,6 +51,15 @@ check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c[
 [$data] = run(['pdf' => 'images/test-book.pdf', 'renderer' => 'slide', 'duration' => 99999, 'curvature' => -3, 'shadow_density' => 100, 'shadow_softness' => 0, 'shadow_width' => 250], null);
 $c = $data['bookConfig'];
 check([$c['renderer'], $c['duration'], $c['curvature'], $c['shadowDensity'], $c['shadowSoftness'], $c['shadowWidth']] === ['slide', 1800, 0, 60, 0, 100], 'animation clamping ' . json_encode($c));
+// Empty, non-numeric and unknown values fall back to the defaults, as in normalizeConfig() (review section 7, alpha.15).
+[$data] = run(['pdf' => 'images/test-book.pdf', 'height' => '', 'duration' => 'abc', 'autoplay_interval' => '', 'renderer' => 'evil',
+    'page_mode' => 'triple', 'direction' => 'up', 'flip_axis' => 'diagonal', 'background' => 'red;x:y', 'curvature' => ' '], null);
+$c = $data['bookConfig'];
+check([$c['height'], $c['duration'], $c['autoplayInterval'], $c['renderer'], $c['mode'], $c['direction'], $c['flipAxis'], $c['background'], $c['curvature']]
+    === [500, 800, 3, 'webgl', 'auto', 'ltr', 'auto', '#f2f2f2', 50], 'empty and unknown values use defaults ' . json_encode($c));
+[$data] = run(['pdf' => 'images/test-book.pdf', 'renderer' => 'fade', 'flip_axis' => 'vertical', 'page_mode' => 'double', 'background' => '#A0b1C2'], null);
+$c = $data['bookConfig'];
+check([$c['renderer'], $c['flipAxis'], $c['mode'], $c['background']] === ['fade', 'vertical', 'double', '#A0b1C2'], 'valid choices kept ' . json_encode($c));
 Joomla\CMS\Uri\Uri::$root = 'http://proxy.internal/';
 [$data] = run(['pdf' => 'images/test-book.pdf'], null);
 check($data['bookConfig']['base'] === '/', 'F8 root install base');

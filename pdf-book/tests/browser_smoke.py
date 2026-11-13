@@ -1,12 +1,15 @@
 from pathlib import Path
-import json
+import json, os
 from playwright.sync_api import sync_playwright, expect
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'test-results';OUT.mkdir(exist_ok=True)
 
 def main():
     with sync_playwright() as p:
-        browser=p.chromium.launch(channel='msedge',headless=True)
+        # REVIEW_BROWSER=msedge (default), chromium (Playwright's Chromium or REVIEW_CHROME=<path>) or firefox
+        kind=os.environ.get('REVIEW_BROWSER','msedge');exe=os.environ.get('REVIEW_CHROME')
+        browser=(p.firefox.launch(headless=True) if kind=='firefox' else p.chromium.launch(channel='msedge',headless=True) if kind=='msedge'
+                 else p.chromium.launch(headless=True,**({'executable_path':exe} if exe else {})))
         page=browser.new_page(viewport={'width':1280,'height':1000})
         errors=[]; requests=[]
         page.on('pageerror',lambda e:errors.append(str(e)))

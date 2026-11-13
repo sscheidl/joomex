@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.17';
+    public const VERSION = '0.1.0-alpha.18';
 
     protected function getLayoutData(): array
     {
@@ -21,31 +21,40 @@ final class Dispatcher extends AbstractModuleDispatcher
         $data['bookConfig'] = [];
         try {
             $source = Source::resolve((string) $params->get('pdf', ''), JPATH_ROOT);
+            // Same rules as normalizeConfig() in media/js/model.js: an empty or non-numeric value means the default,
+            // a number is clamped, and a choice outside its list falls back to the first (default) entry.
+            $int = static function ($value, int $default, int $min, int $max): int {
+                return is_numeric($value) ? max($min, min($max, (int) $value)) : $default;
+            };
+            $enum = static function ($value, array $allowed): string {
+                return in_array((string) $value, $allowed, true) ? (string) $value : $allowed[0];
+            };
+            $color = (string) $params->get('background', '#f2f2f2');
             $data['bookConfig'] = [
                 'src' => $source,
                 // Root-relative on purpose: the viewer resolves it against the page origin (no Host-header/proxy scheme dependency).
                 'base' => Uri::root(true) . '/',
                 'title' => (string) $params->get('book_title', $this->module->title),
-                'mode' => (string) $params->get('page_mode', 'auto'),
-                'direction' => (string) $params->get('direction', 'ltr'),
-                'height' => max(320, min(1000, (int) $params->get('height', 500))),
-                'duration' => max(150, min(1800, (int) $params->get('duration', 800))),
-                'background' => (string) $params->get('background', '#f2f2f2'),
+                'mode' => $enum($params->get('page_mode', 'auto'), ['auto', 'single', 'double']),
+                'direction' => $enum($params->get('direction', 'ltr'), ['ltr', 'rtl']),
+                'height' => $int($params->get('height', 500), 500, 320, 1000),
+                'duration' => $int($params->get('duration', 800), 800, 150, 1800),
+                'background' => preg_match('/^#[0-9a-f]{6}$/i', $color) ? $color : '#f2f2f2',
                 'download' => (bool) $params->get('download', 1),
-                'renderer' => (string) $params->get('renderer', 'webgl'),
+                'renderer' => $enum($params->get('renderer', 'webgl'), ['webgl', 'flip', 'slide', 'fade', 'flat']),
                 // Look of the 3D turn; the viewer clamps these again.
-                'curvature' => max(0, min(100, (int) $params->get('curvature', 50))),
-                'shadowDensity' => max(0, min(60, (int) $params->get('shadow_density', 22))),
-                'shadowSoftness' => max(0, min(100, (int) $params->get('shadow_softness', 50))),
-                'shadowWidth' => max(0, min(100, (int) $params->get('shadow_width', 50))),
-                'flipAxis' => (string) $params->get('flip_axis', 'auto'),
+                'curvature' => $int($params->get('curvature', 50), 50, 0, 100),
+                'shadowDensity' => $int($params->get('shadow_density', 22), 22, 0, 60),
+                'shadowSoftness' => $int($params->get('shadow_softness', 50), 50, 0, 100),
+                'shadowWidth' => $int($params->get('shadow_width', 50), 50, 0, 100),
+                'flipAxis' => $enum($params->get('flip_axis', 'auto'), ['auto', 'horizontal', 'vertical']),
                 'autoHeight' => (int) $params->get('auto_height', 0) === 1,
                 'showHeading' => (int) $params->get('show_heading', 1) === 1,
                 'showToolbar' => (int) $params->get('show_toolbar', 1) === 1,
                 'showFrame' => (int) $params->get('show_frame', 1) === 1,
                 'sound' => (int) $params->get('sound', 0) === 1,
                 'autoplay' => (int) $params->get('autoplay', 0) === 1,
-                'autoplayInterval' => max(1, min(60, (int) $params->get('autoplay_interval', 3))),
+                'autoplayInterval' => $int($params->get('autoplay_interval', 3), 3, 1, 60),
                 'autoplayLoop' => (int) $params->get('autoplay_loop', 0) === 1,
             ];
             $wa = $this->getApplication()->getDocument()->getWebAssetManager();

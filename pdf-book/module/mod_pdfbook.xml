@@ -2,7 +2,7 @@
 <extension type="module" client="site" method="upgrade">
   <name>PDF Book (Prototyp)</name>
   <author>Joomex contributors</author>
-  <version>0.1.0-alpha.17</version>
+  <version>0.1.0-alpha.18</version>
   <creationDate>2026-11-13</creationDate>
   <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
   <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
@@ -32,6 +32,6 @@
     <field name="autoplay_loop" type="radio" label="Automatisch blättern: am Ende von vorne" default="0" class="btn-group btn-group-yesno"><option value="1">JYES</option><option value="0">JNO</option></field>
     <field name="show_frame" type="radio" label="Rahmen" description="Dünne Umrandung mit abgerundeten Ecken um das ganze Modul. Aus: keine Umrandung, eckig; die Hintergrundfarbe bleibt." default="1" class="btn-group btn-group-yesno"><option value="1">JON</option><option value="0">JOFF</option></field>
     <field name="background" type="color" label="Hintergrund" default="#f2f2f2" />
-    <field name="download" type="radio" label="PDF-Öffnen anzeigen" default="1" class="btn-group btn-group-yesno"><option value="1">JYES</option><option value="0">JNO</option></field>
+    <field name="download" type="radio" label="PDF-Öffnen anzeigen" description="Blendet nur den Knopf aus. Das PDF bleibt unter seiner Adresse öffentlich abrufbar; das ist kein Zugriffsschutz. Vertrauliche PDFs gehören nicht in den öffentlichen Medienordner." default="1" class="btn-group btn-group-yesno"><option value="1">JYES</option><option value="0">JNO</option></field>
   </fieldset></fields></config>
 </extension>

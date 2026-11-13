@@ -1,5 +1,11 @@
-"""Independent browser review tests for PDF Book 0.1.0-alpha.2 (Playwright + headless Edge)."""
+"""Independent browser review tests for PDF Book (written for 0.1.0-alpha.2, maintained since; Playwright).
+
+Browser: REVIEW_BROWSER=msedge (default, installed Edge), chromium (Playwright's Chromium, or REVIEW_CHROME=<path>)
+or firefox. Results are PASS, FAIL, ERROR, INFO or SKIP; SKIP marks a check the environment cannot run (for example
+WebGL context loss without WebGL) and is not a pass.
+"""
 import json, os, sys, time, traceback
+from importlib.metadata import version as package_version
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -8,6 +14,28 @@ OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 ONLY = set(sys.argv[2:])
 B = f"http://127.0.0.1:{os.environ.get('REVIEW_PORT', '8766')}/sub/page/"
 results = []
+KIND = os.environ.get('REVIEW_BROWSER', 'msedge')
+
+def launch(pw, **kw):
+    """The configured browser; kw adds launch options (args for Chromium/Edge, firefox_user_prefs for Firefox)."""
+    if KIND == 'firefox':
+        return pw.firefox.launch(headless=True, **{k: v for k, v in kw.items() if k == 'firefox_user_prefs'})
+    opts = {k: v for k, v in kw.items() if k == 'args'}
+    if KIND == 'msedge':
+        return pw.chromium.launch(channel='msedge', headless=True, **opts)
+    exe = os.environ.get('REVIEW_CHROME')
+    return pw.chromium.launch(headless=True, **({'executable_path': exe} if exe else {}), **opts)
+
+def settle_book(page, sel='[data-pdfbook]', timeout=10000):
+    """Waits until the book is idle and stays idle (queued requests make it busy again), instead of a fixed delay."""
+    deadline = time.time() + timeout / 1000; last = None
+    while time.time() < deadline:
+        page.wait_for_function(f"()=>!document.querySelector('{sel}').hasAttribute('aria-busy')", timeout=timeout)
+        page.wait_for_timeout(350)
+        now = page.locator(sel).first.get_attribute('data-page')
+        if now == last and not page.locator(sel).first.get_attribute('aria-busy'): return now
+        last = now
+    return last
 
 def rec(test, status, detail):
     results.append({'test': test, 'status': status, 'detail': detail}); print(f'[{status}] {test}: {detail}', flush=True)
@@ -80,7 +108,8 @@ def t_outline(browser):
     page.get_by_role('button', name='Inhaltsverzeichnis', exact=True).click(); page.wait_for_timeout(800)
     n = page.locator('.pdfbook-outline').count()
     first = page.evaluate("[...document.querySelectorAll('.pdfbook-outline')].slice(0,4).map(b=>b.textContent)")
-    inj = page.evaluate("({img:document.querySelectorAll('.pdfbook img, .pdfbook svg').length,f:['__OUTLINE__','__OUTLINE2__','__OUTLINE3__','__INFO__'].filter(k=>globalThis[k])})")
+    # Only containers that show PDF data count; the toolbar's own SVG icons are not injected content.
+    inj = page.evaluate("({img:document.querySelectorAll('.pdfbook-sidebar img, .pdfbook-sidebar svg, .pdfbook-heading img, .pdfbook-heading svg, .pdfbook-status img, .pdfbook-status svg').length,f:['__OUTLINE__','__OUTLINE2__','__OUTLINE3__','__INFO__'].filter(k=>globalThis[k])})")
     # invalid destination entry (dest page 999) is the last one; may be beyond the 300 cap
     for i in range(3):
         page.get_by_role('button', name='Inhaltsverzeichnis', exact=True).click(); page.wait_for_timeout(100)
@@ -129,8 +158,8 @@ def t_lost_input(browser):
     page.wait_for_function("()=>!document.querySelector('[data-pdfbook]').hasAttribute('aria-busy')", timeout=10000); page.wait_for_timeout(300)
     two_clicks = el.get_attribute('data-page')
     # keyboard: two quick ArrowRight
-    page.locator('.pdfbook-stage').focus(); page.keyboard.press('ArrowRight'); page.wait_for_timeout(50); page.keyboard.press('ArrowRight'); page.wait_for_timeout(1500)
-    keys = el.get_attribute('data-page')
+    page.locator('.pdfbook-stage').focus(); page.keyboard.press('ArrowRight'); page.wait_for_timeout(50); page.keyboard.press('ArrowRight')
+    keys = settle_book(page)
     # resize during animation
     page.locator('.pdfbook-stage').focus(); page.keyboard.press('Home'); page.wait_for_timeout(800)
     before = page.evaluate("document.querySelector('.pdfbook-spread').getBoundingClientRect().width")
@@ -301,6 +330,14 @@ def t_slide_look(browser):
 
 def t_webgl(browser, pw):
     ctx, page, ev = new(browser, B + 'eight.html'); ready(page)
+    if not page.evaluate("!!document.createElement('canvas').getContext('webgl')"):
+        rec('WebGL context lost during animation', 'SKIP', 'no WebGL in this browser environment; the flat fallback is checked below')
+        ctx.close()
+    else:
+        t_webgl_lost(page, ev); ctx.close()
+    t_webgl_rest(browser, pw)
+
+def t_webgl_lost(page, ev):
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(150)
     page.evaluate("document.querySelector('.pdfbook-turn').getContext('webgl').getExtension('WEBGL_lose_context').loseContext()")
     page.wait_for_timeout(1500)
@@ -308,9 +345,9 @@ def t_webgl(browser, pw):
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(1500)
     s1['page_after_next'] = page.locator('[data-pdfbook]').get_attribute('data-page'); s1['renderer_after'] = page.locator('[data-pdfbook]').get_attribute('data-renderer')
     rec('WebGL context lost during animation', 'PASS' if s1['page'] == '2' and s1['page_after_next'] == '4' and not ev['errors'] else 'FAIL', {**s1, 'errors': ev['errors']})
-    ctx.close()
-    b2 = (pw.firefox.launch(headless=True, firefox_user_prefs={'webgl.disabled': True}) if os.environ.get('REVIEW_BROWSER') == 'firefox'
-          else pw.chromium.launch(channel='msedge', headless=True, args=['--disable-webgl', '--disable-3d-apis']))
+
+def t_webgl_rest(browser, pw):
+    b2 = launch(pw, firefox_user_prefs={'webgl.disabled': True}, args=['--disable-webgl', '--disable-3d-apis'])
     ctx, page, ev = new(b2, B + 'eight.html'); ready(page)
     page.locator('[aria-label="Nächste Seite"]').click(); page.wait_for_timeout(1200)
     rec('WebGL disabled in browser', 'PASS' if page.locator('[data-pdfbook]').get_attribute('data-page') == '2' and not ev['errors'] else 'FAIL',
@@ -401,9 +438,9 @@ def t_csp(browser):
     rec('CSP variants (no bypass)', 'INFO', out)
 
 with sync_playwright() as pw:
-    FIREFOX = os.environ.get('REVIEW_BROWSER', 'msedge') == 'firefox'
-    browser = pw.firefox.launch(headless=True) if FIREFOX else pw.chromium.launch(channel='msedge', headless=True)
-    rec('environment', 'INFO', {'browser': ('firefox ' if FIREFOX else 'msedge ') + browser.version, 'playwright': '1.65.0', 'date': time.strftime('%Y-%m-%d %H:%M')})
+    browser = launch(pw)
+    rec('environment', 'INFO', {'browser': f'{KIND} {browser.version}', 'playwright': package_version('playwright'),
+                                'date': time.strftime('%Y-%m-%d %H:%M')})
     tests = [('two', t_two_modules), ('actions', t_actions), ('outline', t_outline), ('errors', t_errors), ('lost', t_lost_input), ('resize2', t_resize2), ('mode', t_mode_swipe), ('jpx', t_jpx_spaces), ('lowdialog', t_low_dialog), ('clickkeys', t_click_keys), ('slidelook', t_slide_look), ('renderfail', t_render_failure), ('zoom', t_zoom),
              ('dialog', t_dialog_lifecycle), ('webgl', lambda b: t_webgl(b, pw)), ('autoplay', t_autoplay), ('rtl', t_keyboard_rtl), ('widths', t_widths),
              ('resources', t_resources), ('csp', t_csp), ('slow', t_slow)]

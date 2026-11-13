@@ -1,10 +1,10 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.17';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.17';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.17';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.18';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.18';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.18';
 
 // Page sounds: CC0 recordings from Kenney's "RPG Audio" (see THIRD-PARTY-NOTICES.md), trimmed, softened and normalised.
-const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.17',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.17',import.meta.url).href];
+const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.18',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.18',import.meta.url).href];
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -384,8 +384,9 @@ export class PdfBook {
   toggleAuto(){if(this.autoTimer)this.stopAuto();else this.startAuto();}
   startAuto(){
     if(this.autoTimer||this.disposed)return;this.auto.setAttribute('aria-pressed','true');
-    // The interval never falls below the turn itself, so turns do not queue up.
-    const every=Math.max(this.config.autoplayInterval*1000,this.config.duration+300);
+    // The interval never falls below the turn itself, so turns do not queue up. Without animation the tempo does not
+    // apply (its field is hidden then), so it must not stretch the interval either.
+    const every=Math.max(this.config.autoplayInterval*1000,(this.config.renderer==='flat'?0:this.config.duration)+300);
     this.autoTimer=setInterval(()=>{
       if(this.busy||this.pending||this.el.dataset.state!=='ready')return;
       if(this.next.disabled){if(this.config.autoplayLoop)this.go(1,true,true);else this.stopAuto();}

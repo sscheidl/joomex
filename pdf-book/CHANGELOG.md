@@ -1,5 +1,23 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.18 (2026-11-13)
+
+The remaining points of the [independent review of alpha.15](docs/reviews/REVIEW_0.1.0-alpha.15.md): T1 and the minor points of section 7.
+
+| Finding | Change | Files |
+| --- | --- | --- |
+| Section 7: height default | The standalone viewer defaulted to 560 px, manifest and PHP to 500 px; now 500 px everywhere. | `media/js/model.js` |
+| Section 7: empty and unknown values | The dispatcher used `(int)` casts, so an empty number became the minimum, and passed choices unchecked. It now follows `normalizeConfig()`: empty or non-numeric values give the default, numbers are clamped, choices (`page_mode`, `direction`, `renderer`, `flip_axis`) are checked against their lists, and the background colour must be `#rrggbb`. Two new dispatcher checks (13 in total). | `module/src/Dispatcher/Dispatcher.php`, `tests/dispatcher.php` |
+| Section 7: tempo without animation | With "Ohne Animation" the tempo field is hidden, but the tempo still stretched the minimum autoplay interval. Without animation it no longer applies. (Sound length no longer depends on it since alpha.16.) | `media/js/viewer.js` |
+| Section 7: "PDF-Öffnen anzeigen" | The field description now says that hiding the button is no access control and that confidential PDFs do not belong in the public media folder. | `module/mod_pdfbook.xml` |
+| F14 | README states that embedded images above 16 megapixels are left out without a notice. | `README.md` |
+| T1 legacy review suite | Browser selectable for both `tests/review/review_browser.py` and `tests/browser_smoke.py`: `REVIEW_BROWSER=msedge` (default), `chromium` (Playwright's Chromium or `REVIEW_CHROME=<path>`) or `firefox`; the environment record reads the Playwright and browser versions instead of fixed values. The outline injection check counts only containers that show PDF data (sidebar, heading, status), not the toolbar's own SVG icons. The rapid-arrow check waits until the queue has settled instead of a fixed 1.5 s. Without WebGL the context-loss check reports SKIP and the flat fallback is still tested. | `tests/review/review_browser.py`, `tests/browser_smoke.py` |
+
+Measured on 2026-11-13 (Linux container, Chrome for Testing 153 headless, Playwright 1.63): legacy review suite in Chromium 26 PASS, 0 FAIL, 0 ERROR, 4 INFO including the environment record (before T1 the reviewer saw 24 PASS, 2 FAIL, 4 INFO in Chromium); browser smoke test passes; `tests/alpha17_regressions.py` 9/9; `tests/publication_zip.py` 6/6; unit 12, PHP 32, dispatcher 13 pass. Not run: Firefox (not installed in this environment), Edge, Safari, real devices, screen reader.
+
+Owner's live tests reported on 2026-11-13: installation and update in a real Joomla 6.2 (staging); iPad 8th generation with iPadOS 26.7.2 in Safari: nearly all functions including page sound, fold and the other animations, cinema mode, autoplay and stopping it by a manual turn (with alpha.16); Android 14 phone in Chrome: no display errors at first check.
+
+
 ## 0.1.0-alpha.17 (2026-11-13)
 
 Corrections for the [independent review of alpha.15](docs/reviews/REVIEW_0.1.0-alpha.15.md) (Codex), on top of alpha.16. Selected by the owner: R1–R6 and D3. T1 (legacy review tests) and the minor points of section 7 of the review are not part of this version.
