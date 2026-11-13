@@ -7,7 +7,7 @@ A self-contained PDF flipbook module for Joomla 6. It aims to replace a previous
 - [Specification](docs/SPECIFICATION.md)
 - [Security requirements](docs/SECURITY.md)
 - [Development status and test results](docs/STATUS.md)
-- [Review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md), [review of 0.1.0-alpha.3 with the live-test record](docs/reviews/REVIEW_0.1.0-alpha.3.md), [review request for 0.1.0-alpha.7](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.7.md)
+- [Review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md), [review of 0.1.0-alpha.3 with the live-test record](docs/reviews/REVIEW_0.1.0-alpha.3.md), [review request for 0.1.0-alpha.7](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.7.md), [review request for 0.1.0-alpha.15](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.15.md)
 - [Behaviour analysis of the legacy module](../research/legacy-flipbook/FINDINGS.md)
 
 ## Local preview
