@@ -1,0 +1,331 @@
+{
+  "measured_date": "2026-11-13",
+  "candidate": "e4be5052819323ac6899880c5c810d848c8237da",
+  "environment": {
+    "os": "Windows x64",
+    "python": "3.12.10",
+    "zlib": "1.3.1",
+    "node": "24.22.1",
+    "php": "8.5.12",
+    "playwright": "1.65.1",
+    "edge": "157.0.4341.46",
+    "firefox": "159.0",
+    "pypdf": "6.21.4",
+    "pillow": "13.0.0"
+  },
+  "unit_passes": 12,
+  "php_path_passes": 32,
+  "php_dispatcher_passes": 13,
+  "alpha17_regressions": {
+    "Edge": "9/9",
+    "Firefox": "9/9"
+  },
+  "smoke": {
+    "Edge": "PASS",
+    "Firefox": "PASS"
+  },
+  "legacy": {
+    "Edge": {
+      "latest_result_per_case": {
+        "INFO": 4,
+        "PASS": 25,
+        "FAIL": 1
+      },
+      "failed_cases": [
+        "F7 JPEG 2000 via JavaScript fallback, no .wasm requests"
+      ]
+    },
+    "Firefox": {
+      "latest_result_per_case": {
+        "INFO": 4,
+        "PASS": 26
+      },
+      "failed_cases": []
+    }
+  },
+  "archive_probes": [
+    {
+      "test": "genuine",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.407
+    },
+    {
+      "test": "directory-extra_",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "directory-dot_",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "directory-module-extra_",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "symlink-mode",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "path-5",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.421
+    },
+    {
+      "test": "path-6",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "path-7",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.391
+    },
+    {
+      "test": "path-8",
+      "accepted": false,
+      "findings": 2,
+      "error": null,
+      "seconds": 0.406
+    },
+    {
+      "test": "path-9",
+      "accepted": false,
+      "findings": 2,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "path-10",
+      "accepted": false,
+      "findings": 2,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "path-11",
+      "accepted": false,
+      "findings": 2,
+      "error": null,
+      "seconds": 0.391
+    },
+    {
+      "test": "path-12",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "local-central-name-mismatch",
+      "accepted": false,
+      "findings": 0,
+      "error": "BadZipFile",
+      "seconds": 0.297
+    },
+    {
+      "test": "changed-vendor",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.469
+    },
+    {
+      "test": "unlisted-binary",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "missing",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "duplicate",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    },
+    {
+      "test": "many-directories",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 4.781
+    },
+    {
+      "test": "large-directory",
+      "accepted": true,
+      "findings": 0,
+      "error": null,
+      "seconds": 0.406
+    },
+    {
+      "test": "untracked",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.391
+    },
+    {
+      "test": "ignored",
+      "accepted": false,
+      "findings": 1,
+      "error": null,
+      "seconds": 0.375
+    }
+  ],
+  "history": {
+    "remote_branches": [
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.10",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.11",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.12",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.13",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.14",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.15",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.16",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.17",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.18",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.9",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.14",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.15",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.18"
+    ],
+    "commits": 14,
+    "unique_blob_path_lock_checks": 351,
+    "denylist_terms": 41,
+    "findings": []
+  },
+  "browser_probes": [
+    {
+      "test": "R1 settled height resize",
+      "result": {
+        "render_method_calls": 5,
+        "additional_idle_calls": 0,
+        "cache_size": 1
+      }
+    },
+    {
+      "test": "sound False",
+      "result": {
+        "before_gesture": 0,
+        "after_gesture": 0,
+        "audio_state": null,
+        "decoded": 0
+      }
+    },
+    {
+      "test": "sound True",
+      "result": {
+        "before_gesture": 0,
+        "after_gesture": 2,
+        "audio_state": "running",
+        "decoded": 2
+      }
+    },
+    {
+      "test": "sound media-src-none",
+      "result": {
+        "decoded": 2,
+        "ready": "ready",
+        "foreign_requests": []
+      }
+    },
+    {
+      "test": "sound connect-src-none",
+      "result": {
+        "decoded": 0,
+        "ready": "ready",
+        "foreign_requests": []
+      }
+    },
+    {
+      "test": "sound decode-fail",
+      "result": {
+        "decoded": 0,
+        "ready": "ready",
+        "foreign_requests": []
+      }
+    },
+    {
+      "test": "uncaught browser errors",
+      "result": []
+    }
+  ],
+  "audio_redirect_probe": {
+    "attempted_different_origin_requests": 2,
+    "successful_foreign_audio_decode": false,
+    "browser_completion_block": "local-network/CORS policy",
+    "same_origin_not_enforced_by_fetch_options": true
+  },
+  "synthetic_directory_denylist_probe": {
+    "denylist_terms": 1,
+    "payload_contains_term": true,
+    "cli_exit": 0
+  },
+  "link_red_pixel_comparison": {
+    "rectangles": 132,
+    "maximum_css_px_error": 1.0078125,
+    "source": "independent generated portrait/landscape rotation fixture"
+  },
+  "graphics": {
+    "D3": {
+      "bytes": 3200000,
+      "different_channels": 0
+    },
+    "R2_webgl": {
+      "source_red_ratio": 3,
+      "drawn_red_ratio": 1.0759493670886076,
+      "width": 85,
+      "height": 79,
+      "landscape_source_ratio": 2.0047619047619047,
+      "page_slot_ratio": 0.7142857142857143
+    }
+  },
+  "local_package": {
+    "entries": 211,
+    "bytes": 2426718,
+    "sha256": "f22718f6b65ad5d762eb241ad0a4aeebab690bd8eec3a60b24c6a436177d6e1a"
+  },
+  "official_audio": {
+    "archive_sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+    "ogg_files_match_official": true,
+    "license_equal_after_newline_normalization": true,
+    "mp3_complete_mpeg_frames": [
+      16,
+      9
+    ]
+  },
+  "not_measured": [
+    "exact developer-supplied ZIP",
+    "real Joomla rights/cache",
+    "production HTTPS/CSP",
+    "screen reader",
+    "real Safari/iOS/Android",
+    "unavailable/deleted Git history"
+  ]
+}
