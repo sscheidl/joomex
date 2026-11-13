@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.13';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.13';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.13';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.14';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.14';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.14';
 
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
@@ -54,7 +54,8 @@ export class PdfBook {
     this.toolbar.append(this.first,this.prev,label,this.next,this.last,this.thumbs,this.outline,this.zoomOut,this.zoomReset,this.zoomIn,this.mode,this.full,this.auto,this.download);
     // Cinema mode: without heading the status becomes an overlay on the stage (visible while loading or on error,
     // otherwise only for screen readers); without toolbar the controls stay as detached state holders.
-    this.el.classList.toggle('no-heading',!this.config.showHeading);
+    this.el.classList.toggle('no-heading',!this.config.showHeading);this.el.classList.toggle('no-frame',!this.config.showFrame);
+    this.el.classList.toggle('is-autoheight',this.config.autoHeight&&!this.config.fill);
     if(!this.config.showHeading)this.stageWrap.append(this.status);
     this.el.replaceChildren(...(this.config.showHeading?[heading]:[]),this.body,...(this.config.showToolbar?[this.toolbar]:[]));
     // Audio may only start after a user gesture in the page; prepare it on the first one.
@@ -291,7 +292,8 @@ export class PdfBook {
     this.autoRatio??=ratio;const width=this.stage.clientWidth;
     if(this.autoFit&&this.autoFit.count===count&&Math.abs(this.autoFit.width-width)<20)return;
     const chrome=this.el.offsetHeight-this.body.offsetHeight,cap=Math.max(320,innerHeight-chrome-16);
-    const height=Math.round(Math.min(cap,Math.max(280,Math.max(200,width-48)/count/this.autoRatio+48)));
+    const pad=parseFloat(getComputedStyle(this.stage).paddingTop)*2||48;   // stage padding: 24 px, 12 px on narrow screens
+    const height=Math.round(Math.min(cap,Math.max(160,Math.max(120,width-pad)/count/this.autoRatio+pad)));
     this.autoFit={count,width};this.el.style.setProperty('--pdfbook-height',`${height}px`);
   }
   async navigateDestination(dest){try{const n=await this.pdf.destination(dest);if(n)await this.go(n);}catch{this.status.textContent='Verknüpfte Seite nicht verfügbar.';}}

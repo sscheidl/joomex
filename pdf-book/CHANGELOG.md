@@ -1,5 +1,17 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.14 (2026-11-13)
+
+Owner requests after the live test of alpha.13.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Frame switch | New setting "Rahmen" (default on). Off removes the thin border and the rounded corners of the module; the background colour stays. | `module/mod_pdfbook.xml`, `module/src/Dispatcher/Dispatcher.php`, `media/js/model.js`, `media/js/viewer.js`, `media/css/viewer.css` |
+| Automatic height on narrow screens | The automatic height used a minimum of 280 px and assumed 24 px stage padding, so landscape pages on a phone kept about 100 px of empty space. It now uses the actual padding (12 px on narrow screens) and a minimum of 160 px; the body minimum of 280 px does not apply with automatic height. Wide screens are unchanged (16:9 slides at 1215 px window width: stage 359 px, book 311 px). | `media/js/viewer.js`, `media/css/viewer.css`, `module/mod_pdfbook.xml` (description) |
+
+Measured on 2026-11-13 (headless Chrome, 16:9 test PDF, double view, automatic height, frame off): 1215 px window: stage 360 px, book 312 px, 48 px left over; 420 px window: stage 214 px (before: 280 px), book 177 px, 37 px left over; border and radius 0 with frame off. Nothing else run.
+
+
 ## 0.1.0-alpha.13 (2026-11-13)
 
 Owner findings after the live test of alpha.12.

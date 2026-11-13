@@ -102,7 +102,7 @@ export function normalizeConfig(data = {}) {
     flipAxis: ['horizontal', 'vertical'].includes(data.flipAxis) ? data.flipAxis : 'auto',
     height: Math.max(320, Math.min(1000, Number(data.height) || 560)), autoHeight: data.autoHeight === true,
     // Cinema mode = heading and toolbar off; navigation by click, swipe and arrow keys stays.
-    showHeading: data.showHeading !== false, showToolbar: data.showToolbar !== false, sound: data.sound === true,
+    showHeading: data.showHeading !== false, showToolbar: data.showToolbar !== false, showFrame: data.showFrame !== false, sound: data.sound === true,
     autoplay: data.autoplay === true, autoplayInterval: setting(data.autoplayInterval, 1, 60, 3), autoplayLoop: data.autoplayLoop === true,
     background: /^#[a-f0-9]{6}$/i.test(data.background) ? data.background : '#f2f2f2',
   };
