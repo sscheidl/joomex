@@ -1,5 +1,17 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.15 (2026-11-13)
+
+Fixes the developer findings D1 and D2 of the [review request for alpha.14](docs/reviews/REVIEW_REQUEST_0.1.0-alpha.14.md), confirmed by the owner.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| D1: page sound on touch devices | The audio context was created and resumed only on `pointerdown` and `keydown`. For touch input only the end of a tap counts as user activation, so on phones and tablets the sound never played. It is now also unlocked on `pointerup`, `touchend` and `click`; inside the gesture one silent sample is played (needed by older iOS versions); and a page turn that comes before the context has finished resuming waits for it instead of staying silent. A phone set to silent still plays no sound. | `media/js/viewer.js` |
+| D2: autoplay could not be stopped in cinema mode | Turning a page by hand (click, tap, swipe, arrow keys, Home/End, page field, thumbnail, table of contents, link) now ends autoplay in every mode; reloading the page starts it again. Zoom, page mode, fullscreen and resizing do not end it. This gives visitors a way to stop the moving content also without toolbar (WCAG 2.2.2). With reduced motion set in the operating system, autoplay no longer starts on load; the toolbar button still starts it. | `media/js/viewer.js` |
+
+Measured on 2026-11-13 (headless Chrome 153, demo PDF, cinema mode, autoplay 1 s with restart): a click, an arrow key and a touch swipe each end autoplay (no further page change in the next 3 s); zoom does not end it; with reduced motion autoplay does not start on load; no page errors. D1 could not be reproduced in headless Chrome: alpha.14 and alpha.15 both unlocked the audio context on a touch tap and played the sound, so the fix is checked only against the HTML user-activation rules and must be confirmed on a real iOS or Android device. Unit 12, PHP 32, dispatcher 11 checks pass. Not run: real touch devices, iOS, Android, Firefox, Safari; the sound was not listened to.
+
+
 ## 0.1.0-alpha.14 (2026-11-13)
 
 Owner requests after the live test of alpha.13.

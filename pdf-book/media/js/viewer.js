@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.14';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.14';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.14';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.15';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.15';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.15';
 
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
@@ -59,7 +59,9 @@ export class PdfBook {
     if(!this.config.showHeading)this.stageWrap.append(this.status);
     this.el.replaceChildren(...(this.config.showHeading?[heading]:[]),this.body,...(this.config.showToolbar?[this.toolbar]:[]));
     // Audio may only start after a user gesture in the page; prepare it on the first one.
-    for(const type of ['pointerdown','keydown'])this.on(this.el,type,()=>this.unlockSound());
+    // Audio may only start after a user gesture. For touch, only the end of a tap (pointerup, touchend, click) counts as
+    // user activation, pointerdown only for a mouse; listen to all of them.
+    for(const type of ['pointerdown','pointerup','touchend','click','keydown'])this.on(this.el,type,()=>this.unlockSound());
     // Home/End need focus on the stage; the arrow keys also work without focus for the active book (see onKey).
     this.on(this.stage,'keydown',e=>{if(e.target!==this.stage)return;if(e.key==='Home'){e.preventDefault();this.go(1);}if(e.key==='End'){e.preventDefault();this.go(this.pdf.count);}});
     this.on(document,'keydown',e=>this.onKey(e));
@@ -99,7 +101,8 @@ export class PdfBook {
       if(this.disposed)return;
       this.total.textContent=` / ${this.pdf.count}`;this.input.max=String(this.pdf.count);
       await this.go(1,false);this.el.dataset.pdfjs=pdfVersion;
-      if(this.config.autoplay&&!this.disposed&&this.el.dataset.state==='ready')this.startAuto();
+      // No automatic start when the visitor asked the system for reduced motion; the toolbar button still starts it.
+      if(this.config.autoplay&&!this.disposed&&this.el.dataset.state==='ready'&&!matchMedia('(prefers-reduced-motion: reduce)').matches)this.startAuto();
     }catch(error){if(!this.disposed){this.fail(error);await this.pdf.dispose();}}
   }
   fail(error){
@@ -111,8 +114,11 @@ export class PdfBook {
   }
   /** Page the viewer is heading to: a queued request, else the page being rendered, else the page shown. */
   target(){return this.pending?.number??this.inflight??this.page;}
-  async go(number, animate=true){
+  async go(number, animate=true, auto=false){
     if(this.disposed||!this.pdf.doc||this.el.dataset.state==='error')return;
+    // Turning by hand (click, tap, swipe, key, page field, thumbnail, table of contents, link) ends autoplay for good;
+    // the visitor has taken over. Reloading the page starts it again. Zoom, mode and resize (animate=false) do not count.
+    if(animate&&!auto&&this.autoTimer)this.stopAuto();
     // Input that arrives while a page renders or turns is queued (latest page wins) instead of being dropped. The queued
     // request keeps its animation: after the running turn has finished, one complete turn goes straight to that page.
     if(this.busy){this.pending={number,animate:animate||!!this.pending?.animate};this.updateControls();return;}
@@ -355,17 +361,28 @@ export class PdfBook {
     const every=Math.max(this.config.autoplayInterval*1000,this.config.duration+300);
     this.autoTimer=setInterval(()=>{
       if(this.busy||this.pending||this.el.dataset.state!=='ready')return;
-      if(this.next.disabled){if(this.config.autoplayLoop)this.go(1);else this.stopAuto();}else this.move(1);
+      if(this.next.disabled){if(this.config.autoplayLoop)this.go(1,true,true);else this.stopAuto();}
+      else this.go(nextPage(this.target(),this.pdf.count,this.single,1),true,true);
     },every);
   }
   unlockSound(){
     if(!this.config.sound||this.disposed)return;
-    try{if(!this.audio){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;this.audio=new Context();}
-      if(this.audio.state==='suspended')this.audio.resume().catch(()=>{});}catch{this.audio=null;}
+    try{
+      if(!this.audio){const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;this.audio=new Context();}
+      const ctx=this.audio;if(ctx.state==='running'||ctx.state==='closed')return;
+      // Older iOS versions release Web Audio only when something plays inside the gesture: one silent sample.
+      const silent=ctx.createBufferSource();silent.buffer=ctx.createBuffer(1,1,ctx.sampleRate);silent.connect(ctx.destination);silent.start(0);
+      ctx.resume().catch(()=>{});
+    }catch{this.audio=null;}
   }
   /** Page sound, synthesised (no audio file): band-passed noise with an irregular grain, a quick rise and a long fade. */
   rustle(){
-    const ctx=this.audio;if(!this.config.sound||!ctx||ctx.state!=='running')return;
+    const ctx=this.audio;if(!this.config.sound||!ctx||this.disposed)return;
+    // The first tap may turn the page before the context has finished resuming: wait for it instead of staying silent.
+    if(ctx.state==='running')this.playRustle(ctx);
+    else if(ctx.state!=='closed')ctx.resume().then(()=>{if(ctx.state==='running'&&!this.disposed)this.playRustle(ctx);}).catch(()=>{});
+  }
+  playRustle(ctx){
     try{
       const length=Math.min(.7,Math.max(.18,this.config.duration/1000*.6)),rate=ctx.sampleRate,n=Math.floor(length*rate);
       const buffer=ctx.createBuffer(1,n,rate),data=buffer.getChannelData(0),decay=Math.exp(-1/(rate*.04));
