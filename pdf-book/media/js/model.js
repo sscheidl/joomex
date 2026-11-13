@@ -99,6 +99,7 @@ export function normalizeConfig(data = {}) {
     // Look of the 3D turn, as set in the back end: curvature 0–100, shadow density 0–60 %, softness and width 0–100.
     curvature: setting(data.curvature, 0, 100, 50), shadowDensity: setting(data.shadowDensity, 0, 60, 22),
     shadowSoftness: setting(data.shadowSoftness, 0, 100, 50), shadowWidth: setting(data.shadowWidth, 0, 100, 50),
+    selfShadow: data.selfShadow === true,   // test switch (0.1.0-alpha.9), off unless the module turns it on
     height: Math.max(320, Math.min(1000, Number(data.height) || 560)),
     background: /^#[a-f0-9]{6}$/i.test(data.background) ? data.background : '#f2f2f2',
   };

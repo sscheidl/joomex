@@ -1,5 +1,16 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.9 (2026-11-13)
+
+Owner request: test version with a back-end switch for the self-shadow of the turning sheet.
+
+| Item | Change | Files |
+| --- | --- | --- |
+| Self-shadow switch | New module setting "Eigenschatten des Blatts (Test)", shown only for the 3D turn, default off. When on, the sheet shades itself where it curls over, using the existing depth map lookup of alpha.8 unchanged. It works only while the shadow density is above 0, because the depth map is rendered only then. The known band near the free edge after mid-turn (alpha.8) is not fixed; this version exists to judge the effect live. | `module/mod_pdfbook.xml`, `module/src/Dispatcher/Dispatcher.php`, `media/js/model.js`, `media/js/viewer.js`, `media/js/turn.js` |
+
+Not tested at the owner's request: no unit, PHP, dispatcher or browser runs. Only the build checks of `scripts/build.py` ran.
+
+
 ## 0.1.0-alpha.8 (2026-11-13)
 
 Second rewrite of the 3D page turn after a closer analysis of the legacy rendering (`research/legacy-flipbook/FINDINGS.md`, F30 corrected, F34–F40). Own implementation in WebGL 1, no library and no legacy code.

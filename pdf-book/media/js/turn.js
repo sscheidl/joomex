@@ -14,8 +14,9 @@ export const SEGMENTS = 48;
  * opacity   0 … 0.6   density of the cast shadow
  * blur      0 … 0.1   softness: radius of the shadow edge in page widths
  * shift     0 … 0.8   width: how far the shadow falls beside the lifted paper (light from the upper left front)
+ * selfShadow 0 | 1    the sheet shades itself where it curls over (test switch, needs opacity > 0)
  */
-export const DEFAULT_LOOK = Object.freeze({curvature: 1, opacity: 0.22, blur: 0.05, shift: 0.4});
+export const DEFAULT_LOOK = Object.freeze({curvature: 1, opacity: 0.22, blur: 0.05, shift: 0.4, selfShadow: 0});
 const CAMERA = [4.5, 14];   // viewing distance in page widths (nearest, farthest); chosen per turn so the lifted page fits the stage
 const RANGE = 1.7;          // the shadow maps cover x and y in [-RANGE, RANGE]
 const MAX_HEIGHT = 1.1;     // heights are stored as z / MAX_HEIGHT
@@ -75,8 +76,8 @@ void main(){ float s = vTex.x; vec3 n = normalize(vec3(vTex.z, 0.0, vTex.w)); bo
   // Self-shadow: paper clearly higher than this point lies between it and the light. The comparison is soft and
   // fades out where the face turns away from the light (it is unlit there anyway), which avoids striped artefacts.
   float towards = dot(n, uL), shaded = 0.0;
-  // Disabled in 0.1.0-alpha.8: the self-shadow showed a hard band near the free edge after mid-turn. The depth map
-  // lookup stays in place for a later version (uSelfShadow = 0 switches it off).
+  // Off by default: in 0.1.0-alpha.8 the self-shadow showed a hard band near the free edge after mid-turn.
+  // Since 0.1.0-alpha.9 a module setting switches it on for testing (uSelfShadow = 1).
   for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++)
     shaded += smoothstep(vLight.z + 0.05, vLight.z + 0.14, height(vLight.xy + vec2(float(i), float(j)) * 0.008));
   shaded *= uSelfShadow * smoothstep(0.05, 0.35, towards) / 9.0;
@@ -242,7 +243,7 @@ export class PageTurn {
     gl.uniform1i(u('uFront'), 0); gl.uniform1i(u('uBack'), 1); gl.uniform1i(u('uDepth'), 2);
     gl.uniform2fv(u('uCenter'), layout.center); gl.uniform2fv(u('uScale'), layout.scale);
     gl.uniform1f(u('uCamera'), this.camera); gl.uniform1f(u('uMirror'), mirror);
-    gl.uniform1f(u('uDensity'), shadows ? look.opacity : 0); gl.uniform1f(u('uSelfShadow'), 0); gl.uniform3fv(u('uShadow'), shadow); gl.uniform3fv(u('uL'), light);
+    gl.uniform1f(u('uDensity'), shadows ? look.opacity : 0); gl.uniform1f(u('uSelfShadow'), shadows && look.selfShadow ? 1 : 0); gl.uniform3fv(u('uShadow'), shadow); gl.uniform3fv(u('uL'), light);
     // Same darkening towards the spine as the flat pages have in the stylesheet (right page 11 % over 14 px, left page 9 % over 16 px).
     const right = [0.11, 14 / layout.pagePixels], left = [0.09, 16 / layout.pagePixels];
     gl.uniform4fv(u('uGutter'), mirror > 0 ? [...right, ...left] : [...left, ...right]);

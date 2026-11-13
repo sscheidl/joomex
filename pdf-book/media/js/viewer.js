@@ -1,7 +1,7 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.8';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.8';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.8';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.9';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.9';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.9';
 
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -127,7 +127,7 @@ export class PdfBook {
         // the old one; the sheet carries the old page on its front and the new page on its back.
         const during=[];during[from]=items[from];during[to]=previous[to];
         this.mountPages(during,false);
-        const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8};
+        const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8,selfShadow:c.selfShadow?1:0};
         await this.turn.play(previous[from]?.canvas||blank(),items[to]?.canvas||blank(),direction,c.duration,this.spread,look);
         if(this.disposed)return;
         this.mountPages(items);

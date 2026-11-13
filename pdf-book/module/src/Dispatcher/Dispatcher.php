@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.8';
+    public const VERSION = '0.1.0-alpha.9';
 
     protected function getLayoutData(): array
     {
@@ -38,6 +38,7 @@ final class Dispatcher extends AbstractModuleDispatcher
                 'shadowDensity' => max(0, min(60, (int) $params->get('shadow_density', 22))),
                 'shadowSoftness' => max(0, min(100, (int) $params->get('shadow_softness', 50))),
                 'shadowWidth' => max(0, min(100, (int) $params->get('shadow_width', 50))),
+                'selfShadow' => (int) $params->get('self_shadow', 0) === 1,
             ];
             $wa = $this->getApplication()->getDocument()->getWebAssetManager();
             // Relative to /media: Joomla resolves this to {root}/media/mod_pdfbook/css/viewer.css and allows template overrides.
