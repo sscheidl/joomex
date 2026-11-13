@@ -27,8 +27,21 @@ def make_book(path,count=8,malicious_actions=False):
     path.parent.mkdir(parents=True,exist_ok=True)
     with path.open('wb') as f:writer.write(f)
 
+def make_mixed(path):
+    """Portrait pages with one landscape page 3; a link lies exactly over a red rectangle on page 3 (R2, alpha.15)."""
+    writer=PdfWriter()
+    for i,(w,h) in enumerate([(420,594),(420,594),(842,420),(420,594)]):
+        page=writer.add_blank_page(w,h)
+        commands=['0.95 0.95 0.95 rg 0 0 %d %d re f'%(w,h)]
+        if i==2:commands.append('1 0 0 rg 500 80 200 60 re f')
+        stream=DecodedStreamObject();stream.set_data('\n'.join(commands).encode('ascii'));page[NameObject('/Contents')]=writer._add_object(stream)
+    link=DictionaryObject({NameObject('/Type'):NameObject('/Annot'),NameObject('/Subtype'):NameObject('/Link'),NameObject('/Rect'):ArrayObject([FloatObject(x) for x in [500,80,700,140]]),NameObject('/A'):DictionaryObject({NameObject('/S'):NameObject('/URI'),NameObject('/URI'):TextStringObject('https://example.org/')})})
+    writer.pages[2][NameObject('/Annots')]=ArrayObject([writer._add_object(link)])
+    with path.open('wb') as f:writer.write(f)
+
 if __name__=='__main__':
     for filename,count,actions in [('test-book.pdf',8,False),('odd-book.pdf',5,False),('one-page.pdf',1,False),('actions.pdf',3,True)]:make_book(ROOT/'images'/filename,count,actions)
+    make_mixed(ROOT/'images'/'mixed-formats.pdf')
     (ROOT/'images/broken.pdf').write_bytes(b'not a PDF')
     (ROOT/'images/mit leerzeichen.pdf').write_bytes((ROOT/'images/one-page.pdf').read_bytes())
-    print('Created six bounded PDF test fixtures')
+    print('Created seven bounded PDF test fixtures')

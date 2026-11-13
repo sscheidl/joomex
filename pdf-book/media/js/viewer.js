@@ -1,10 +1,10 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.16';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.16';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.16';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.17';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.17';
+import { PageTurn } from './turn.js?v=0.1.0-alpha.17';
 
 // Page sounds: CC0 recordings from Kenney's "RPG Audio" (see THIRD-PARTY-NOTICES.md), trimmed, softened and normalised.
-const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.16',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.16',import.meta.url).href];
+const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.17',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.17',import.meta.url).href];
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
@@ -33,7 +33,7 @@ export class PdfBook {
     this.el.style.setProperty('--pdfbook-height',`${this.config.height}px`);this.el.style.setProperty('--pdfbook-bg',this.config.background);
     const heading=make('div','pdfbook-heading');heading.append(make('strong','',this.config.title));
     this.status=make('span','pdfbook-status','PDF wird geladen …');this.status.setAttribute('role','status');heading.append(this.status);
-    this.body=make('div','pdfbook-body');this.sidebar=make('aside','pdfbook-sidebar');this.sidebar.hidden=true;
+    this.body=make('div','pdfbook-body');this.sidebar=make('aside','pdfbook-sidebar');this.sidebar.hidden=true;this.sidebar.id=`pdfbook-sidebar-${this.id}`;
     this.stage=make('div','pdfbook-stage');this.stage.tabIndex=0;this.stage.setAttribute('aria-label','Buchseiten. Mit Pfeiltasten blättern.');
     this.spread=make('div','pdfbook-spread');this.stage.append(this.spread);
     // The turn overlay covers the whole stage area (not only the spread), so a lifted page is not clipped at the page edges.
@@ -45,6 +45,8 @@ export class PdfBook {
     this.on(this.input,'change',()=>this.go(Number(this.input.value)));this.on(this.input,'keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.go(Number(this.input.value));}});
     this.next=this.button('Nächste Seite','next',()=>this.move(1));this.last=this.button('Letzte Seite','last',()=>this.go(this.pdf.count));
     this.thumbs=this.button('Seitenübersicht','thumbs',()=>this.showSidebar('thumbs'));this.outline=this.button('Inhaltsverzeichnis','outline',()=>this.showSidebar('outline'));
+    // Both toggles control the same sidebar: aria-controls names it, aria-expanded tells which content is open (R6).
+    for(const b of [this.thumbs,this.outline]){b.setAttribute('aria-controls',this.sidebar.id);b.setAttribute('aria-expanded','false');}
     this.zoomOut=this.button('Verkleinern','zoomOut',()=>this.setZoom(this.zoom-.25));this.zoomIn=this.button('Vergrößern','zoomIn',()=>this.setZoom(this.zoom+.25));
     // Shows the current zoom; a click restores the original size.
     this.zoomReset=make('button','pdfbook-button pdfbook-zoom','100 %');this.zoomReset.type='button';this.zoomReset.title='Originalgröße (100 %)';this.zoomReset.setAttribute('aria-label','Originalgröße wiederherstellen, Zoom 100 %');this.on(this.zoomReset,'click',()=>this.setZoom(1));
@@ -86,6 +88,12 @@ export class PdfBook {
     });
     this.on(this.stage,'pointercancel',()=>this.pointer=null);
     this.on(document,'visibilitychange',()=>{if(document.hidden)this.stopAuto();});
+    // The stage observer does not see a change of the window height alone; refit the automatic height then (R1).
+    this.on(window,'resize',()=>{
+      if(!this.config.autoHeight||this.config.fill||!this.autoRatio)return;
+      clearTimeout(this.viewportTimer);
+      this.viewportTimer=setTimeout(()=>{if(!this.disposed&&document.fullscreenElement!==this.el)this.fitHeight(this.autoRatio,this.autoCount||1);},120);
+    });
     this.resize=new ResizeObserver(()=>{clearTimeout(this.resizeTimer);this.resizeTimer=setTimeout(()=>{if(this.pdf.doc&&!this.disposed&&this.el.dataset.state!=='error')this.go(this.target(),false);},180);});this.resize.observe(this.stage);
     this.updateControls();
   }
@@ -109,7 +117,7 @@ export class PdfBook {
   }
   fail(error){
     console.warn('PDF Book:',error);
-    this.el.dataset.state='error';this.status.textContent=messageFor(error);this.pending=null;this.stopAuto();this.updateControls();
+    this.el.dataset.state='error';this.status.textContent=messageFor(error);this.pending=null;this.stopAuto();this.cancelAnimations();this.updateControls();
     // The error state is final: release document, worker, render tasks and page cache right away (N2).
     this.thumbObserver?.disconnect();this.turn?.dispose();this.turn=null;this.overlay?.remove();this.overlay=null;
     this.pdf.dispose().catch(()=>{});
@@ -167,6 +175,13 @@ export class PdfBook {
       }
     }
   }
+  /** Registers a running animation so that dispose() and fail() can cancel it at once (R5); resolves when it ends. */
+  track(animation){
+    (this.animations??=new Set()).add(animation);
+    const done=()=>this.animations.delete(animation);animation.finished.then(done,done);
+    return animation.finished;
+  }
+  cancelAnimations(){for(const animation of [...(this.animations||[])])animation.cancel();}
   /** Alternative to the 3D turn: the old pages slide out and the new ones slide in. Works without WebGL and for single pages. */
   async slide(items,direction){
     const old=make('div','pdfbook-slide');old.append(...this.spread.children);
@@ -176,8 +191,8 @@ export class PdfBook {
     const options={duration:this.config.duration,easing:'cubic-bezier(.3,0,.2,1)'};
     try{
       await Promise.all([
-        old.animate([{transform:'translateX(0)'},{transform:`translateX(${-direction*100}%)`}],options).finished,
-        fresh.animate([{transform:`translateX(${direction*100}%)`},{transform:'translateX(0)'}],options).finished,
+        this.track(old.animate([{transform:'translateX(0)'},{transform:`translateX(${-direction*100}%)`}],options)),
+        this.track(fresh.animate([{transform:`translateX(${direction*100}%)`},{transform:'translateX(0)'}],options)),
       ]);
     }catch{/* cancelled: fall through to the final state */}
     old.remove();
@@ -228,11 +243,11 @@ export class PdfBook {
     const options={duration:this.config.duration,easing:'cubic-bezier(.45,0,.25,1)'};
     try{
       await Promise.all([
-        board.animate([{transform:`${axis}(0deg)`},{transform:`${axis}(${turn/2}deg)`},{transform:`${axis}(${turn}deg)`}],options).finished,
-        frontDark.animate([{opacity:0},{opacity:.35},{opacity:.35}],options).finished,
-        backDark.animate([{opacity:.35},{opacity:.35},{opacity:0}],options).finished,
-        revealed.animate([{opacity:.3},{opacity:0},{opacity:0}],options).finished,
-        covered.animate([{opacity:0},{opacity:0},{opacity:.3}],options).finished,
+        this.track(board.animate([{transform:`${axis}(0deg)`},{transform:`${axis}(${turn/2}deg)`},{transform:`${axis}(${turn}deg)`}],options)),
+        this.track(frontDark.animate([{opacity:0},{opacity:.35},{opacity:.35}],options)),
+        this.track(backDark.animate([{opacity:.35},{opacity:.35},{opacity:0}],options)),
+        this.track(revealed.animate([{opacity:.3},{opacity:0},{opacity:0}],options)),
+        this.track(covered.animate([{opacity:0},{opacity:0},{opacity:.3}],options)),
       ]);
     }catch{/* cancelled: fall through to the final state */}
     old.remove();revealed.remove();covered.remove();board.remove();
@@ -248,8 +263,8 @@ export class PdfBook {
     const options={duration:this.config.duration,easing:'ease-in-out'};
     try{
       await Promise.all([
-        fresh.animate([{opacity:0},{opacity:1,offset:.35},{opacity:1}],options).finished,
-        old.animate([{opacity:1},{opacity:1,offset:.15},{opacity:0}],options).finished,
+        this.track(fresh.animate([{opacity:0},{opacity:1,offset:.35},{opacity:1}],options)),
+        this.track(old.animate([{opacity:1},{opacity:1,offset:.15},{opacity:0}],options)),
       ]);
     }catch{/* cancelled: fall through to the final state */}
     old.remove();
@@ -270,6 +285,9 @@ export class PdfBook {
       if(item){
         const canvas=make('canvas');canvas.width=item.canvas.width;canvas.height=item.canvas.height;canvas.getContext('2d').drawImage(item.canvas,0,0);
         canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`PDF-Seite ${item.number}`);wrapper.append(canvas);
+        // All wrappers share the format of the first page; a page of another format is letterboxed by object-fit.
+        // Links are placed inside that fitted image rectangle, as fractions of the wrapper (R2).
+        const own=item.canvas.width/item.canvas.height,fit=own>ratio?{x:0,y:(1-ratio/own)/2,w:1,h:ratio/own}:{x:(1-own/ratio)/2,y:0,w:own/ratio,h:1};
         for(const annotation of interactive?item.annotations:[]){
           if(annotation.subtype!=='Link'||!annotation.rect)continue;
           const href=safeLink(annotation.url);
@@ -280,8 +298,8 @@ export class PdfBook {
           else{a.type='button';a.addEventListener('click',()=>this.navigateDestination(annotation.dest),{signal:this.pageAbort.signal});}
           const [x1,y1]=item.viewport.convertToViewportPoint(annotation.rect[0],annotation.rect[1]);
           const [x2,y2]=item.viewport.convertToViewportPoint(annotation.rect[2],annotation.rect[3]);
-          a.style.left=`${Math.min(x1,x2)/item.viewport.width*100}%`;a.style.top=`${Math.min(y1,y2)/item.viewport.height*100}%`;
-          a.style.width=`${Math.abs(x2-x1)/item.viewport.width*100}%`;a.style.height=`${Math.abs(y2-y1)/item.viewport.height*100}%`;wrapper.append(a);
+          a.style.left=`${(fit.x+Math.min(x1,x2)/item.viewport.width*fit.w)*100}%`;a.style.top=`${(fit.y+Math.min(y1,y2)/item.viewport.height*fit.h)*100}%`;
+          a.style.width=`${Math.abs(x2-x1)/item.viewport.width*fit.w*100}%`;a.style.height=`${Math.abs(y2-y1)/item.viewport.height*fit.h*100}%`;wrapper.append(a);
         }
       }
       this.spread.append(wrapper);
@@ -297,12 +315,15 @@ export class PdfBook {
    * Width changes below 20 px keep the height, so a page scrollbar that appears or disappears cannot make it oscillate.
    */
   fitHeight(ratio,count){
-    this.autoRatio??=ratio;const width=this.stage.clientWidth;
-    if(this.autoFit&&this.autoFit.count===count&&Math.abs(this.autoFit.width-width)<20)return;
-    const chrome=this.el.offsetHeight-this.body.offsetHeight,cap=Math.max(320,innerHeight-chrome-16);
+    this.autoRatio??=ratio;this.autoCount=count;const width=this.stage.clientWidth;
+    // The window height and the height of heading and toolbar belong to the cache key as well (R1): a height-only
+    // window change must refit. Only the cap depends on them, so the stage height changes only where the cap binds.
+    const chrome=this.el.offsetHeight-this.body.offsetHeight,viewport=innerHeight;
+    if(this.autoFit&&this.autoFit.count===count&&Math.abs(this.autoFit.width-width)<20&&this.autoFit.viewport===viewport&&this.autoFit.chrome===chrome)return;
+    const cap=Math.max(320,viewport-chrome-16);
     const pad=parseFloat(getComputedStyle(this.stage).paddingTop)*2||48;   // stage padding: 24 px, 12 px on narrow screens
     const height=Math.round(Math.min(cap,Math.max(160,Math.max(120,width-pad)/count/this.autoRatio+pad)));
-    this.autoFit={count,width};this.el.style.setProperty('--pdfbook-height',`${height}px`);
+    this.autoFit={count,width,viewport,chrome};this.el.style.setProperty('--pdfbook-height',`${height}px`);
   }
   async navigateDestination(dest){try{const n=await this.pdf.destination(dest);if(n)await this.go(n);}catch{this.status.textContent='Verknüpfte Seite nicht verfügbar.';}}
   onKey(e){
@@ -330,12 +351,16 @@ export class PdfBook {
     const percent=Math.round(this.zoom*100);this.zoomReset.textContent=`${percent} %`;this.zoomReset.setAttribute('aria-label',`Originalgröße wiederherstellen, Zoom ${percent} %`);
     if(!unavailable){this.zoomReset.disabled=percent===100;this.zoomOut.disabled=this.zoom<=.75;this.zoomIn.disabled=this.zoom>=2.5;}
   }
+  syncSidebarState(){
+    const open=this.sidebar.hidden?null:this.sidebar.dataset.kind;
+    this.thumbs.setAttribute('aria-expanded',String(open==='thumbs'));this.outline.setAttribute('aria-expanded',String(open==='outline'));
+  }
   async showSidebar(kind){
     if(!this.pdf.doc||this.disposed)return;
-    if(!this.sidebar.hidden&&this.sidebar.dataset.kind===kind){this.sidebar.hidden=true;return;}
+    if(!this.sidebar.hidden&&this.sidebar.dataset.kind===kind){this.sidebar.hidden=true;this.syncSidebarState();return;}
     this.sidebarAbort?.abort();this.sidebarAbort=new AbortController();this.thumbObserver?.disconnect();
     const sidebarButton=(label,text,action)=>{const b=make('button','pdfbook-button',text);b.type='button';b.setAttribute('aria-label',label);b.addEventListener('click',action,{signal:this.sidebarAbort.signal});return b;};
-    this.sidebar.hidden=false;this.sidebar.dataset.kind=kind;this.sidebar.replaceChildren(make('h3','',kind==='thumbs'?'Seitenübersicht':'Inhaltsverzeichnis'));
+    this.sidebar.hidden=false;this.sidebar.dataset.kind=kind;this.syncSidebarState();this.sidebar.replaceChildren(make('h3','',kind==='thumbs'?'Seitenübersicht':'Inhaltsverzeichnis'));
     const token=Symbol();this.sidebarToken=token;
     if(kind==='outline'){
       try{
@@ -397,7 +422,7 @@ export class PdfBook {
     }).catch(()=>{/* sound is optional */});
   }
   stopAuto(){clearInterval(this.autoTimer);this.autoTimer=null;this.auto.setAttribute('aria-pressed','false');}
-  async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();this.audio?.close().catch(()=>{});this.audio=null;await this.pdf.dispose();}
+  async dispose(){if(this.disposed)return;this.disposed=true;if(activeBook===this)activeBook=this.previousActive?.disposed?null:this.previousActive||null;this.pending=null;this.stopAuto();this.cancelAnimations();clearTimeout(this.viewportTimer);this.abort.abort();this.pageAbort?.abort();this.sidebarAbort?.abort();this.resize.disconnect();this.thumbObserver?.disconnect();clearTimeout(this.resizeTimer);this.turn?.dispose();this.audio?.close().catch(()=>{});this.audio=null;await this.pdf.dispose();}
 }
 
 const instances=new WeakMap();

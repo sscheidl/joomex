@@ -1,5 +1,24 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 0.1.0-alpha.17 (2026-11-13)
+
+Corrections for the [independent review of alpha.15](docs/reviews/REVIEW_0.1.0-alpha.15.md) (Codex), on top of alpha.16. Selected by the owner: R1–R6 and D3. T1 (legacy review tests) and the minor points of section 7 of the review are not part of this version.
+
+| Finding | Change | Files |
+| --- | --- | --- |
+| R1 automatic height ignored a height-only window change | The fit cache now also holds the window height and the height of heading and toolbar, and a window `resize` refits the automatic height (debounced). Only the window cap depends on them, so the stage changes only where the cap binds; ordinary mobile browser bars that appear and disappear do not resize the book while it is shorter than the window. | `media/js/viewer.js` |
+| R2 links misplaced on pages of another format | All page wrappers share the format of the first page, and a page of another format is letterboxed by `object-fit: contain`. Link rectangles are now placed inside that fitted image rectangle of each page. | `media/js/viewer.js` |
+| R3 archive check let manipulated packages pass | `check_publication.py --zip` now requires the archive to contain exactly the package files of one project (taken from that project's `build.py`), each byte-identical to the checked, tracked source file. Extra (including binary) entries, missing entries, changed entries (including vendor files), duplicate names and unsafe paths are findings. Identical entries are not scanned again. New regression test `tests/publication_zip.py`: genuine and recompressed package pass; unlisted binary, changed vendor file, missing file and duplicate entry fail. | `../scripts/check_publication.py`, `scripts/build.py`, `tests/publication_zip.py` |
+| R4 package hash not reproducible | Cause found: the developer environment's Python uses zlib-ng (`1.3.1.zlib-ng`), which compresses differently from stock zlib. The delivered alpha.15 ZIP (`d67a50fb…`) is reproduced bit for bit by a clean build of `21e6815` there; entry names and uncompressed contents are identical to every clean build, only the deflate streams differ. A build with the stock zlib 1.3 of the same machine gave yet another hash (`dde25c68…`); the reviewer's `7ca48681…` (stock zlib 1.3.1/1.3.2) was not reproduced here. Consequence: the archive hash identifies one build, not the source. `manifest.json` now records the toolchain (Python, zlib, system) and the SHA-256 of every uncompressed entry; the source identity of an archive is checked with `check_publication.py --zip` against the tagged commit, which does not depend on compression. `build.py` also sets the ZIP creator system to a fixed value (D4). | `scripts/build.py` |
+| R5 animations kept running after dispose | Every Web Animation of slide, fold and cross-fade is registered; `dispose()` and `fail()` cancel them at once, so transient layers and canvas copies are released immediately and `busy` is cleared. | `media/js/viewer.js` |
+| R6 sidebar toggles without state | "Seitenübersicht" and "Inhaltsverzeichnis" carry `aria-controls` (the sidebar) and `aria-expanded`, updated on open, switch and close. A screen-reader run is still open. | `media/js/viewer.js` |
+| D3 inactive self-shadow work | The nine depth-map reads per fragment that ran with weight 0, the depth texture binding and the related varying and uniforms are removed from the sheet pass. Output unchanged: a frozen mid-turn frame (progress 0.5) is pixel-identical between alpha.16 and alpha.17 (headless Chrome, SwiftShader). | `media/js/turn.js` |
+
+New browser regression checks `tests/alpha17_regressions.py` (R1, R2, R5 for fold/slide/cross-fade, R6) with a new mixed-format fixture (`scripts/make_fixtures.py`: `mixed-formats.pdf`).
+
+Measured on 2026-11-13 (Linux container, Chrome for Testing 153 headless, Python 3.13 with zlib-ng): `tests/alpha17_regressions.py` 9/9 pass on alpha.17 and 1/9 on alpha.16 (control; R1 enlarge is the only check that cannot fail there). `tests/publication_zip.py` 6/6. Unit 12, PHP 32, dispatcher 11 pass. Not run: Firefox, Safari, real devices, screen reader, real Joomla.
+
+
 ## 0.1.0-alpha.16 (2026-11-13)
 
 Owner finding from the live test of alpha.15: the synthesised page sound sounded like a shot in an 8-bit game. Wanted: a quiet, discreet page turn of a book or magazine.

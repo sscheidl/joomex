@@ -1,7 +1,9 @@
 """Publication guard for this public repository (see RULES.md). Standard library only.
 
 Checks every file that a commit would contain (tracked files plus untracked files that are not ignored),
-and optionally release archives given with --zip:
+and optionally release archives given with --zip. An archive must contain exactly the package files of one project
+(as listed by that project's scripts/build.py package_files()), each byte-identical to the checked source file; any
+other, missing, duplicate or changed entry is a finding. This does not depend on the archive's compression.
 
 * binary files only under */media/vendor/ and only when the file's SHA-256 matches that project's dependencies.json
 * no file above 1 MiB unless it is such a verified vendor file
@@ -74,6 +76,58 @@ def is_binary(data: bytes) -> bool:
     return b'\0' in data[:8192]
 
 
+def expected_packages(root: Path, tracked: set[str]) -> dict[str, dict[str, Path]]:
+    """Per project with scripts/build.py: archive name -> tracked source file, from the build's own package_files()."""
+    import importlib.util
+    projects = {}
+    for build in sorted(root.glob('*/scripts/build.py')):
+        spec = importlib.util.spec_from_file_location(f'_build_{build.parent.parent.name}', build)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        project = build.parent.parent
+        projects[project.name] = {name: path for name, path in module.package_files(project).items()
+                                  if path.resolve().relative_to(root.resolve()).as_posix() in tracked}
+    return projects
+
+
+def check_archive(root: Path, z: Path, tracked: set[str], rules, findings: list[str]) -> None:
+    """A release archive must contain exactly the tracked package files of one project, byte for byte (R3).
+
+    This covers vendor files (their source files are hash-pinned in dependencies.json and checked above), rejects
+    binaries and any other file that is not in the source, missing files, duplicate names and unsafe paths, and
+    does not depend on how the archive was compressed (R4)."""
+    label = z.name
+    with zipfile.ZipFile(z) as archive:
+        infos = archive.infolist()
+        names = [i.filename for i in infos]
+        for n in sorted({n for n in names if names.count(n) > 1}):
+            findings.append(f'{label}!{n}: duplicate entry')
+        for n in names:
+            if n.startswith('/') or '..' in n.split('/') or '\\' in n or ':' in n:
+                findings.append(f'{label}!{n}: unsafe path')
+        projects = expected_packages(root, tracked)
+        best = max(projects, key=lambda p: len(set(names) & set(projects[p])), default=None)
+        expected = projects.get(best, {})
+        if not expected or len(set(names) & set(expected)) < len(expected) / 2:
+            findings.append(f'{label}: does not correspond to the package files of any project')
+            expected = {}
+        for n in sorted(set(expected) - set(names)):
+            findings.append(f'{label}!{n}: missing (expected from {best})')
+        for info in infos:
+            n = info.filename
+            if n.endswith('/'):
+                continue
+            data = archive.read(info)
+            if expected and n in expected and data == expected[n].read_bytes():
+                continue   # identical to a tracked source file, which the repository pass above has already checked
+            if expected and n not in expected:
+                findings.append(f'{label}!{n}: not a package file of {best}' + (' (binary)' if is_binary(data) else ''))
+            elif expected:
+                findings.append(f'{label}!{n}: differs from the source file')
+            if not is_binary(data):
+                scan_bytes(f'{label}!{n}', data, rules, findings)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--denylist')
@@ -100,15 +154,7 @@ def main() -> int:
         if not (verified and is_binary(data)):   # hash-pinned third-party binaries are not text-scanned
             scan_bytes(name, data, rules if not verified else rules[len(GENERIC):], findings)
     for z in args.zip:
-        with zipfile.ZipFile(z) as archive:
-            for info in archive.infolist():
-                n = info.filename
-                if n.startswith('/') or '..' in n.split('/') or '\\' in n or ':' in n:
-                    findings.append(f'{z}!{n}: unsafe path')
-                data = archive.read(info)
-                if 'media/vendor/' in n and is_binary(data):
-                    continue
-                scan_bytes(f'{Path(z).name}!{n}', data, rules if 'media/vendor/' not in n else rules[len(GENERIC):], findings)
+        check_archive(root, Path(z), set(files), rules, findings)
     for f in findings:
         print('FAIL', f)
     print(f'checked {len(files)} files' + (f' and {len(args.zip)} archive(s)' if args.zip else '') +

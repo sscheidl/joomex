@@ -7,7 +7,7 @@ Checks before packing:
 * no .mjs files (hosts often serve them as text/plain; browsers then refuse the module)
 """
 from pathlib import Path
-import hashlib, json, re, zipfile, xml.etree.ElementTree as ET
+import hashlib, json, platform, re, zipfile, zlib, xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,13 +46,19 @@ def check_version() -> tuple[str, tuple[int, int, int]]:
     return version, (year, month, day)
 
 
+def package_files(root: Path = ROOT) -> dict[str, Path]:
+    """Archive name -> source file. Also used by ../scripts/check_publication.py to verify a release archive."""
+    files = {p.relative_to(root / 'module').as_posix(): p for p in (root / 'module').rglob('*') if p.is_file()}
+    files.update({'media/' + p.relative_to(root / 'media').as_posix(): p for p in (root / 'media').rglob('*') if p.is_file()})
+    for name in ['LICENSE.txt', 'THIRD-PARTY-NOTICES.md']:
+        files[name] = root / name
+    return files
+
+
 def main() -> None:
     check_vendor()
     version, date = check_version()
-    files = {p.relative_to(ROOT / 'module').as_posix(): p for p in (ROOT / 'module').rglob('*') if p.is_file()}
-    files.update({'media/' + p.relative_to(ROOT / 'media').as_posix(): p for p in (ROOT / 'media').rglob('*') if p.is_file()})
-    for name in ['LICENSE.txt', 'THIRD-PARTY-NOTICES.md']:
-        files[name] = ROOT / name
+    files = package_files()
     assert files['LICENSE.txt'].read_text(encoding='utf-8').startswith('                    GNU GENERAL PUBLIC LICENSE')
     out = ROOT / 'dist'
     out.mkdir(exist_ok=True)
@@ -62,11 +68,16 @@ def main() -> None:
             info = zipfile.ZipInfo(name, date_time=(*date, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
+            info.create_system = 3   # fixed, otherwise Python writes 0 on Windows and 3 elsewhere (D4)
             z.writestr(info, path.read_bytes())
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     (out / 'SHA256SUMS.txt').write_text(digest + '  ' + target.name + '\n', encoding='utf-8')
-    (out / 'manifest.json').write_text(json.dumps({'package': target.name, 'sha256': digest, 'status': 'ALPHA - Joomla installation not yet tested',
-                                                   'files': list(sorted(files))}, indent=2), encoding='utf-8')
+    # The archive hash depends on the deflate implementation (stock zlib and zlib-ng compress differently, R4). The
+    # per-entry hashes of the uncompressed contents do not; check_publication.py --zip compares them with the source.
+    (out / 'manifest.json').write_text(json.dumps({
+        'package': target.name, 'sha256': digest, 'status': 'ALPHA - Joomla installation not yet tested',
+        'toolchain': {'python': platform.python_version(), 'zlib': zlib.ZLIB_RUNTIME_VERSION, 'system': platform.system()},
+        'entries': {name: hashlib.sha256(files[name].read_bytes()).hexdigest() for name in sorted(files)}}, indent=2), encoding='utf-8')
     print(target.name, len(files), 'files', target.stat().st_size, 'bytes', digest)
 
 

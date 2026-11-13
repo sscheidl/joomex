@@ -57,34 +57,27 @@ export function sheetProfile(p, curvature = DEFAULT_LOOK.curvature) {
 }
 
 const SHEET_VS = `attribute vec3 aPos; attribute vec4 aTex;
-uniform vec2 uCenter; uniform vec2 uScale; uniform float uCamera; uniform vec3 uShadow;
-varying vec4 vTex; varying vec3 vLight;
+uniform vec2 uCenter; uniform vec2 uScale; uniform float uCamera;
+varying vec4 vTex;
 void main(){ float k = uCamera / (uCamera - aPos.z);
   gl_Position = vec4(uCenter + aPos.xy * k * uScale, -aPos.z * 0.5, 1.0);
-  vTex = aTex; vLight = vec3((aPos.xy + aPos.z * uShadow.xy) * uShadow.z * 0.5 + 0.5, aPos.z); }`;
+  vTex = aTex; }`;
 // vTex = (s along the paper, v, normal x, normal z). Each face shows its own page. A flat page (normal straight up)
 // gets the factor 1 and no highlight, so it looks exactly like the page in the document.
-const SHEET_FS = `precision mediump float; varying vec4 vTex; varying vec3 vLight;
-uniform sampler2D uFront; uniform sampler2D uBack; uniform sampler2D uDepth;
-uniform float uMirror; uniform float uDensity; uniform float uSelfShadow; uniform vec3 uL; uniform vec4 uGutter;
-float height(vec2 uv){ vec4 d = texture2D(uDepth, uv); return (d.r + d.g / 255.0) * ${MAX_HEIGHT.toFixed(1)}; }
+const SHEET_FS = `precision mediump float; varying vec4 vTex;
+uniform sampler2D uFront; uniform sampler2D uBack;
+uniform float uMirror; uniform vec3 uL; uniform vec4 uGutter;
 void main(){ float s = vTex.x; vec3 n = normalize(vec3(vTex.z, 0.0, vTex.w)); bool front = n.z > 0.0; if (!front) n = -n;
   float uf = uMirror > 0.0 ? s : 1.0 - s;
   vec3 c = front ? texture2D(uFront, vec2(uf, vTex.y)).rgb : texture2D(uBack, vec2(1.0 - uf, vTex.y)).rgb;
   vec2 g = front ? uGutter.xy : uGutter.zw; c *= 1.0 - g.x * clamp(1.0 - s / g.y, 0.0, 1.0);
-  // Self-shadow: paper clearly higher than this point lies between it and the light. The comparison is soft and
-  // fades out where the face turns away from the light (it is unlit there anyway), which avoids striped artefacts.
-  float towards = dot(n, uL), shaded = 0.0;
-  // Switched off (uSelfShadow = 0): live-tested as a module switch in 0.1.0-alpha.9, visible only frame by frame,
-  // so it gave no noticeable realism and kept the risk of a band near the free edge. The lookup stays for later use.
-  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++)
-    shaded += smoothstep(vLight.z + 0.05, vLight.z + 0.14, height(vLight.xy + vec2(float(i), float(j)) * 0.008));
-  shaded *= uSelfShadow * smoothstep(0.05, 0.35, towards) / 9.0;
-  float diffuse = max(towards, 0.0) * (1.0 - shaded);
+  // No self-shadow: tested live as a switch in 0.1.0-alpha.9 and visible only frame by frame; the depth lookup that
+  // still ran with weight 0 was removed in 0.1.0-alpha.17 (D3). The cast shadow on the ground is unaffected.
+  float diffuse = max(dot(n, uL), 0.0);
   float shade = (${AMBIENT.toFixed(2)} + ${DIFFUSE.toFixed(2)} * diffuse) / (${AMBIENT.toFixed(2)} + ${DIFFUSE.toFixed(2)} * uL.z);
   vec3 h = normalize(uL + vec3(0.0, 0.0, 1.0));
-  float gloss = ${SPECULAR.toFixed(2)} * (pow(max(dot(n, h), 0.0), ${SHININESS.toFixed(1)}) - pow(h.z, ${SHININESS.toFixed(1)})) * (1.0 - shaded);
-  gl_FragColor = vec4(clamp(c * shade * (1.0 - uDensity * shaded) + gloss, 0.0, 1.0), 1.0); }`;
+  float gloss = ${SPECULAR.toFixed(2)} * (pow(max(dot(n, h), 0.0), ${SHININESS.toFixed(1)}) - pow(h.z, ${SHININESS.toFixed(1)}));
+  gl_FragColor = vec4(clamp(c * shade + gloss, 0.0, 1.0), 1.0); }`;
 // Depth map seen from the light: for every point of the ground, the height of the paper that the light hits first.
 const DEPTH_VS = `attribute vec3 aPos; uniform vec3 uShadow; varying float vHeight;
 void main(){ vHeight = aPos.z / ${MAX_HEIGHT.toFixed(1)};
@@ -237,12 +230,11 @@ export class PageTurn {
     // 4) the sheet: opaque, with depth so that a curled part hides what lies behind it
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
     this.useSheet(this.sheet, true);
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.depthMap.texture);
     const u = name => this.uniform(this.sheet, name);
-    gl.uniform1i(u('uFront'), 0); gl.uniform1i(u('uBack'), 1); gl.uniform1i(u('uDepth'), 2);
+    gl.uniform1i(u('uFront'), 0); gl.uniform1i(u('uBack'), 1);
     gl.uniform2fv(u('uCenter'), layout.center); gl.uniform2fv(u('uScale'), layout.scale);
     gl.uniform1f(u('uCamera'), this.camera); gl.uniform1f(u('uMirror'), mirror);
-    gl.uniform1f(u('uDensity'), shadows ? look.opacity : 0); gl.uniform1f(u('uSelfShadow'), 0); gl.uniform3fv(u('uShadow'), shadow); gl.uniform3fv(u('uL'), light);
+    gl.uniform3fv(u('uL'), light);
     // Same darkening towards the spine as the flat pages have in the stylesheet (right page 11 % over 14 px, left page 9 % over 16 px).
     const right = [0.11, 14 / layout.pagePixels], left = [0.09, 16 / layout.pagePixels];
     gl.uniform4fv(u('uGutter'), mirror > 0 ? [...right, ...left] : [...left, ...right]);

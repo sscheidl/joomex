@@ -1,10 +1,10 @@
 // Plain .js names (not .mjs): many web servers have no MIME type for .mjs, and browsers refuse module scripts served as text/plain.
 // Every relative import and the worker URL carry ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { getDocument, GlobalWorkerOptions, version } from '../vendor/pdfjs/build/pdf.js?v=0.1.0-alpha.16';
-import { LIMITS, ViewerError, renderDimensions } from './model.js?v=0.1.0-alpha.16';
+import { getDocument, GlobalWorkerOptions, version } from '../vendor/pdfjs/build/pdf.js?v=0.1.0-alpha.17';
+import { LIMITS, ViewerError, renderDimensions } from './model.js?v=0.1.0-alpha.17';
 
 const vendor = new URL('../vendor/pdfjs/', import.meta.url);
-GlobalWorkerOptions.workerSrc = new URL('build/pdf.worker.js?v=0.1.0-alpha.16', vendor).href;
+GlobalWorkerOptions.workerSrc = new URL('build/pdf.worker.js?v=0.1.0-alpha.17', vendor).href;
 export const pdfVersion = version;
 
 export class PdfDocument {
