@@ -8,7 +8,7 @@ Independent review, 2026-11-13. Candidate: `e4be5052819323ac6899880c5c810d848c82
 
 **Production: BLOCKED.** In addition to the archive gate, close the integration, production-server, accessibility and device evidence listed below. Mixed-format WebGL pages also remain distorted during turns.
 
-The alpha.15 report linked by the request is absent from every fetched tree containing that path. Its original evidence and acceptance text could not be reused. Correction IDs below use the acceptance criteria reproduced in `REVIEW_REQUEST_0.1.0-alpha.18.md`; this is an independent follow-up against those criteria, not a claim to have recovered the missing report.
+The baseline [alpha.15 report at `344287c`](https://github.com/sscheidl/joomex/blob/344287c/pdf-book/docs/reviews/REVIEW_0.1.0-alpha.15.md) was recovered from `origin/review/pdf-book-0.1.0-alpha.15` and read during the final history audit. It is absent from the candidate tree, which explains the broken relative links. Its original evidence directory and four named test scripts are not present in that report commit. Correction IDs below were checked against that report's original acceptance criteria as well as the follow-up request; fresh measurements are distinguished from the baseline's historical results.
 
 ## Environment and measured checks
 
@@ -116,7 +116,7 @@ With sound disabled: zero MP3 requests and no AudioContext. With sound enabled: 
 
 1. Fix N18-1–3 and add CLI-level adversarial regressions; package corrections use a new version, next free **0.1.0-alpha.19**, on a separate fix branch.
 2. Preserve fitted image aspect in WebGL (N18-4); unify numeric vectors (N18-5), finish test scoping (N18-6), and enforce the audio-origin promise.
-3. Restore the missing alpha.15 report or amend broken review links. Retain the official-versus-mirror hash/newline explanation in provenance.
+3. Include the alpha.15 report from its review branch or link its stable revision; amend the candidate's broken relative review links. Retain the official-versus-mirror hash/newline explanation in provenance.
 4. Provide the exact release ZIP and its manifest, rerun private checks, complete the release-evidence table, then obtain consent for tags/release publication.
 
 This review changes documentation only. It does not merge code, deploy a site, certify a production release or publish tags.
