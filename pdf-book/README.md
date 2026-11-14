@@ -2,7 +2,7 @@
 
 A self-contained PDF flipbook module for Joomla 6. It aims to replace a previously used commercial flipbook module with similar operation and appearance, and to rebuild every security-relevant part. It uses its own code and PDF.js 6.5.438.
 
-**Status 2026-11-14: 1.0.0 release build in preparation.** This line follows the independently reviewed alpha.19 package and its [deployment checks](docs/reviews/PRODUCTION_CHECK_0.1.0-alpha.19.md). Version 1.0.0 fixes the remaining archive identity, numeric parsing and intermediate texture limits. Exact build identity, current validation and deployment limits are recorded in [the release record](docs/reviews/RELEASE_1.0.0.md). A website-wide CSP rollout is a separate hardening project and is not by itself a prerequisite for using this module.
+**Status 2026-11-14: 1.0.0 release build prepared.** This line follows the independently reviewed alpha.19 package and its [deployment checks](docs/reviews/PRODUCTION_CHECK_0.1.0-alpha.19.md). Version 1.0.0 fixes the remaining archive identity, numeric parsing and intermediate texture limits. Exact build identity, current validation and deployment limits are recorded in [the release record](docs/reviews/RELEASE_1.0.0.md). A website-wide CSP rollout is a separate hardening project and is not by itself a prerequisite for using this module.
 
 - [Specification](docs/SPECIFICATION.md)
 - [Security requirements](docs/SECURITY.md)

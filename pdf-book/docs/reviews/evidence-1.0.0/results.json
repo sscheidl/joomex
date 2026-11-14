@@ -1,0 +1,211 @@
+{
+  "date": "2026-11-14",
+  "version": "1.0.0",
+  "artifact": {
+    "package": "mod_pdfbook-1.0.0.zip",
+    "sha256": "be92e771c838545419fd3daa3211c3341221a37077860c86235cf48c344c1d5b",
+    "bytes": 2428018,
+    "entries": 211,
+    "immutable_source_entry_comparison": true,
+    "manifest_and_checksum_match": true,
+    "repeat_build_identical_same_toolchain": true,
+    "source_commit": "see supplied artifact manifest"
+  },
+  "unit_groups": 14,
+  "shared_numeric_vectors": 27,
+  "php_source_checks": 32,
+  "php_dispatcher_checks": 40,
+  "archive_regressions": {
+    "pass": 14,
+    "total": 14
+  },
+  "focused_browser_regressions": {
+    "edge": {
+      "pass": 9,
+      "total": 9
+    },
+    "firefox": {
+      "pass": 9,
+      "total": 9
+    }
+  },
+  "browser_smoke": {
+    "msedge": {
+      "status": "PASS",
+      "browser": "157.0.4341.57",
+      "tests": [
+        "load PDF.js 6.5.438",
+        "navigation and boundaries",
+        "queued input during page turn (F2)",
+        "WebGL renderer active and curved page screenshot",
+        "zoom",
+        "outline navigation",
+        "dialog escape and focus return",
+        "mobile single-page and no horizontal overflow",
+        "multiple instances",
+        "PDF JavaScript actions not executed",
+        "unsafe annotation URLs omitted on displayed page",
+        "HTML titles inert",
+        "broken PDF rejected",
+        "foreign PDF source rejected",
+        "single-page PDF",
+        "RTL with odd page count and flat renderer",
+        "safe PDF annotation URL",
+        "no external requests",
+        "no uncaught browser errors"
+      ],
+      "external_requests": [],
+      "errors": [],
+      "desktop_renderer": "webgl",
+      "mobile_renderer": "flat"
+    },
+    "firefox": {
+      "status": "PASS",
+      "browser": "159.0",
+      "tests": [
+        "load PDF.js 6.5.438",
+        "navigation and boundaries",
+        "queued input during page turn (F2)",
+        "WebGL renderer active and curved page screenshot",
+        "zoom",
+        "outline navigation",
+        "dialog escape and focus return",
+        "mobile single-page and no horizontal overflow",
+        "multiple instances",
+        "PDF JavaScript actions not executed",
+        "unsafe annotation URLs omitted on displayed page",
+        "HTML titles inert",
+        "broken PDF rejected",
+        "foreign PDF source rejected",
+        "single-page PDF",
+        "RTL with odd page count and flat renderer",
+        "safe PDF annotation URL",
+        "no external requests",
+        "no uncaught browser errors"
+      ],
+      "external_requests": [],
+      "errors": [],
+      "desktop_renderer": "webgl",
+      "mobile_renderer": "flat"
+    }
+  },
+  "simulated_gpu_limit": {
+    "msedge": {
+      "browser": "msedge",
+      "version": "157.0.4341.57",
+      "scope": "simulated 1024-edge GPU texture limit, synthetic fixtures",
+      "results": [
+        {
+          "source": "images/resource-formats.pdf",
+          "state": "ready",
+          "page": "2",
+          "renderer": "webgl",
+          "gpuLimit": 1024,
+          "uploads": [
+            {
+              "width": 102,
+              "height": 1024,
+              "redRatio": null
+            },
+            {
+              "width": 102,
+              "height": 1024,
+              "redRatio": null
+            }
+          ],
+          "glError": 0
+        },
+        {
+          "source": "images/mixed-formats.pdf",
+          "state": "ready",
+          "page": "4",
+          "renderer": "webgl",
+          "gpuLimit": 1024,
+          "uploads": [
+            {
+              "width": 615,
+              "height": 869,
+              "redRatio": 3.4523809523809526
+            },
+            {
+              "width": 615,
+              "height": 869,
+              "redRatio": null
+            }
+          ],
+          "glError": 0
+        }
+      ],
+      "page_errors": []
+    },
+    "firefox": {
+      "browser": "firefox",
+      "version": "159.0",
+      "scope": "simulated 1024-edge GPU texture limit, synthetic fixtures",
+      "results": [
+        {
+          "source": "images/resource-formats.pdf",
+          "state": "ready",
+          "page": "2",
+          "renderer": "webgl",
+          "gpuLimit": 1024,
+          "uploads": [
+            {
+              "width": 102,
+              "height": 1024,
+              "redRatio": null
+            },
+            {
+              "width": 102,
+              "height": 1024,
+              "redRatio": null
+            }
+          ],
+          "glError": 0
+        },
+        {
+          "source": "images/mixed-formats.pdf",
+          "state": "ready",
+          "page": "4",
+          "renderer": "webgl",
+          "gpuLimit": 1024,
+          "uploads": [
+            {
+              "width": 615,
+              "height": 869,
+              "redRatio": 3.4523809523809526
+            },
+            {
+              "width": 615,
+              "height": 869,
+              "redRatio": null
+            }
+          ],
+          "glError": 0
+        }
+      ],
+      "page_errors": []
+    }
+  },
+  "publication": {
+    "private_terms": 41,
+    "findings": 0
+  },
+  "advisory_snapshot": {
+    "date": "2026-11-14",
+    "pdfjs": "6.5.438",
+    "official_latest_at_check": true,
+    "reviewed_patched_versions": {
+      "GHSA-wgrm-67xf-hhpq": "4.2.67",
+      "GHSA-hq66-cqwq-w95j": "6.2.108"
+    },
+    "pdf_scripting_manager_loaded": false
+  },
+  "not_measured_for_new_package": [
+    "real Joomla installation/update of 1.0.0",
+    "new physical-device/weak-GPU matrix",
+    "new screen-reader listening test on changed 1.0.0 bytes",
+    "full historical browser review suite rerun"
+  ],
+  "publication_or_deployment_performed": false
+}
