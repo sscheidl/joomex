@@ -73,8 +73,25 @@ Private HTTP/TLS/hash evidence, browser state and a screenshot are retained by t
 
 ## Remaining acceptance
 
-1. Complete authenticated HTTP sessions and any intended site-level cache matrix. The actual guest embedded page has passed the browser checks above.
-2. Review and test the intended production CSP in the context of the existing site. The actual module page passes the guest HTTPS checks, while no enforced CSP is deployed on that page. Any production header change is a separate authorized action.
+1. Complete authenticated HTTP sessions using a regular existing editor login. The current cache-off configuration and repeated independent guest HTTP requests were checked in the follow-up below. A cache-on end-to-end matrix applies if site-level caching is subsequently enabled.
+2. Resolve the existing page-builder inline-script conflict and validate any intended production CSP on the server. The local replay below passes the module-level checks but does not accept a policy for the complete production site. Any production header change is a separate authorized action.
 3. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
 
 No production deployment, configuration change or overall production approval is implied by the successful staging update and module-level checks.
+
+## Cache configuration and local CSP experiment
+
+**MEASURED 2026-11-14.** A read-only inventory through the existing pinned SSH operations bridge confirmed that **both staging and production have global Joomla caching set to 0 and the system page-cache plugin disabled**. Neither installed PDF Book instance explicitly overrides the module-cache parameters. The configuration files remained unchanged. Four HTTPS requests in the sequence guest A → guest B → guest B → guest A, using two independent unauthenticated cookie jars, all returned HTTP 200 with two book instances and `no-store, no-cache, must-revalidate`. No `Age` or `X-Cache` header was present. These facts describe the current cache-off deployment; they do not prove editor/guest isolation through an enabled site or proxy cache. The prior real Joomla 48/48 module-cache assertions remain the cache-on rendering evidence.
+
+A loopback-only replay of the captured public live page was served with test CSP response headers in the Chromium in-app browser. Public assets were fetched by bounded GET only; no client cookies or authorization were forwarded upstream. Protocol-relative resource attributes were resolved to HTTPS as on the original live page. The test changed no live/staging content, settings or headers. Report-only monitoring followed the [CSP policy delivery model](https://www.w3.org/TR/CSP/#csp-header).
+
+| Local experiment | Measured result |
+| --- | --- |
+| Report-only, scripts from self, no inline-script allowance | Both books ready with WebGL; seven inline-script violation reports from the captured document and existing page-builder runtime. |
+| Same policy enforced | Both books ready; next-page navigation reached pages 2–3. Seven inline-script violations were enforced. This is not whole-page compatibility. |
+| Enforced policy plus hashes for six captured inline script blocks | Both books ready; Enter on Next reached pages 2–3. One runtime-injected page-builder inline script remained blocked. Snapshot-specific hashes are not a deployable site-wide configuration. |
+| Separate module fixture: sound enabled, sound fetches excluded from connect-src | Two enforced connect-src violations; neither audio request reached the proxy. The book remained ready and navigated to pages 2–3 with WebGL. Optional blocked audio did not break navigation. |
+
+The local policies allowed self-hosted module scripts/workers/PDF fetches and inline styling, omitted `unsafe-eval`, and denied object embedding and inline event handlers. This is not a strict-style test. No upstream public-asset failures occurred. The initial replay used HTTP resolution for a protocol-relative video iframe; that harness artifact was corrected, and the final HTTPS-normalized runs are the evidence summarized here. No video-frame violation remained in those runs.
+
+**Outcome:** the measured module behavior tolerates the tested CSP, including blocked optional sound. The existing page-builder inline script still needs integration work before accepting the complete page under that policy. Production itself still has no CSP. Real HTTPS policy delivery, additional pages, ordinary authenticated login and the complete editor/guest HTTP cache matrix remain outside this local experiment. Test servers were stopped afterward. Raw private reports, policies and screenshots are retained outside this public repository.
