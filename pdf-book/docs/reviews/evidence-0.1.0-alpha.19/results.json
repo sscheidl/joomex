@@ -1,0 +1,230 @@
+{
+  "date": "2026-11-13",
+  "candidate": "e13659a6549495b62d10f3f8058bd117149e81f8",
+  "exact_package": {
+    "date": "2026-11-13",
+    "candidate": "e13659a6549495b62d10f3f8058bd117149e81f8",
+    "artifact": "mod_pdfbook-0.1.0-alpha.19.zip",
+    "sha256": "c98668f54897975d0100237d65fbf5e6c7275e9fdeb222681cb38cdb708ed46e",
+    "entries": 211,
+    "all_entries_equal_commit_blobs": true,
+    "all_entry_hashes_equal_manifest": true,
+    "sha256sums_agrees": true,
+    "manifest_toolchain": {
+      "python": "3.13.18",
+      "zlib": "1.3.1.zlib-ng",
+      "system": "Linux"
+    },
+    "private_denylist_terms": 41,
+    "private_publication_findings": 0
+  },
+  "model_tests_passed": 13,
+  "php_path_tests_passed": 32,
+  "php_dispatcher_tests_passed": 34,
+  "supplied_archive_tests": "12/12",
+  "regression_suite": {
+    "Edge": "9/9",
+    "Firefox": "9/9"
+  },
+  "smoke": {
+    "Edge": "PASS",
+    "Firefox": "PASS"
+  },
+  "targeted_legacy": {
+    "edge": {
+      "INFO": 1,
+      "PASS": 7
+    },
+    "firefox": {
+      "INFO": 1,
+      "PASS": 7
+    }
+  },
+  "independent_gate_probes": [
+    {
+      "case": "genuine",
+      "accepted": true,
+      "exit": 0,
+      "output": "checked 269 files and 1 archive(s); deny-list terms: 0; findings: 0"
+    },
+    {
+      "case": "directory-payload",
+      "accepted": false,
+      "exit": 1,
+      "output": "FAIL directory-payload.zip!extra/: directory entry with 8 bytes of content\nchecked 269 files and 1 archive(s); deny-list terms: 0; findings: 1"
+    },
+    {
+      "case": "symlink",
+      "accepted": false,
+      "exit": 1,
+      "output": "FAIL symlink.zip!LICENSE.txt: not a regular file (mode 0o120777)\nchecked 269 files and 1 archive(s); deny-list terms: 0; findings: 1"
+    },
+    {
+      "case": "untracked",
+      "accepted": false,
+      "exit": 1,
+      "output": "FAIL untracked.zip!media/js/probe-untracked.js: not a package file of pdf-book\nchecked 270 files and 1 archive(s); deny-list terms: 0; findings: 1"
+    },
+    {
+      "case": "modified-matching-source",
+      "accepted": false,
+      "exit": 1,
+      "output": "FAIL modified-matching-source.zip!media/js/model.js: its source file differs from HEAD; commit or restore it before checking an archive\nchecked 269 files and 1 archive(s); deny-list terms: 0; findings: 1"
+    },
+    {
+      "case": "deleted-matching-source",
+      "accepted": true,
+      "exit": 0,
+      "output": "checked 268 files and 1 archive(s); deny-list terms: 0; findings: 0"
+    }
+  ],
+  "browser_probes": [
+    {
+      "case": "mixed-formats.pdf",
+      "result": {
+        "slotRatio": 0.7074592074592074,
+        "front": [
+          607,
+          858
+        ],
+        "back": [
+          607,
+          858
+        ],
+        "frontRedRatio": 3.3255813953488373,
+        "maxTexture": 16384,
+        "state": "ready"
+      }
+    },
+    {
+      "case": "letterbox-limit.pdf",
+      "result": {
+        "slotRatio": 0.099853515625,
+        "front": [
+          607,
+          6079
+        ],
+        "back": [
+          607,
+          6079
+        ],
+        "frontRedRatio": 4.5,
+        "maxTexture": 16384,
+        "state": "ready"
+      }
+    },
+    {
+      "case": "audio-redirect",
+      "result": {
+        "foreign_attempts": 0,
+        "decoded": 0,
+        "state": "ready"
+      }
+    }
+  ],
+  "history_private_scan": {
+    "remote_branches": [
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.10",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.11",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.12",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.13",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.14",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.15",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.16",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.17",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.18",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.19",
+      "refs/remotes/origin/fix/pdf-book-0.1.0-alpha.9",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.14",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.15",
+      "refs/remotes/origin/review/pdf-book-0.1.0-alpha.18"
+    ],
+    "commits": 17,
+    "unique_blob_path_lock_checks": 372,
+    "denylist_terms": 41,
+    "findings": []
+  },
+  "numeric_edges": [
+    {
+      "case": "400 decimal nines",
+      "PHP_height": 1000,
+      "JS_height": 500
+    },
+    {
+      "case": "U+00A0 around 501",
+      "PHP_height": 500,
+      "JS_height": 501
+    },
+    {
+      "case": "zero string",
+      "PHP_height": 320,
+      "JS_height": 320
+    }
+  ],
+  "tag_plan": [
+    {
+      "tag": "pdf-book-v0.1.0-alpha.9",
+      "commit": "7d458f4a10c63352cf2db074e1cf7004e79ee44a",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.10",
+      "commit": "cb1aafaf1fbf3fb85ecdbe5a7168fff8afed41c9",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.11",
+      "commit": "218b73cf14fcf6f9e1dd42eae5d8ffd5e466a490",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.12",
+      "commit": "fada5a127a3089a8ad9f4b244529c96e20c8557d",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.13",
+      "commit": "380ec91a62828a11337df56d86242a486b0b6468",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.14",
+      "commit": "5f50cee486fa0c5a53c4f0f81aa4fe4c82146ba6",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.15",
+      "commit": "21e68150d6d8cd2463428965118ff7fb8eba411a",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.16",
+      "commit": "7a252f1472c5ba6cfb430cf69893da26c23b2d78",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.17",
+      "commit": "ca8af3444d5f4734bad8d34db5c958ea9c5459bf",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.18",
+      "commit": "e4be5052819323ac6899880c5c810d848c8237da",
+      "version_verified": true
+    },
+    {
+      "tag": "pdf-book-v0.1.0-alpha.19",
+      "commit": "e13659a6549495b62d10f3f8058bd117149e81f8",
+      "version_verified": true
+    }
+  ],
+  "tags_pushed": false,
+  "release_published": false,
+  "not_measured": [
+    "real Joomla rights/cache",
+    "production HTTPS/CSP",
+    "screen reader",
+    "physical mobile/Safari",
+    "weak-GPU behavior of large letterboxed textures"
+  ]
+}
