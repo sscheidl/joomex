@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'test-results' / 'release-1.0.0'
 OUT.mkdir(parents=True, exist_ok=True)
 writer = PdfWriter()
-for width, height in [(420, 4200), (842, 420), (420, 594), (420, 4200)]:
+for width, height in [(420, 4200), (842, 420), (420, 4200), (420, 4200)]:
     page = writer.add_blank_page(width, height)
     stream = DecodedStreamObject()
     stream.set_data(f'0.8 0.9 0.8 rg 0 0 {width} {height} re f'.encode())
@@ -62,12 +62,25 @@ with sync_playwright() as pw:
           const {PdfBook} = await import('/media/js/viewer.js?v=' + version);
           const target = document.createElement('div'); document.body.replaceChildren(target);
           const book = new PdfBook(target, {src:source,base:location.origin+'/',title:'Texture budget',mode:'double',renderer:'webgl',height:600,duration:150});
-          await book.ready; window.textureUploads = []; await book.go(2);
+          const settle = async () => {
+            for (let i=0;i<30;i++) {
+              if (!book.busy && !book.pending) {
+                await new Promise(r=>setTimeout(r,350));
+                if (!book.busy && !book.pending) return;
+              }
+              await new Promise(r=>setTimeout(r,100));
+            }
+            throw new Error('Texture probe did not settle');
+          };
+          await book.ready; await settle(); window.textureUploads = []; await book.go(2); await settle();
+          // Page 3 is on the turning face only when leaving spread 2–3.
+          // Entering that spread turns page 1, whose fixture has no red rectangle.
+          if (source.endsWith('mixed-formats.pdf')) { window.textureUploads = []; await book.go(4); await settle(); }
           return {source, state:target.dataset.state, page:target.dataset.page, renderer:target.dataset.renderer,
                   gpuLimit:book.turn?.maxTextureSize, uploads:window.textureUploads,
                   glError:book.turn?.gl.getError()};
         }""", source)
-        assert result['state'] == 'ready' and result['page'] == '2', result
+        assert result['state'] == 'ready' and result['page'] == ('4' if source.endswith('mixed-formats.pdf') else '2'), result
         assert result['renderer'] == 'webgl' and result['uploads'], result
         assert result['gpuLimit'] <= 1024 and result['glError'] == 0, result
         assert all(u['width'] <= result['gpuLimit'] and u['height'] <= result['gpuLimit'] and u['width']*u['height'] <= 2400000 for u in result['uploads']), result
