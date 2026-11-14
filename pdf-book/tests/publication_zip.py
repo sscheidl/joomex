@@ -3,12 +3,12 @@
 Run after `python scripts/build.py`: python tests/publication_zip.py
 The genuine package and a recompressed copy must pass; manipulated copies must fail.
 """
-import subprocess, sys, tempfile, zipfile
+import json, subprocess, sys, tempfile, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECK = ROOT.parent / 'scripts' / 'check_publication.py'
-genuine = sorted((ROOT / 'dist').glob('mod_pdfbook-*.zip'))[-1]
+genuine = ROOT / 'dist' / json.loads((ROOT / 'dist/manifest.json').read_text(encoding='utf-8'))['package']
 
 
 def check(archive: Path) -> int:
@@ -48,6 +48,7 @@ def symlink(entries):
 
 
 UNTRACKED = ROOT / 'media' / 'js' / 'probe-untracked.js'
+TRACKED = ROOT / 'media' / 'js' / 'model.js'
 
 
 def untracked(entries):
@@ -56,6 +57,14 @@ def untracked(entries):
 
 def many(entries):
     return [*entries, *((zipfile.ZipInfo(f'filler/{i}.txt'), b'') for i in range(5000))]
+
+
+def deleted_source(entries):
+    return [e for e in entries if e[0].filename != 'media/js/model.js']
+
+
+def matching_modified_source(entries):
+    return [(info, TRACKED.read_bytes() if info.filename == 'media/js/model.js' else data) for info, data in entries]
 
 
 cases = {
@@ -71,19 +80,28 @@ cases = {
     'more than 5000 entries fails (N18-1)': (many, 1),
     'symlink mode on a package file fails (N18-2)': (symlink, 1),
     'untracked file in the source tree fails (N18-3)': (untracked, 1),
+    'deleted tracked source plus matching ZIP omission fails (N19-1)': (deleted_source, 1),
+    'modified tracked source plus matching ZIP content fails': (matching_modified_source, 1),
 }
 failed = 0
 with tempfile.TemporaryDirectory() as tmp:
     import warnings
     warnings.simplefilter('ignore')   # zipfile warns about the deliberate duplicate name
     for i, (label, (change, expected)) in enumerate(cases.items()):
+        original = TRACKED.read_bytes()
         if change is untracked:
             UNTRACKED.write_text('// probe: untracked file, must not be accepted as package source\n', encoding='utf-8')
+        if change is deleted_source:
+            TRACKED.unlink()
+        elif change is matching_modified_source:
+            TRACKED.write_bytes(original + b'\n// modified regression source\n')
         try:
             archive = genuine if change is genuine else variant(f'case{i}.zip', stored if change is None else change)
             code = check(archive)
         finally:
             UNTRACKED.unlink(missing_ok=True)
+            if change in (deleted_source, matching_modified_source):
+                TRACKED.write_bytes(original)
         ok = code == expected
         failed += not ok
         print('PASS' if ok else 'FAIL', label, f'(exit {code})')

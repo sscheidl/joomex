@@ -2,7 +2,7 @@
 
 A self-contained PDF flipbook module for Joomla 6. It aims to replace a previously used commercial flipbook module with similar operation and appearance, and to rebuild every security-relevant part. It uses its own code and PDF.js 6.5.438.
 
-**Status 2026-11-13: alpha 0.1.0-alpha.19. Not for production.** alpha.17 and alpha.18 fixed the findings of the [independent review of alpha.15](docs/reviews/REVIEW_0.1.0-alpha.15.md); alpha.19 fixes N18-1 to N18-6 of the [follow-up review of alpha.18](docs/reviews/REVIEW_0.1.0-alpha.18.md). alpha.13 swaps the vertical fold: forward the top half folds down. alpha.12 turns rapid clicks into one complete turn to the page in the counter and adds a 100 % zoom button. alpha.10 added the page-change modes "Klappen" (flip-board fold) and "Überblenden" (cross-fade); alpha.11 adds a vertical fold, automatic height, a cinema mode (heading and toolbar can be hidden), an optional page sound and autoplay settings. alpha.5 runs on a Joomla 6.2 staging installation (installation, display, update and uninstallation tested by the owner). alpha.6 improved the page-turn animation and the controls after that test; alpha.7 makes its look adjustable in the module settings and adds a slide animation. alpha.3 fixed the findings of the [review of 0.1.0-alpha.1](docs/reviews/REVIEW_0.1.0-alpha.1.md); alpha.4 fixes the new findings of the [review of 0.1.0-alpha.3](docs/reviews/REVIEW_0.1.0-alpha.3.md). See [docs/STATUS.md](docs/STATUS.md) and [CHANGELOG.md](CHANGELOG.md).
+**Status 2026-11-14: 1.0.0 release build prepared.** This line follows the independently reviewed alpha.19 package and its [deployment checks](docs/reviews/PRODUCTION_CHECK_0.1.0-alpha.19.md). Version 1.0.0 fixes the remaining archive identity, numeric parsing and intermediate texture limits. Exact build identity, current validation and deployment limits are recorded in [the release record](docs/reviews/RELEASE_1.0.0.md). A website-wide CSP rollout is a separate hardening project and is not by itself a prerequisite for using this module.
 
 - [Specification](docs/SPECIFICATION.md)
 - [Security requirements](docs/SECURITY.md)
@@ -36,11 +36,11 @@ python tests/browser_smoke.py
 python scripts/build.py
 ```
 
-The build checks every PDF.js file against `dependencies.json` (and that nothing else is vendored), checks that the manifest, `Dispatcher::VERSION`, `package.json` and every `?v=` import suffix carry the same version, and writes `dist/mod_pdfbook-<version>.zip`, `dist/SHA256SUMS.txt` and `dist/manifest.json`. Release packages are published as GitHub pre-releases, not committed.
+The build checks every PDF.js file against `dependencies.json` (and that nothing else is vendored), checks that the manifest, `Dispatcher::VERSION`, `package.json` and every `?v=` import suffix carry the same version, and writes `dist/mod_pdfbook-<version>.zip`, `dist/SHA256SUMS.txt` and `dist/manifest.json`. Release packages and their checksums/manifests are distributed as release assets, not committed. Stable builds require clean committed package inputs; the manifest records their source commit and build toolchain.
 
-## Module use (test installations only)
+## Module use
 
-Install the ZIP through the Joomla installer of a **test** installation. Create a site module **PDF Book (Prototyp)**, choose a public PDF under `images/` with the media picker (or enter `images/brochure.pdf` / `/images/brochure.pdf`), then choose a position, menu assignment and publish. PDFs are not part of the package.
+Verify an update on a test installation before changing a production site, and retain a file/database backup. Install the ZIP through the Joomla extension installer. Create a site module **PDF Book**, choose a public PDF under `images/` with the media picker (or enter `images/brochure.pdf` / `/images/brochure.pdf`), then choose a position, menu assignment and publish. PDFs are not part of the package.
 
 Current limits: public local PDFs up to 32 MB and 1000 pages, images inside a PDF up to 16 megapixels (larger embedded images are left out without a notice, review finding F14), no external PDFs. Configuration errors are shown to module editors only. The user interface is German only. Hiding the download button is not access control.
 

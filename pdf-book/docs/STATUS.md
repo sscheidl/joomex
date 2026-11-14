@@ -1,56 +1,22 @@
-# Development status 0.1.0-alpha.8
+# Development status 1.0.0
 
-2026-11-12. **Browser prototype runs; fixes for all review findings implemented. Joomla installation NOT MEASURED. Not for production.**
+2026-11-14. **Release build prepared and locally validated.** Current validation and exact package identity are tracked in [RELEASE_1.0.0](reviews/RELEASE_1.0.0.md). No new production installation is implied by preparing this version.
 
-## Versions
+## Current functionality
 
-| Version | Date | Content |
-| --- | --- | --- |
-| 0.1.0-alpha.1 | 2026-11-11 | First candidate; reviewed independently (verdict BLOCKED). Built under an earlier working name and not published. |
-| 0.1.0-alpha.2 | 2026-11-12 | Public package. Same functionality as alpha.1, with neutral identifiers, notice and texts. |
-| 0.1.0-alpha.3 | 2026-11-12 | Fixes for F1–F15 and documentation for F16. [Review](reviews/REVIEW_0.1.0-alpha.3.md): suitable for a limited staging test; new findings N1–N3. |
-| 0.1.0-alpha.4 | 2026-11-12 | Fixes for N1–N3. Live test on a Joomla 6.2 staging installation: installation and back end OK, F1 confirmed, viewer did not start (`.mjs` served as `text/plain`, L1). |
-| 0.1.0-alpha.5 | 2026-11-12 | Fix for L1: all JavaScript files named `.js`; see [CHANGELOG.md](../CHANGELOG.md). Live test: viewer works; installation, update and uninstallation OK. |
-| 0.1.0-alpha.6 | 2026-11-13 | New page-turn renderer (curvature, shadows, no size jump), larger icons, page click and arrow keys; see [CHANGELOG.md](../CHANGELOG.md). Live test: "clearly better". |
-| 0.1.0-alpha.7 | 2026-11-13 | Look of the 3D turn adjustable in the back end (curvature, shadow density, softness, width), tempo for both animations, alternative slide animation; see [CHANGELOG.md](../CHANGELOG.md). Live test: no obvious errors. |
-| 0.1.0-alpha.8 | 2026-11-13 | 3D turn rewritten again: Bézier bend, specular light, shadow from a depth map; see [CHANGELOG.md](../CHANGELOG.md). **Next: live test of alpha.8 and independent review** ([request](reviews/REVIEW_REQUEST_0.1.0-alpha.7.md)). |
+- Native Joomla 6 module, media picker, multiple instances, inline or dialog view and separate Web Asset Manager resources.
+- PDF.js 6.5.438 with an independently written WebGL page turn; flat, slide, fold and fade alternatives; single/double/automatic views and RTL.
+- Navigation, page input, thumbnails, document bookmarks, annotation links, zoom/reset and fullscreen. Sidebar states and dialog focus/Escape are exposed to assistive technologies.
+- Optional same-origin page sound, configurable heading/toolbar/frame, automatic height and autoplay with manual stopping and reduced-motion handling.
+- Only public local PDFs: 32 MB and 1000 pages; 2.4 million render pixels; 4096-pixel edge cap; page-turn textures also respect the GPU limit. Embedded images above 16 megapixels are omitted. Six cached pages and bounded response/idle/parse timeouts.
+- Fixed German error messages; source errors visible only to module editors. PDF scripts/XFA are not executed, WebAssembly is disabled, and the scripting sandbox is not shipped.
 
-## Implemented
+## Evidence and remaining scope
 
-- Native Joomla module structure with namespaces, service provider, dispatcher, form fields (PDF via the Joomla media picker) and separate media resources registered through the Web Asset Manager.
-- Own viewer with PDF.js 6.5.438 and its own WebGL page mesh and shading, without jQuery or Three.js. A static fallback is used in single-page view, with animation turned off, or when WebGL is missing.
-- Next/previous, first/last page, page input, page mode (automatic/single/double), RTL, zoom, fullscreen button, thumbnails, PDF bookmarks and links. Input during rendering or page turns is queued.
-- Dialog view with Escape and focus return; the book fills the dialog. Several independent instances.
-- Autoplay with a fixed 3-second interval. A click or tap on a page, the arrow keys or a swipe gesture turn the page (when zoomed, a swipe only at the scroll edge); interactive dragging of a curved page is not implemented yet.
-- Limits:
-  - only the site's own public media PDFs
-  - 32 MB download, 1000 pages
-  - 2.4 million pixels and at most 4096 pixels per page edge
-  - images of at most 16 megapixels inside a PDF (larger images are skipped)
-  - six cache entries
-  - timeouts: 20 s until the response, 20 s without new data, 30 s for parsing
-- Error messages are fixed German texts. Configuration errors are shown to module editors only.
-- HTML output through JSON/attribute encoding and DOM text nodes. No PDF scripting manager, no XFA, no WebAssembly, no foreign PDF URLs, no proxy or upload endpoint.
+The alpha.19 [artifact review](reviews/REVIEW_0.1.0-alpha.19.md) and [deployment follow-up](reviews/PRODUCTION_CHECK_0.1.0-alpha.19.md) record the immutable package check, real Joomla installation and 48 module role/cache assertions, actual guest/authenticated HTTPS pages and owner-reported screen-reader listening. These identify alpha.19; fresh 1.0.0 checks are recorded separately.
 
-## Checks (MEASURED 2026-11-12, Windows 11, Edge 157 headless, PHP 8.4.27, Node 24.22.1)
+The 1.0.0 line fixes the archive deletion hole, numeric overflow/whitespace mismatch and unbounded intermediate letterboxing. The interface remains German. Public PDF links are not access control. A selectable text layer, internationalisation, cover gallery and arbitrary image-folder books are not implemented.
 
-| Check | Result | Limit |
-| --- | --- | --- |
-| `node --test tests/model.test.mjs` | PASS, 9 test groups | Paths/URL schemes, page order/RTL, render sizes, messages, mode cycle |
-| `php tests/source.php` | PASS, 32 checks | Path rules including legacy and media-field formats, output encoding, error visibility |
-| `php tests/dispatcher.php` | PASS, 9 checks | Asset URIs, version, base, error visibility; against stubs, **not Joomla** |
-| `php -l` on all PHP files | PASS | |
-| `tests/browser_smoke.py` | PASS | One desktop browser; mobile size emulated |
-| `tests/review/review_browser.py` | See [evidence-0.1.0-alpha.3](reviews/evidence-0.1.0-alpha.3/) | Loopback server, Joomla stubs |
-| `scripts/build.py` twice | Identical SHA-256 | |
-| Installation/update/uninstallation | **NOT RUN** | Needs an isolated Joomla 6 (planned on a staging installation) |
+Physical-device/weak-GPU coverage remains limited to the recorded tests. Enabling site/proxy page caching requires the corresponding end-to-end role/source checks. A whole-site CSP rollout needs template/page-builder integration; absence of a newly introduced CSP is not a module defect or an automatic release blocker.
 
-## Still open
-
-- Independent review of alpha.3 and the Joomla installation gate (root and subdirectory installation, SEF, media picker, access matrix, logs, MIME types, CSP).
-- Content plugin, multi-book cover gallery and cover selection in the back end.
-- Sound, configurable toolbar and autoplay interval, manual tables of contents, image folders and wide inner spreads.
-- Internationalisation and a text/screen-reader layer.
-- Real touch devices, Firefox and Safari, and stress/memory tests.
-
-The interface is German for now. External PDFs are rejected on purpose. Hiding the "open PDF" button does not prevent downloads. Protected documents must not be embedded from the public media path.
+The full version history is in [CHANGELOG.md](../CHANGELOG.md).

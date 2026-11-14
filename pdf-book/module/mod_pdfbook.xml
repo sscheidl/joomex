@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="module" client="site" method="upgrade">
-  <name>PDF Book (Prototyp)</name>
+  <name>PDF Book</name>
   <author>Joomex contributors</author>
-  <version>0.1.0-alpha.19</version>
-  <creationDate>2026-11-13</creationDate>
-  <description>Eigenständiges PDF-Flipbook für Joomla 6. Alpha-Version für Tests, noch keine Produktionsfreigabe.</description>
+  <version>1.0.0</version>
+  <creationDate>2026-11-14</creationDate>
+  <description>Eigenständiges PDF-Flipbook für Joomla 6 mit Navigation, Zoom und optionaler Blätteranimation.</description>
   <license>GPL-3.0-or-later; PDF.js: Apache-2.0</license>
   <namespace path="src">Joomex\Module\Pdfbook</namespace>
   <files><folder module="mod_pdfbook">services</folder><folder>src</folder><folder>tmpl</folder><filename>mod_pdfbook.xml</filename><filename>LICENSE.txt</filename><filename>THIRD-PARTY-NOTICES.md</filename></files>
