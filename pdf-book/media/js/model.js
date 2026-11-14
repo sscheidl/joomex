@@ -81,14 +81,24 @@ export function renderDimensions(width, height, desiredWidth) {
   return {scale, width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale))};
 }
 
+/** White page-slot canvas, bounded before allocation by both render and GPU budgets. */
+export function letterboxDimensions(width, height, ratio, textureLimit = LIMITS.dimension) {
+  if (![width, height, ratio, textureLimit].every(v => Number.isFinite(v) && v > 0)) throw new Error('Ungültige Seitengröße.');
+  const cap = Math.max(1, Math.floor(Math.min(LIMITS.dimension, textureLimit)));
+  // Calculate within the cap instead of allocating width/ratio first: extreme
+  // aspect ratios can otherwise create an unbounded intermediate canvas.
+  const h = Math.min(Math.max(height, width / ratio), cap, cap / ratio, Math.sqrt(LIMITS.pixels / ratio));
+  return {width: Math.max(1, Math.min(cap, Math.floor(h * ratio))), height: Math.max(1, Math.min(cap, Math.floor(h)))};
+}
+
 /**
  * Integer setting within [min, max]. Same rule as the dispatcher (PHP), checked against the shared vectors in
  * tests/numeric-vectors.json (N18-5): a finite number, or a string of decimal digits with an optional sign, fraction
- * and surrounding whitespace, is rounded half away from zero and clamped (0 is a valid value); anything else (empty,
+ * and surrounding ASCII whitespace, is rounded half away from zero and clamped (0 is a valid value); anything else (empty,
  * hexadecimal, exponent notation, text) gives the default.
  */
 export const setting = (value, min, max, fallback) => {
-  const n = typeof value === 'number' ? value : typeof value === 'string' && /^\s*[+-]?\d+(\.\d+)?\s*$/.test(value) ? Number(value) : NaN;
+  const n = typeof value === 'number' ? value : typeof value === 'string' && /^[\x09-\x0d\x20]*[+-]?[0-9]+(\.[0-9]+)?[\x09-\x0d\x20]*$/.test(value) ? Number(value) : NaN;
   return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.sign(n) * Math.round(Math.abs(n)))) : fallback;
 };
 

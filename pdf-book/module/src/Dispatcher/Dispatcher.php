@@ -10,7 +10,7 @@ use Joomla\CMS\Uri\Uri;
 final class Dispatcher extends AbstractModuleDispatcher
 {
     /** Must equal <version> in mod_pdfbook.xml and the ?v= import suffixes in media/js (checked by scripts/build.py). */
-    public const VERSION = '0.1.0-alpha.19';
+    public const VERSION = '1.0.0';
 
     protected function getLayoutData(): array
     {
@@ -23,15 +23,18 @@ final class Dispatcher extends AbstractModuleDispatcher
             $source = Source::resolve((string) $params->get('pdf', ''), JPATH_ROOT);
             // Same rules as setting() and normalizeConfig() in media/js/model.js, checked against the shared vectors in
             // tests/numeric-vectors.json (N18-5): a number, or a string of decimal digits with optional sign, fraction and
-            // surrounding whitespace, is rounded half away from zero and clamped; anything else gives the default. A choice
+            // surrounding ASCII whitespace, is rounded half away from zero and clamped; anything else gives the default. A choice
             // outside its list falls back to the first (default) entry.
             $int = static function ($value, int $default, int $min, int $max): int {
                 $numeric = is_int($value) || (is_float($value) && is_finite($value))
-                    || (is_string($value) && preg_match('/^\s*[+-]?\d+(\.\d+)?\s*$/D', $value) === 1);
+                    || (is_string($value) && preg_match('/^[\x09-\x0d\x20]*[+-]?[0-9]+(\.[0-9]+)?[\x09-\x0d\x20]*$/D', $value) === 1);
                 if (!$numeric) {
                     return $default;
                 }
                 $number = (float) $value;
+                if (!is_finite($number)) {
+                    return $default;
+                }
                 return $number > $max ? $max : ($number < $min ? $min : (int) round($number, 0, PHP_ROUND_HALF_UP));
             };
             $enum = static function ($value, array $allowed): string {

@@ -7,7 +7,7 @@ Checks before packing:
 * no .mjs files (hosts often serve them as text/plain; browsers then refuse the module)
 """
 from pathlib import Path
-import hashlib, json, platform, re, zipfile, zlib, xml.etree.ElementTree as ET
+import hashlib, json, platform, re, subprocess, zipfile, zlib, xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,6 +58,14 @@ def package_files(root: Path = ROOT) -> dict[str, Path]:
 def main() -> None:
     check_vendor()
     version, date = check_version()
+    stable = '-' not in version
+    # A stable build must identify committed inputs, including deleted/untracked
+    # files. Tests and documentation may be edited without changing package bytes.
+    inputs = ['module', 'media', 'LICENSE.txt', 'THIRD-PARTY-NOTICES.md', 'scripts/build.py', 'package.json', 'dependencies.json']
+    state = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=all', '--', *inputs], cwd=ROOT, check=True, capture_output=True, text=True).stdout
+    if stable and state.strip():
+        raise SystemExit('Stable package inputs must be committed before building.')
+    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
     files = package_files()
     assert files['LICENSE.txt'].read_text(encoding='utf-8').startswith('                    GNU GENERAL PUBLIC LICENSE')
     out = ROOT / 'dist'
@@ -75,7 +83,8 @@ def main() -> None:
     # The archive hash depends on the deflate implementation (stock zlib and zlib-ng compress differently, R4). The
     # per-entry hashes of the uncompressed contents do not; check_publication.py --zip compares them with the source.
     (out / 'manifest.json').write_text(json.dumps({
-        'package': target.name, 'sha256': digest, 'status': 'ALPHA - Joomla installation not yet tested',
+        'package': target.name, 'version': version, 'sha256': digest, 'status': 'stable' if stable else 'pre-release',
+        'source_commit': commit, 'package_inputs_clean': not bool(state.strip()),
         'toolchain': {'python': platform.python_version(), 'zlib': zlib.ZLIB_RUNTIME_VERSION, 'system': platform.system()},
         'entries': {name: hashlib.sha256(files[name].read_bytes()).hexdigest() for name in sorted(files)}}, indent=2), encoding='utf-8')
     print(target.name, len(files), 'files', target.stat().st_size, 'bytes', digest)

@@ -1,5 +1,15 @@
 # Changelog: PDF Book (`mod_pdfbook`)
 
+## 1.0.0 (2026-11-14)
+
+First stable version line, based on alpha.19 and its documented real-Joomla, guest/authenticated HTTPS and owner screen-reader checks. This is a new package; alpha.19 artifacts remain unchanged. New build validation and limits: [release record](docs/reviews/RELEASE_1.0.0.md).
+
+- N19-1: release archive checks reject changed or deleted tracked package sources before comparing surviving files; regression tests cover a deleted source omitted from the ZIP and a modified source with matching ZIP content.
+- N19-2: PHP and JavaScript accept the same ASCII whitespace and decimal grammar; nonfinite conversions use the default. Shared vectors include overflow and Unicode-whitespace cases.
+- Intermediate page-turn canvases are bounded before allocation by the 2.4-million-pixel budget, 4096-edge cap and actual WebGL maximum texture size. Image content is scaled proportionally inside the white slot.
+- Package/display name is PDF Book. All manifest, dispatcher and import/cache versions are 1.0.0. Stable builds require committed package inputs and record their commit in the artifact manifest.
+- CSP remains supported by the module; adopting a policy across an existing template/page builder is a separate website decision. No production settings or content are changed by this build.
+
 ## 0.1.0-alpha.19 (2026-11-13)
 
 Corrections for the [follow-up review of alpha.18](docs/reviews/REVIEW_0.1.0-alpha.18.md) (Codex, verdict: pre-release on hold because of the archive check). Both review reports and the alpha.18 evidence are now part of this branch, so the relative links from README and changelog work.

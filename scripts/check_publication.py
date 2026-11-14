@@ -146,6 +146,16 @@ def check_archive(root: Path, z: Path, tracked: set[str], rules, findings: list[
         projects = expected_packages(root, tracked)
         best = max(projects, key=lambda p: len(set(names) & set(projects[p])), default=None)
         expected = projects.get(best, {})
+        # Check the package roots before visiting surviving files: a deleted tracked
+        # source must not disappear from both the worktree inventory and the ZIP (N19-1).
+        if best:
+            roots = (f'{best}/module/', f'{best}/media/')
+            controls = {f'{best}/LICENSE.txt', f'{best}/THIRD-PARTY-NOTICES.md', f'{best}/scripts/build.py'}
+            dirty = sorted(p for p in changed if p.startswith(roots) or p in controls)
+            if dirty:
+                for p in dirty:
+                    findings.append(f'{label}: package source differs from HEAD: {p}; commit or restore it before checking an archive')
+                return
         if not expected or len(set(names) & set(expected)) < len(expected) / 2:
             findings.append(f'{label}: does not correspond to the package files of any project')
             expected = {}
