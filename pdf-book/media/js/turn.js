@@ -1,4 +1,5 @@
 // Independently written page-turn renderer (WebGL 1). No vendor flipbook code and no graphics library.
+import { LIMITS } from './model.js?v=1.0.0';
 //
 // What is drawn while a page turns (the flat pages underneath stay in the document and remain sharp):
 //   1. the turning sheet: a strip of quads bent along a cubic Bézier curve, lit with ambient, diffuse and specular light;
@@ -105,6 +106,7 @@ export class PageTurn {
     this.canvas = canvas; this.frame = 0; this.available = false; this.look = DEFAULT_LOOK; this.uniforms = new Map();
     const gl = this.gl = canvas.getContext('webgl', {alpha: true, antialias: true, depth: true, premultipliedAlpha: true});
     if (!gl) return;
+    this.maxTextureSize = Math.min(LIMITS.dimension, gl.getParameter(gl.MAX_TEXTURE_SIZE));
     try {
       this.sheet = this.program(SHEET_VS, SHEET_FS, ['aPos', 'aTex']);
       this.depth = this.program(DEPTH_VS, DEPTH_FS, ['aPos']);

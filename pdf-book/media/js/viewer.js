@@ -1,19 +1,22 @@
 // Every relative import carries ?v=<version> so a module update never mixes cached files (checked by scripts/build.py).
-import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError } from './model.js?v=0.1.0-alpha.19';
-import { PdfDocument, pdfVersion } from './pdfdoc.js?v=0.1.0-alpha.19';
-import { PageTurn } from './turn.js?v=0.1.0-alpha.19';
+import { normalizeConfig, safePdfUrl, safeLink, spreadFor, nextPage, statusText, nextMode, messageFor, ViewerError, letterboxDimensions, LIMITS } from './model.js?v=1.0.0';
+import { PdfDocument, pdfVersion } from './pdfdoc.js?v=1.0.0';
+import { PageTurn } from './turn.js?v=1.0.0';
 
 // Page sounds: CC0 recordings from Kenney's "RPG Audio" (see THIRD-PARTY-NOTICES.md), trimmed, softened and normalised.
-const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=0.1.0-alpha.19',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=0.1.0-alpha.19',import.meta.url).href];
+const SOUNDS=[new URL('../vendor/kenney-rpg-audio/page-turn-1.mp3?v=1.0.0',import.meta.url).href,new URL('../vendor/kenney-rpg-audio/page-turn-2.mp3?v=1.0.0',import.meta.url).href];
 const copyLayer=layer=>{const copy=layer.cloneNode(true),from=layer.querySelectorAll('canvas'),to=copy.querySelectorAll('canvas');to.forEach((c,i)=>c.getContext('2d').drawImage(from[i],0,0));copy.querySelectorAll('a,button').forEach(e=>e.remove());return copy;};
 const make=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 // The 3D turn maps a face over the whole page slot. A page of another format is letterboxed into the slot's format
 // first, on white like .pdfbook-page, so it looks the same as the static page (object-fit: contain) during the turn (N18-4).
-const letterbox=(source,ratio)=>{
-  const own=source.width/source.height;if(!(ratio>0)||Math.abs(own/ratio-1)<.005)return source;
-  const c=make('canvas');c.width=own>ratio?source.width:Math.round(source.height*ratio);c.height=own>ratio?Math.round(source.width/ratio):source.height;
+const letterbox=(source,ratio,textureLimit)=>{
+  const own=source.width/source.height;if(!(ratio>0))ratio=own;
+  if(Math.abs(own/ratio-1)<.005&&source.width<=textureLimit&&source.height<=textureLimit&&source.width*source.height<=LIMITS.pixels)return source;
+  const size=letterboxDimensions(source.width,source.height,ratio,textureLimit);
+  const c=make('canvas');c.width=size.width;c.height=size.height;
   const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
-  ctx.drawImage(source,(c.width-source.width)/2,(c.height-source.height)/2);return c;
+  const scale=Math.min(c.width/source.width,c.height/source.height),w=source.width*scale,h=source.height*scale;
+  ctx.drawImage(source,(c.width-w)/2,(c.height-h)/2,w,h);return c;
 };
 const blank=()=>{const c=make('canvas');c.width=600;c.height=800;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,600,800);return c;};
 const MODE_LABEL={auto:'Seitenansicht: automatisch',single:'Seitenansicht: Einzelseite',double:'Seitenansicht: Doppelseite'};
@@ -167,7 +170,7 @@ export class PdfBook {
         const during=[];during[from]=items[from];during[to]=previous[to];
         this.mountPages(during,false);
         const c=this.config,look={curvature:c.curvature/50,opacity:c.shadowDensity/100,blur:c.shadowSoftness/100*.1,shift:c.shadowWidth/100*.8};
-        await this.turn.play(letterbox(previous[from]?.canvas||blank(),this.slotRatio),letterbox(items[to]?.canvas||blank(),this.slotRatio),direction,c.duration,this.spread,look);
+        await this.turn.play(letterbox(previous[from]?.canvas||blank(),this.slotRatio,this.turn.maxTextureSize),letterbox(items[to]?.canvas||blank(),this.slotRatio,this.turn.maxTextureSize),direction,c.duration,this.spread,look);
         if(this.disposed)return;
         this.mountPages(items);
       }else this.mountPages(items);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS,setting} from '../media/js/model.js';
+import {safePdfUrl,safeLink,spreadFor,nextPage,renderDimensions,letterboxDimensions,statusText,nextMode,messageFor,ViewerError,MESSAGES,LIMITS,PDFJS_ERRORS,setting} from '../media/js/model.js';
 test('numeric settings follow the shared vectors (same as the dispatcher, N18-5)',()=>{const v=JSON.parse(readFileSync(new URL('./numeric-vectors.json',import.meta.url),'utf8'));for(const c of v.cases)assert.equal(setting(c.in,v.min,v.max,v.default),c.out,JSON.stringify(c.in));});
 const base='https://site.example/cms/';
 test('only same-origin public media PDFs, including Joomla subdirectories',()=>{
@@ -16,6 +16,17 @@ test('F9: URL-encoded spaces are accepted, raw spaces and other controls are not
 test('safe annotation links',()=>{assert.equal(safeLink('https://site.example'),'https://site.example/');for(const x of ['javascript:alert(1)','data:text/html,hello','file:///a','//evil','https://u:p@site.example'])assert.equal(safeLink(x),null);});
 test('cover, spreads, odd final page, backwards, RTL',()=>{assert.deepEqual(spreadFor(1,8),[0,1]);assert.deepEqual(spreadFor(3,8),[2,3]);assert.deepEqual(spreadFor(8,8),[8,0]);assert.deepEqual(spreadFor(5,5),[4,5]);assert.deepEqual(spreadFor(3,8,false,true),[3,2]);assert.equal(nextPage(2,8,false,-1),1);assert.equal(nextPage(1,8,false,1),2);assert.equal(nextPage(4,8,false,1),6);assert.equal(nextPage(8,8,true,1),8);});
 test('render memory budget and maximum texture dimensions',()=>{for(const [w,h,z] of [[600,800,6000],[9000,4000,99999],[1,20000,3000],[2000000,1,50000]]){const d=renderDimensions(w,h,z);assert.ok(d.width*d.height<=LIMITS.pixels);assert.ok(d.width<=LIMITS.dimension&&d.height<=LIMITS.dimension);}assert.throws(()=>renderDimensions(NaN,800,200));});
+
+test('mixed-format letterboxes respect pixel and GPU limits even for extreme aspect ratios',()=>{
+  for(const cap of [512,1024,2048,4096,16384])for(const ratio of [1e-300,.001,.1,.707,1,10,1000,1e300]){
+    const d=letterboxDimensions(607,858,ratio,cap);
+    assert.ok(d.width>=1&&d.height>=1&&Number.isInteger(d.width)&&Number.isInteger(d.height));
+    assert.ok(d.width<=Math.min(cap,LIMITS.dimension)&&d.height<=Math.min(cap,LIMITS.dimension));
+    assert.ok(d.width*d.height<=LIMITS.pixels);
+  }
+  assert.deepEqual(letterboxDimensions(607,858,.1,1024),{width:102,height:1024});
+  assert.throws(()=>letterboxDimensions(607,858,NaN));
+});
 test('F12: status text uses the singular for one visible page',()=>{
   assert.equal(statusText([0,1]),'Seite 1');assert.equal(statusText([6,0]),'Seite 6');assert.equal(statusText([4,5]),'Seiten 4–5');assert.equal(statusText([3]),'Seite 3');
 });
