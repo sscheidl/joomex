@@ -73,7 +73,7 @@ Private HTTP/TLS/hash evidence, browser state and a screenshot are retained by t
 
 ## Remaining acceptance
 
-1. Complete authenticated HTTP sessions using a regular existing editor login. The current cache-off configuration and repeated independent guest HTTP requests were checked in the follow-up below. A cache-on end-to-end matrix applies if site-level caching is subsequently enabled.
+1. Retest the full end-to-end invalid-source/role matrix if site-level caching is subsequently enabled. The regular authenticated frontend and independent guest reads of the current valid-source page passed the follow-up below; global/system page caching is currently off.
 2. Resolve the existing page-builder inline-script conflict and validate any intended production CSP on the server. The local replay below passes the module-level checks but does not accept a policy for the complete production site. Any production header change is a separate authorized action.
 3. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
 
@@ -95,3 +95,14 @@ A loopback-only replay of the captured public live page was served with test CSP
 The local policies allowed self-hosted module scripts/workers/PDF fetches and inline styling, omitted `unsafe-eval`, and denied object embedding and inline event handlers. This is not a strict-style test. No upstream public-asset failures occurred. The initial replay used HTTP resolution for a protocol-relative video iframe; that harness artifact was corrected, and the final HTTPS-normalized runs are the evidence summarized here. No video-frame violation remained in those runs.
 
 **Outcome:** the measured module behavior tolerates the tested CSP, including blocked optional sound. The existing page-builder inline script still needs integration work before accepting the complete page under that policy. Production itself still has no CSP. Real HTTPS policy delivery, additional pages, ordinary authenticated login and the complete editor/guest HTTP cache matrix remain outside this local experiment. Test servers were stopped afterward. Raw private reports, policies and screenshots are retained outside this public repository.
+
+## Ordinary authenticated frontend follow-up
+
+**MEASURED 2026-11-14: PASS for the current valid-source page with site caching off.** The owner completed the normal HTTPS frontend login in the in-app browser. Three authenticated page loads were interleaved with four fresh independent unauthenticated HTTPS clients in the sequence **authenticated → guest → guest → authenticated → guest → guest → authenticated**. No authenticated browser cookies, credentials, account names or account IDs were extracted or recorded.
+
+- Both books reached `ready` on all three authenticated loads; the viewer query reported alpha.19 and the initial authenticated books reported PDF.js 6.5.438. The narrow browser pane selected the flat renderer.
+- An article-edit link was present in each authenticated DOM. All four guest HTTP responses contained two books and no article-edit link, with HTTP 200 and `no-store, no-cache, must-revalidate`; no `Age` or `X-Cache` header was present. This demonstrates the observed frontend distinction for the current page; the article-edit link does not establish module-edit permission for this account.
+- Authenticated next-page navigation, Enter to select page 4 in the thumbnail sidebar, sidebar open/close, zoom to 125%, ArrowRight and ArrowLeft worked. Home returned the second book to its first page. No browser console warnings or errors were captured; the final view was restored to page 1.
+- No production content, PDF sources, permissions, module parameters or cache settings were changed. Missing/forbidden source diagnostics were not induced on the live page. Those cases remain covered by the separate 48/48 real Joomla renderer tests, not by this HTTP follow-up. An enabled system/proxy cache matrix was not measured.
+
+The ordinary authenticated-page check is now complete in this scope. Private timed evidence and a screenshot are retained by the owner; the existing whole-site CSP integration finding remains open.
