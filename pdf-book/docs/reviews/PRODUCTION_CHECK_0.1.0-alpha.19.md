@@ -1,6 +1,6 @@
 # Production acceptance follow-up: PDF Book alpha.19
 
-**Measured 2026-11-13; embedded-page browser follow-up 2026-11-14. Production approval remains open.** This record supplements [the alpha.19 artifact review](REVIEW_0.1.0-alpha.19.md). Deployment-specific evidence is retained privately by the owner; no site names, document paths, account identifiers or credentials are included here.
+**Measured 2026-11-13; staging/live embedded-page browser follow-up and owner listening-test confirmation 2026-11-14. Production approval remains open.** This record supplements [the alpha.19 artifact review](REVIEW_0.1.0-alpha.19.md). Deployment-specific evidence is retained privately by the owner; no site names, document paths, account identifiers or credentials are included here.
 
 ## Staging update
 
@@ -47,13 +47,25 @@ This confirms the real guest page-builder/template embedding. It does **not** es
 
 ## Production HTTPS/CSP preflight
 
-**Measured read-only against the live HTTPS homepage:**
+**Initially measured 2026-11-13 read-only against the live HTTPS homepage:**
 
 - Certificate trust and hostname validation passed; TLS 1.3 negotiated.
 - HTTP redirected to HTTPS.
 - No direct `http://` resource references were found in the inspected homepage markup; the inspected browser console had no errors. This is not an exhaustive crawl of every stylesheet or page.
 - Neither an enforced CSP header, a report-only CSP header nor a CSP meta element was present in the inspected response/page. HSTS was not present in that response.
-- The new module was not embedded on the live homepage, and the three probed module asset paths returned 404. Therefore **PDF Book's actual production HTTPS/CSP integration remains NOT MEASURED**. This preflight does not install the module or change headers.
+- At that time, the new module was not embedded on the live homepage, and the three probed module asset paths returned 404. The actual module page was subsequently supplied and checked below. This initial preflight did not install the module or change headers.
+
+## Actual production HTTPS page follow-up
+
+**MEASURED 2026-11-14, read-only guest checks of the owner-supplied live page. HTTPS integration PASS in this scope.** The module was already deployed when this check began; this review did not install or change anything on production.
+
+- The actual embedded page returned HTTP 200 over HTTPS. Certificate trust/hostname validation passed with TLS 1.3; its HTTP URL redirected to the HTTPS page.
+- Both books reached `ready`, reporting PDF.js 6.5.438 and the WebGL renderer. The viewer script and stylesheet references carried alpha.19. Next-page navigation and ArrowLeft worked on the first book; Home returned the autoplaying second book to page 1 and stopped it.
+- Seven HTTPS-served files matched the original release ZIP byte for byte: the viewer, model, PDF document adapter, turn renderer, stylesheet, PDF.js library and PDF.js worker. This is a seven-file public asset check, not a repeat of the 211-file staging installation check. Both configured PDF URLs returned HTTP 200 to HEAD requests over HTTPS.
+- No warnings or errors, including mixed-content or CSP errors, were captured in the inspected browser session. No direct `http://` resource attributes were found in the inspected page markup/DOM. This is not an exhaustive crawl or a recorded inventory of every network request.
+- The actual page response had neither enforced CSP, report-only CSP nor HSTS; no CSP meta element was present. Consequently compatibility with an enforced CSP remains **NOT MEASURED**. The HTML response advertised `no-store, no-cache, must-revalidate`; this header alone does not establish authenticated HTTP/cache isolation.
+
+Private HTTP/TLS/hash evidence, browser state and a screenshot are retained by the owner.
 
 ## Screen-reader listening: owner confirmation
 
@@ -62,7 +74,7 @@ This confirms the real guest page-builder/template embedding. It does **not** es
 ## Remaining acceptance
 
 1. Complete authenticated HTTP sessions and any intended site-level cache matrix. The actual guest embedded page has passed the browser checks above.
-2. Review and test the intended production CSP in the context of the existing site. Do not claim an enforced policy was tested when none is deployed; any production header change is a separate authorized action.
+2. Review and test the intended production CSP in the context of the existing site. The actual module page passes the guest HTTPS checks, while no enforced CSP is deployed on that page. Any production header change is a separate authorized action.
 3. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
 
 No production deployment, configuration change or overall production approval is implied by the successful staging update and module-level checks.
