@@ -1,6 +1,6 @@
 # Production acceptance follow-up: PDF Book alpha.19
 
-**Measured 2026-11-13. Production approval remains open.** This record supplements [the alpha.19 artifact review](REVIEW_0.1.0-alpha.19.md). Deployment-specific evidence is retained privately by the owner; no site names, document paths, account identifiers or credentials are included here.
+**Measured 2026-11-13; embedded-page browser follow-up 2026-11-14. Production approval remains open.** This record supplements [the alpha.19 artifact review](REVIEW_0.1.0-alpha.19.md). Deployment-specific evidence is retained privately by the owner; no site names, document paths, account identifiers or credentials are included here.
 
 ## Staging update
 
@@ -30,9 +30,20 @@ The deployed Joomla `SiteApplication`, module dispatcher, `ModuleRenderer` and f
 
 Seven actual cache data files were observed, so cache-on results are not inferred solely from a configuration flag. The persistent global cache remained disabled, as before the test; the staging system page-cache plugin was also disabled. Stored configuration and module rows were verified unchanged. This review's isolated temporary cache files were subsequently removed; the full rollback snapshot and measured results were retained.
 
-**Scope limit:** these are real CMS render/cache tests over SSH/CLI, not authenticated end-to-end HTTP sessions. Reverse-proxy caches, enabled system page caching, browser sessions and the complete page-builder/template path have not been accepted by this test. The actual embedded test-page URL still needs confirmation for page-level acceptance.
+**Scope limit:** these are real CMS render/cache tests over SSH/CLI, not authenticated end-to-end HTTP sessions. Reverse-proxy caches, enabled system page caching and authenticated browser sessions have not been accepted by this test. The guest embedded-page path was subsequently checked below.
 
 An initial diagnostic driver used inconsistent application/session identities and produced false cache failures. That run is not product-vulnerability evidence. The final driver explicitly checks matching identities and passes all 48 assertions; the private execution history retains the correction.
+
+## Embedded staging page: browser follow-up
+
+**MEASURED 2026-11-14 in the desktop app's Chromium in-app browser, as a guest on the owner-supplied HTTP staging page.** Both existing books loaded to `data-state="ready"`; the loaded viewer script used the alpha.19 version query and both instances reported PDF.js 6.5.438. Desktop rendering used WebGL. No console warnings or errors were captured during this session.
+
+- The first book displayed four pages. Next-page navigation, selecting the last page from the thumbnail sidebar with Enter, ArrowLeft, Home, zoom to 125% and resetting zoom worked. The sidebar toggle exposed `aria-expanded` changes, page changes updated a `role="status"` element, and Tab moved to the next toolbar control with visible focus.
+- The second book advanced automatically. Home on its focusable page area returned it to page 1 and stopped autoplay; it stayed there through the remaining checks.
+- At a **390 × 844 CSS-pixel viewport**, both books remained ready, switched to the flat renderer and displayed one page. The first book advanced to page 2. Neither book's stage had horizontal overflow in the settled state (client width and scroll width both 352 pixels); the toolbar wrapped. Screenshots confirmed rendered content after resizing. The viewport override was reset afterward.
+- Both regions currently have the same generic accessible name. Distinct, meaningful configured titles would help users distinguish the two books. The visible direct PDF links provide an alternative route; the accessibility of the PDF documents themselves was not assessed.
+
+This confirms the real guest page-builder/template embedding. It does **not** establish authenticated HTTP cache isolation, real mobile-device behavior, screen-reader speech, PDF document accessibility or production HTTPS/CSP compatibility. Raw page evidence and screenshots remain private.
 
 ## Production HTTPS/CSP preflight
 
@@ -46,7 +57,7 @@ An initial diagnostic driver used inconsistent application/session identities an
 
 ## Remaining acceptance
 
-1. Confirm the existing staging page URL and test the real rendered page, including guest/authenticated HTTP sessions and any intended site-level cache.
+1. Complete authenticated HTTP sessions and any intended site-level cache matrix. The actual guest embedded page has passed the browser checks above.
 2. Review and test the intended production CSP in the context of the existing site. Do not claim an enforced policy was tested when none is deployed; any production header change is a separate authorized action.
 3. Run an actual screen reader and record device, browser, reader/version, sidebar state announcements, keyboard/dialog focus, autoplay stopping, error handling and the accessible PDF alternative. DOM accessibility assertions from the code review do not replace that listening test.
 4. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
