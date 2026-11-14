@@ -55,11 +55,14 @@ This confirms the real guest page-builder/template embedding. It does **not** es
 - Neither an enforced CSP header, a report-only CSP header nor a CSP meta element was present in the inspected response/page. HSTS was not present in that response.
 - The new module was not embedded on the live homepage, and the three probed module asset paths returned 404. Therefore **PDF Book's actual production HTTPS/CSP integration remains NOT MEASURED**. This preflight does not install the module or change headers.
 
+## Screen-reader listening: owner confirmation
+
+**PASS, owner-reported on 2026-11-14.** The owner confirmed that they performed the actual listening test and that it passed. This closes the listening-test acceptance item on the basis of the owner's confirmation. Device, browser, screen-reader/version and individual test cases were not supplied; no particular combination or case coverage is inferred. This is owner attestation, not an independently instrumented result from this review.
+
 ## Remaining acceptance
 
 1. Complete authenticated HTTP sessions and any intended site-level cache matrix. The actual guest embedded page has passed the browser checks above.
 2. Review and test the intended production CSP in the context of the existing site. Do not claim an enforced policy was tested when none is deployed; any production header change is a separate authorized action.
-3. Run an actual screen reader and record device, browser, reader/version, sidebar state announcements, keyboard/dialog focus, autoplay stopping, error handling and the accessible PDF alternative. DOM accessibility assertions from the code review do not replace that listening test.
-4. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
+3. Retain the prior alpha.19 findings about dirty-checkout archive identity, numeric edge parsing and large intermediate textures. The staging update does not fix those source-level limitations.
 
 No production deployment, configuration change or overall production approval is implied by the successful staging update and module-level checks.
