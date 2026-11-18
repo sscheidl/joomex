@@ -16,9 +16,30 @@ const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', o
 const LOCKED = words('svg math select textarea input button canvas style');
 const DROP_ATTRS = words('contenteditable autofocus srcdoc formaction action ping background poster data manifest http-equiv target sandbox integrity nonce srcset imagesrcset imagesizes sizes lowsrc dynsrc codebase archive classid code is');
 const LEADING_LF = words('pre textarea listing');
+const NAMED = words('img form embed object iframe');
 const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import/i;
 
 const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
+
+// Inside a form, controls named like DOM properties (name="childNodes") shadow those properties on the form
+// element. Nodes of an opened document are therefore read through the original accessors only.
+const accessor = (proto, name) => { const get = Object.getOwnPropertyDescriptor(proto, name).get; return (node) => get.call(node); };
+const typeOf = accessor(Node.prototype, 'nodeType');
+const rawChildren = accessor(Node.prototype, 'childNodes');
+const childrenOf = (node) => Array.from(rawChildren(node));
+const textOf = accessor(Node.prototype, 'textContent');
+const nameOf = accessor(Element.prototype, 'localName');
+const nsOf = accessor(Element.prototype, 'namespaceURI');
+const rawAttrs = accessor(Element.prototype, 'attributes');
+const attrsOf = (el) => Array.from(rawAttrs(el));
+const attrOf = (el, name) => Element.prototype.getAttribute.call(el, name);
+const docBody = accessor(Document.prototype, 'body');
+const docHead = accessor(Document.prototype, 'head');
+const docRoot = accessor(Document.prototype, 'documentElement');
+const docTitle = accessor(Document.prototype, 'title');
+const docMode = accessor(Document.prototype, 'compatMode');
+const docType = accessor(Document.prototype, 'doctype');
+const bodyOf = (dom) => { const b = docBody(dom); return b && nameOf(b) === 'body' ? b : null; };
 
 // ---------------------------------------------------------------- character references
 
@@ -62,10 +83,11 @@ export function rawPos(src, t, dec, up) {
 
 export function analyze(src, tokens) {
   const dom = new DOMParser().parseFromString(src, 'text/html');
-  const tree = parseHtml(src, dom.compatMode === 'BackCompat', tokens);
+  const tree = parseHtml(src, docMode(dom) === 'BackCompat', tokens);
   const body = locateBody(tree.root, src);
   const view = { src, dom, tree, body, ok: false };
-  if (dom.body && dom.body.localName === 'body') view.ok = matchKids(src, body, dom.body, true);
+  const domBody = bodyOf(dom);
+  if (domBody) view.ok = matchKids(src, body, domBody, true);
   return view;
 }
 
@@ -74,7 +96,7 @@ export function analyze(src, tokens) {
 // `isTail`: the element is still open where the body ends, so the browser appends the white space that follows
 // the body's end tag to its last text.
 function matchKids(src, t, d, isTail) {
-  const dk = Array.from(d.childNodes);
+  const dk = childrenOf(d);
   const mk = [];
   for (const k of t.kids) {
     if (k.type === 'text') {
@@ -86,18 +108,18 @@ function matchKids(src, t, d, isTail) {
     mk.push(k);
   }
   // Whitespace written behind </body> ends up at the end of the body element.
-  if (isTail && dk.length === mk.length + 1 && dk[dk.length - 1].nodeType === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
+  if (isTail && dk.length === mk.length + 1 && typeOf(dk[dk.length - 1]) === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
   if (mk.length !== dk.length) return false;
   for (let i = 0; i < mk.length; i++) {
     const a = mk[i], b = dk[i];
     if (a.type === 'text') {
-      if (b.nodeType !== 3) return false;
+      if (typeOf(b) !== 3) return false;
       if (b.data !== a.text && !(isTail && i === mk.length - 1 && b.data.startsWith(a.text) && isWsOnly(b.data.slice(a.text.length)))) return false;
     } else if (a.type === 'comment') {
-      if (b.nodeType !== 8) return false;
+      if (typeOf(b) !== 8) return false;
     } else if (a.type === 'el') {
-      if (b.nodeType !== 1 || b.localName.toLowerCase() !== a.name) return false;
-      a.ok = b.localName !== 'template' && matchKids(src, a, b, isTail && i === mk.length - 1 && !a.explicitEnd && !a.synthetic);
+      if (typeOf(b) !== 1 || nameOf(b).toLowerCase() !== a.name) return false;
+      a.ok = nameOf(b) !== 'template' && matchKids(src, a, b, isTail && i === mk.length - 1 && !a.explicitEnd && !a.synthetic);
     } else return false;
   }
   t.mk = mk;
@@ -128,9 +150,10 @@ export function reportText(r) {
 function safeAttrs(d, name, html, rep) {
   const out = [];
   let blockedImage = null, hasTitle = false;
-  for (const a of Array.from(d.attributes)) {
+  for (const a of attrsOf(d)) {
     const n = a.name, ln = n.toLowerCase(), v = a.value;
     if (ln.startsWith('on')) { rep.handlers++; continue; }
+    if (ln === 'name' && NAMED.has(name)) continue;          // would become a property of the preview document
     if (ln.startsWith('data-se-')) continue;
     if (DROP_ATTRS.has(ln)) { if (ln === 'srcset' || ln === 'background' || ln === 'poster') rep.images++; continue; }
     if (ln === 'href' || ln === 'xlink:href') {
@@ -153,13 +176,14 @@ function safeAttrs(d, name, html, rep) {
 }
 
 function describe(d, t, st) {
-  if (d.nodeType === 3) return { k: 3, data: t ? t.text : d.data };
-  if (d.nodeType !== 1) return { k: 8, data: d.nodeType === 8 ? d.data : '' };
-  const name = d.localName, html = d.namespaceURI === HTML_NS, rep = st.report;
+  const kind = typeOf(d);
+  if (kind === 3) return { k: 3, data: t ? t.text : d.data };
+  if (kind !== 1) return { k: 8, data: kind === 8 ? d.data : '' };
+  const name = nameOf(d), html = nsOf(d) === HTML_NS, rep = st.report;
   if (name === 'script' || (html && DROP.has(name))) {
     if (name === 'script') rep.scripts++;
-    else if (name === 'link') { if (/stylesheet/i.test(d.getAttribute('rel') || '')) rep.sheets++; else rep.other++; }
-    else if (name === 'meta') { if (/refresh/i.test(d.getAttribute('http-equiv') || '')) rep.refresh++; }
+    else if (name === 'link') { if (/stylesheet/i.test(attrOf(d, 'rel') || '')) rep.sheets++; else rep.other++; }
+    else if (name === 'meta') { if (/refresh/i.test(attrOf(d, 'http-equiv') || '')) rep.refresh++; }
     else if (name === 'base') rep.other++;
     else if (name === 'frame' || name === 'frameset') rep.frames++;
     return { k: 8, data: 'se:' + name };
@@ -171,11 +195,17 @@ function describe(d, t, st) {
   const attrs = safeAttrs(d, name, html, rep);
   if (t && !t.ok) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
-    if (!d.hasAttribute('title')) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
+    if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
   } else if (LOCKED.has(name)) attrs.push(['contenteditable', 'false']);
-  if (html && name === 'form') rep.forms++;
-  if (html && name === 'style' && CSS_FETCH.test(d.textContent)) rep.css++;
-  return { k: 1, name, ns: d.namespaceURI, attrs, kids: true };
+  if (html && name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
+  if (html && name === 'form') {
+    // A real form element would let its controls shadow DOM properties and could be submitted; a plain block
+    // stands in for it. The source keeps the form unchanged.
+    rep.forms++;
+    attrs.push(['data-se-form', '']);
+    return { k: 1, name: 'div', ns: HTML_NS, attrs, kids: true };
+  }
+  return { k: 1, name, ns: nsOf(d), attrs, kids: true };
 }
 
 const fits = (node, desc) => node.nodeType === desc.k && (desc.k !== 1 || (node.localName === desc.name && node.namespaceURI === desc.ns));
@@ -220,7 +250,7 @@ function syncKids(pv, tKids, dNodes, st) {
       else {
         const d = dNodes[j];
         if (t && t.ok) syncKids(node, t.mk, t.dk, st);
-        else syncKids(node, null, Array.from(d.localName === 'template' ? [] : d.childNodes), st);
+        else syncKids(node, null, nameOf(d) === 'template' ? [] : childrenOf(d), st);
       }
       st.info.set(node, { t, kids: Array.from(node.childNodes) });
     }
@@ -245,14 +275,15 @@ function syncKids(pv, tKids, dNodes, st) {
 function syncHead(view, st) {
   const head = st.doc.head, rep = st.report;
   const styles = [];
-  const srcHead = view.dom.head;
+  const srcHead = docHead(view.dom);
   if (srcHead) {
-    for (const el of Array.from(srcHead.children)) {
-      const name = el.localName;
-      if (name === 'style') { styles.push(el); if (CSS_FETCH.test(el.textContent)) rep.css++; }
+    for (const el of childrenOf(srcHead)) {
+      if (typeOf(el) !== 1) continue;
+      const name = nameOf(el);
+      if (name === 'style') { styles.push(el); if (CSS_FETCH.test(textOf(el))) rep.css++; }
       else if (name === 'script') rep.scripts++;
-      else if (name === 'link') { if (/stylesheet/i.test(el.getAttribute('rel') || '')) rep.sheets++; }
-      else if (name === 'meta') { if (/refresh/i.test(el.getAttribute('http-equiv') || '')) rep.refresh++; }
+      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; }
+      else if (name === 'meta') { if (/refresh/i.test(attrOf(el, 'http-equiv') || '')) rep.refresh++; }
       else if (name === 'base') rep.other++;
     }
   }
@@ -261,8 +292,8 @@ function syncHead(view, st) {
   styles.forEach((el, i) => {
     let target = have[i];
     if (!target) { target = st.doc.createElement('style'); target.setAttribute('data-se-user', ''); head.appendChild(target); }
-    if (target.textContent !== el.textContent) target.textContent = el.textContent;
-    const media = el.getAttribute('media');
+    if (target.textContent !== textOf(el)) target.textContent = textOf(el);
+    const media = attrOf(el, 'media');
     if (media === null) target.removeAttribute('media'); else if (target.getAttribute('media') !== media) target.setAttribute('media', media);
   });
 }
@@ -273,17 +304,17 @@ export function renderView(view, doc, info) {
   const st = { doc, info, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
   syncHead(view, st);
-  syncAttrs(doc.documentElement, safeAttrs(dom.documentElement, 'html', true, st.report), st);
-  const srcBody = dom.body && dom.body.localName === 'body' ? dom.body : null;
+  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report), st);
+  const srcBody = bodyOf(dom);
   const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report) : [];
   bodyAttrs.push(['contenteditable', view.ok ? 'true' : 'false']);
   syncAttrs(doc.body, bodyAttrs, st);
-  if (dom.body && !srcBody) st.report.frames++;
+  if (docBody(dom) && !srcBody) st.report.frames++;
   if (view.ok) syncKids(doc.body, view.body.mk, view.body.dk, st);
-  else syncKids(doc.body, null, srcBody ? Array.from(srcBody.childNodes) : [], st);
+  else syncKids(doc.body, null, srcBody ? childrenOf(srcBody) : [], st);
   info.set(doc.body, { t: view.ok ? view.body : null, kids: Array.from(doc.body.childNodes) });
   view.body.pv = doc.body;
-  return { changed: st.changed, report: st.report, title: dom.title };
+  return { changed: st.changed, report: st.report, title: docTitle(dom) };
 }
 
 // ---------------------------------------------------------------- position mapping (preview in sync with the text)
@@ -359,13 +390,14 @@ export function srcElementAt(view, off) {
 export function canonDom(doc, blockNames, keepNames) {
   const toks = [];
   const walk = (node, keep) => {
-    for (const c of Array.from(node.childNodes)) {
-      if (c.nodeType === 3) toks.push({ text: keep ? c.data : c.data.replace(/[ \t\n\f\r]+/g, ' '), keep });
-      else if (c.nodeType === 8) toks.push({ comment: true, s: '<!--' + c.data + '-->' });
-      else if (c.nodeType === 1) {
-        const name = c.localName, block = blockNames.has(name) || name === 'br';
+    for (const c of childrenOf(node)) {
+      const kind = typeOf(c);
+      if (kind === 3) toks.push({ text: keep ? c.data : c.data.replace(/[ \t\n\f\r]+/g, ' '), keep });
+      else if (kind === 8) toks.push({ comment: true, s: '<!--' + c.data + '-->' });
+      else if (kind === 1) {
+        const name = nameOf(c), block = blockNames.has(name) || name === 'br';
         let s = '<' + name;
-        for (const a of Array.from(c.attributes)) s += ' ' + a.name + '=' + JSON.stringify(a.value);
+        for (const a of attrsOf(c)) s += ' ' + a.name + '=' + JSON.stringify(a.value);
         toks.push({ block, s: s + '>' });
         walk(name === 'template' && c.content ? c.content : c, keep || keepNames.has(name));
         toks.push({ block, s: '</' + name + '>' });
@@ -392,9 +424,9 @@ export function canonDom(doc, blockNames, keepNames) {
       if (v !== k.text) { k.text = v; again = true; }
     }
   }
-  const dt = doc.doctype;
+  const dt = docType(doc);
   let out = dt ? '<!' + dt.name + '|' + dt.publicId + '|' + dt.systemId + '>' : '';
-  out += doc.compatMode;
+  out += docMode(doc);
   for (const k of toks) out += k.text != null ? (k.text === '' ? '' : JSON.stringify(k.text)) : k.s;
   return out;
 }

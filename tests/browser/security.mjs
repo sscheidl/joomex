@@ -149,7 +149,7 @@ export const security = [
       for (const withFrameset of [false, true]) await withEditor(browser, {}, async (ed) => {
         const variant = withFrameset ? 'read-only page: ' : 'editable page: ';
         const before = sink.hits.length;
-        const targetsBefore = (await browser.conn.send('Target.getTargets')).targetInfos.length;
+        const targetsBefore = new Set((await browser.conn.send('Target.getTargets')).targetInfos.map((t) => t.targetId));
         const url = await ed.eval('location.href');
         await ed.openText('x02-navigation.html', navigationDoc(sink.origin, withFrameset));
         await sleep(500);
@@ -168,7 +168,7 @@ export const security = [
         c.eq(sink.hits.slice(before).join(','), '', variant + 'no navigation, submission or frame load reached the server');
         c.eq(await ed.eval('location.href'), url, variant + 'the editor window did not navigate');
         c.eq(await ed.eval(PV + '.URL'), 'about:srcdoc', variant + 'the preview frame did not navigate');
-        c.eq((await browser.conn.send('Target.getTargets')).targetInfos.length, targetsBefore, variant + 'no window or tab was opened');
+        c.eq((await browser.conn.send('Target.getTargets')).targetInfos.filter((t) => !targetsBefore.has(t.targetId)).length, 0, variant + 'no window or tab was opened');
         c.eq(await pwned(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', variant + 'no script URL was executed');
         c.eq(await ed.eval(PV + '.body.querySelectorAll("iframe, frame, object, embed, base, meta, form[action], a[href], area[href]").length'), 0, variant + 'the preview has no frames, base, refresh, form targets or live link addresses');
         c.eq(await ed.source(), navigationDoc(sink.origin, withFrameset), variant + 'the source is unchanged');
@@ -247,6 +247,41 @@ export const security = [
         await sleep(500);
         c.eq(await pwned(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'nothing executed');
         c.eq(sink.hits.slice(before).join(','), '', 'nothing was fetched');
+      });
+    },
+  },
+  {
+    id: 'X-07', title: 'element names that shadow DOM properties do not disturb the editor',
+    async run(c, { browser }) {
+      await withEditor(browser, {}, async (ed) => {
+        const NL = String.fromCharCode(10);
+        const text = ['<!DOCTYPE html>', '<html><head><title>Namen</title></head>', '<body>', '<p>Absatz</p>',
+          '<img name="body" alt="a"><img name="head" alt="b"><img name="createElement" alt="c"><img name="getSelection" alt="d"><img name="documentElement" alt="e">',
+          '<form name="createRange" id="f" action="senden.php"><input name="childNodes"><input name="attributes"><input id="localName"><input name="nodeType"><input name="parentNode">',
+          '<input name="textContent"><input name="firstChild"><input name="nextSibling"><input name="isContentEditable"><input name="remove"><p>Im Formular</p></form>',
+          '<p>Ende</p>', '</body>', '</html>', ''].join(NL);
+        await ed.openText('x07-namen.html', text);
+        await sleep(200);
+        c.eq(ed.errors().join(' | '), '', 'opening causes no script error');
+        c.eq(await ed.source(), text, 'the source is unchanged');
+        c.eq(await ed.eval(PV + '.querySelectorAll("form, img[name], embed, object, iframe").length'), 0, 'the preview holds no element that could shadow document properties');
+        c.eq(await ed.eval(`((d) => [d.body.localName, d.head.localName, d.documentElement.localName, typeof d.createElement, typeof d.getSelection, typeof d.createRange].join(","))(${PV})`), 'body,head,html,function,function,function', 'document properties of the preview are the real ones');
+        await ed.caret('Absatz', 6);
+        await ed.type('1');
+        await ed.caret('Im Formular', 11);
+        await ed.type('2');
+        await ed.caret('Ende', 4);
+        await ed.type('3');
+        await ed.settle();
+        c.eq(await ed.source(), text.replace('Absatz<', 'Absatz1<').replace('Im Formular<', 'Im Formular2<').replace('Ende<', 'Ende3<'), 'typing before, inside and after the form changes exactly those three places');
+        await ed.click('bFormat');
+        await sleep(200);
+        if (await ed.dialogOpen('dlgInfo')) await ed.dialogButton('dlgInfo', 'OK');
+        await ed.settle();
+        const saved = await ed.download();
+        c.eq(saved.text, await ed.source(), 'formatting and saving still work');
+        c.ok(saved.text.includes('<form name="createRange" id="f" action="senden.php">') && saved.text.includes('<input name="childNodes">'), 'the form and its field names are kept in the saved file');
+        c.eq(ed.errors().join(' | '), '', 'no script error afterwards');
       });
     },
   },

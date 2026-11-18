@@ -1,18 +1,18 @@
 {
  "artefact": "dist/school-editor.html",
- "bytes": 129367,
- "sha256": "05cff8c7aa90f0b25853cfda510de6a2e2312af128c2190f6b6129186f2f1092",
+ "bytes": 132438,
+ "sha256": "5453d49ec893fb5ebb1e1d55391c3d51353df0b92126076d8945821e55a0ca55",
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-18T20:57:18.005Z",
+ "date": "2026-11-18T21:13:50.678Z",
  "browser": "edge",
  "results": [
   {
    "id": "T-01",
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
-   "ms": 700,
+   "ms": 796,
    "error": null,
    "checks": [
     {
@@ -46,7 +46,7 @@
    "id": "T-02",
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
-   "ms": 768,
+   "ms": 647,
    "error": null,
    "checks": [
     {
@@ -71,7 +71,7 @@
    "id": "T-03",
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
-   "ms": 1111,
+   "ms": 1061,
    "error": null,
    "checks": [
     {
@@ -116,7 +116,7 @@
    "id": "T-04",
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
-   "ms": 1690,
+   "ms": 1507,
    "error": null,
    "checks": [
     {
@@ -181,7 +181,7 @@
    "id": "T-05",
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
-   "ms": 865,
+   "ms": 782,
    "error": null,
    "checks": [
     {
@@ -230,7 +230,7 @@
    "id": "T-06",
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
-   "ms": 2807,
+   "ms": 2756,
    "error": null,
    "checks": [
     {
@@ -322,8 +322,8 @@
     },
     {
      "pass": true,
-     "label": "a 206381-byte image is scaled down before embedding",
-     "detail": "476232 base64 characters"
+     "label": "a 5763023-byte image is scaled down before embedding",
+     "detail": "422208 base64 characters"
     }
    ]
   },
@@ -406,7 +406,7 @@
    "id": "T-08",
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
-   "ms": 1240,
+   "ms": 1245,
    "error": null,
    "checks": [
     {
@@ -495,7 +495,7 @@
    "id": "T-09",
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
-   "ms": 1389,
+   "ms": 1305,
    "error": null,
    "checks": [
     {
@@ -548,7 +548,7 @@
    "id": "T-10",
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
-   "ms": 1798,
+   "ms": 1681,
    "error": null,
    "checks": [
     {
@@ -612,7 +612,7 @@
    "id": "T-11",
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
-   "ms": 24441,
+   "ms": 23496,
    "error": null,
    "checks": [
     {
@@ -633,7 +633,7 @@
    "id": "T-12",
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PASS",
-   "ms": 3830,
+   "ms": 3746,
    "error": null,
    "checks": [
     {
@@ -651,7 +651,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 2068 ms, panes in sync after 2348 ms"
+     "detail": "162 keystrokes sent in 2047 ms, panes in sync after 2306 ms"
     },
     {
      "pass": true,
@@ -701,7 +701,7 @@
    "id": "T-13",
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
-   "ms": 4037,
+   "ms": 3929,
    "error": null,
    "checks": [
     {
@@ -762,7 +762,7 @@
    "id": "T-14",
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
-   "ms": 942,
+   "ms": 10964,
    "error": null,
    "checks": [
     {
@@ -813,6 +813,18 @@
     },
     {
      "pass": true,
+     "label": "a document nested 30000 levels deep opens with unchanged source"
+    },
+    {
+     "pass": true,
+     "label": "its deep part is read-only"
+    },
+    {
+     "pass": true,
+     "label": "typing in the source still works"
+    },
+    {
+     "pass": true,
      "label": "no script errors"
     }
    ]
@@ -821,7 +833,7 @@
    "id": "T-15",
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PASS",
-   "ms": 1878,
+   "ms": 1799,
    "error": null,
    "checks": [
     {
@@ -908,7 +920,7 @@
    "id": "T-17",
    "title": "no persistence between sessions",
    "status": "PASS",
-   "ms": 840,
+   "ms": 798,
    "error": null,
    "checks": [
     {
@@ -925,7 +937,7 @@
    "id": "X-01",
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
-   "ms": 2020,
+   "ms": 1968,
    "error": null,
    "checks": [
     {
@@ -970,7 +982,7 @@
    "id": "X-02",
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
-   "ms": 6268,
+   "ms": 4670,
    "error": null,
    "checks": [
     {
@@ -1055,13 +1067,13 @@
    "id": "X-03",
    "title": "no external resource of an opened document is fetched",
    "status": "PASS",
-   "ms": 5315,
+   "ms": 3447,
    "error": null,
    "checks": [
     {
      "pass": true,
      "label": "control: the same browser does fetch these resources from an ordinary local page",
-     "detail": "GET /control/style.css,GET /control/img.png"
+     "detail": "GET /control/img.png,GET /control/style.css"
     },
     {
      "pass": true,
@@ -1098,7 +1110,7 @@
    "id": "X-04",
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "PASS",
-   "ms": 2720,
+   "ms": 1134,
    "error": null,
    "checks": [
     {
@@ -1140,10 +1152,51 @@
    ]
   },
   {
+   "id": "X-07",
+   "title": "element names that shadow DOM properties do not disturb the editor",
+   "status": "PASS",
+   "ms": 1013,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "opening causes no script error"
+    },
+    {
+     "pass": true,
+     "label": "the source is unchanged"
+    },
+    {
+     "pass": true,
+     "label": "the preview holds no element that could shadow document properties"
+    },
+    {
+     "pass": true,
+     "label": "document properties of the preview are the real ones"
+    },
+    {
+     "pass": true,
+     "label": "typing before, inside and after the form changes exactly those three places"
+    },
+    {
+     "pass": true,
+     "label": "formatting and saving still work"
+    },
+    {
+     "pass": true,
+     "label": "the form and its field names are kept in the saved file"
+    },
+    {
+     "pass": true,
+     "label": "no script error afterwards"
+    }
+   ]
+  },
+  {
    "id": "X-05",
    "title": "no message bridge exists",
    "status": "PASS",
-   "ms": 2,
+   "ms": 1,
    "error": null,
    "checks": [
     {
@@ -1156,7 +1209,7 @@
    "id": "X-06",
    "title": "static scan of the delivered file",
    "status": "PASS",
-   "ms": 7,
+   "ms": 5,
    "error": null,
    "checks": [
     {
@@ -1199,7 +1252,7 @@
     {
      "pass": true,
      "label": "page policy allows only the one hashed script, inline styles and data: images",
-     "detail": "default-src 'none'; script-src 'sha256-bKghPDykdow5oDzFrvOd8S/nlTyTLx+L6vfftGHUpzk='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'"
+     "detail": "default-src 'none'; script-src 'sha256-d8KrrPG58+ch4lgUcCfjoxpGlgXQ6Dl98eIxzGkiuMo='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'"
     },
     {
      "pass": true,
@@ -1215,7 +1268,7 @@
      "pass": true,
      "note": true,
      "label": "size",
-     "detail": "129367 bytes"
+     "detail": "132438 bytes"
     }
    ]
   },
@@ -1223,7 +1276,7 @@
    "id": "R-01",
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
-   "ms": 58283,
+   "ms": 29030,
    "error": null,
    "checks": [
     {
@@ -1257,7 +1310,7 @@
    "id": "R-02",
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
-   "ms": 1850,
+   "ms": 734,
    "error": null,
    "checks": [
     {
@@ -1299,7 +1352,7 @@
  "mode": "headless (new)",
  "status": "PASS",
  "summary": {
-  "pass": 25,
+  "pass": 26,
   "fail": 0
  }
 }

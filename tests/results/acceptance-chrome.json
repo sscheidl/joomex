@@ -1,0 +1,13 @@
+{
+ "artefact": "dist/school-editor.html",
+ "bytes": 132438,
+ "sha256": "5453d49ec893fb5ebb1e1d55391c3d51353df0b92126076d8945821e55a0ca55",
+ "sizeLimit": 200000,
+ "node": "v24.22.1",
+ "os": "Windows_NT 10.0.26300",
+ "date": "2026-11-18T21:15:30.727Z",
+ "browser": "chrome",
+ "results": [],
+ "status": "NOT MEASURED",
+ "reason": "browser not installed on this machine"
+}

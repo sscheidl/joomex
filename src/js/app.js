@@ -33,6 +33,8 @@ const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
 
 const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
 const DEFAULT_NAME = 'meine-seite.html';
+const LOCK_NORMAL = 'Die Seite wird rechts nur angezeigt: Im HTML-Code ist etwas nicht richtig geschlossen oder verschachtelt. Korrigiere es links – danach kannst du hier wieder schreiben.';
+const LOCK_FAILED = 'Diese Seite kann rechts nicht angezeigt werden. Im HTML-Code links kannst du weiterarbeiten.';
 const HIGHLIGHT_LIMIT = 1500000;
 const LINE_HEIGHT = 20;
 const FILE_TYPES = [{ description: 'HTML-Datei', accept: { 'text/html': ['.html', '.htm'] } }];
@@ -199,15 +201,26 @@ function setPreviewSelection(offsets) {
 function render(restore) {
   clearTimeout(renderTimer);
   const t0 = now();
-  const view = analyze(state.text, tokensFor(state.text));
-  const res = renderView(view, pvDoc, info);
+  let view, res;
+  try {
+    view = analyze(state.text, tokensFor(state.text));
+    res = renderView(view, pvDoc, info);
+  } catch (e) {
+    // Last line of defence: show nothing editable rather than a page that does not match the text.
+    view = { ok: false, failed: true };
+    res = { changed: true, report: {}, title: '' };
+    pvDoc.body.textContent = '';
+    pvDoc.body.setAttribute('contenteditable', 'false');
+    info.set(pvDoc.body, { t: null, kids: [] });
+  }
   state.view = view;
   state.pvRev = state.rev;
   state.visualDirty = false;
-  const inactive = reportText(res.report);
+  const inactive = view.failed ? '' : reportText(res.report);
   els.inactive.hidden = !inactive;
   els.inactiveText.textContent = inactive ? 'Im Editor ausgeschaltet: ' + inactive + '.' : '';
   els.lockNote.hidden = view.ok;
+  els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
   els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
   if (res.changed && restore && previewFocused()) setPreviewSelection(restore);
   renderCost = now() - t0;
@@ -461,12 +474,16 @@ async function formatDoc() {
     await infoBox('Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei zählt jedes Leerzeichen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert.');
     return;
   }
-  const before = new DOMParser().parseFromString(src, 'text/html');
-  const out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
-  if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
-  const after = new DOMParser().parseFromString(out, 'text/html');
-  const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
-  if (!sameInk || canonDom(before, FMT_BLOCK, FMT_KEEP) !== canonDom(after, FMT_BLOCK, FMT_KEEP)) {
+  let out = null, verified = false;
+  try {
+    const before = new DOMParser().parseFromString(src, 'text/html');
+    out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
+    if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
+    const after = new DOMParser().parseFromString(out, 'text/html');
+    const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
+    verified = sameInk && canonDom(before, FMT_BLOCK, FMT_KEEP) === canonDom(after, FMT_BLOCK, FMT_KEEP);
+  } catch (e) { verified = false; }
+  if (!verified) {
     await infoBox('Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt. Dein Code bleibt unverändert.');
     return;
   }

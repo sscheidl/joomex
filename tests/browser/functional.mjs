@@ -249,11 +249,11 @@ export const functional = [
           await ed.dialogButton('dlgImage', 'Abbrechen');
         }
         c.eq(await ed.source(), src, 'refused files leave the document unchanged');
-        const bigFile = tmpFile('t06-gross.png', makePng(900, 700, true));
+        const bigFile = tmpFile('t06-gross.png', makePng(1600, 1200, true));
         await ed.caret('Punkt A', 2);
         await ed.click('bImage');
         await ed.page.setFiles('#imgIn', [bigFile]);
-        await ed.until('!document.getElementById("imgPrev").hidden', 'large image prepared', 15000);
+        await ed.until('!document.getElementById("imgPrev").hidden', 'large image prepared', 30000);
         await ed.eval('document.getElementById("imgAlt").focus()');
         await ed.type('Rauschen');
         await ed.dialogButton('dlgImage', 'Einfügen');
@@ -642,6 +642,14 @@ export const functional = [
         await ed.dialogButton('dlgInfo', 'OK');
         fs.rmSync(big, { force: true });
         c.eq(await ed.source(), '<p>Hallo</p>\n', 'current work is kept after the refusal');
+        const deep = '<p>Anfang</p>' + '<div>'.repeat(30000) + 'tief' + '</div>'.repeat(30000);
+        await ed.openText('t14-tief.html', deep);
+        c.eq(await ed.source(), deep, 'a document nested 30000 levels deep opens with unchanged source');
+        c.ok((await ed.eval(PV + '.querySelectorAll("[data-se-opaque]").length')) > 0 || !(await ed.eval('document.getElementById("lockNote").hidden')), 'its deep part is read-only');
+        await ed.sourceCaret('Anfang', 6);
+        await ed.type('!');
+        await ed.settle();
+        c.eq(await ed.source(), deep.replace('Anfang', 'Anfang!'), 'typing in the source still works');
         c.eq(ed.errors().join(' | '), '', 'no script errors');
       });
     },

@@ -44,7 +44,7 @@ export function makePng(width, height, noise) {
   for (let y = 0; y < height; y++) {
     const row = y * (width * 3 + 1);
     for (let x = 0; x < width * 3; x++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;          // xorshift32: incompressible but repeatable
       raw[row + 1 + x] = noise ? seed & 255 : (x * 7 + y * 3) & 255;
     }
   }

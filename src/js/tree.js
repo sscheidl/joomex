@@ -23,6 +23,7 @@ const TABLE_CHILDREN = words('tbody thead tfoot caption colgroup');
 const LI = words('li');
 const DD_DT = words('dd dt');
 const P = words('p');
+const MAX_DEPTH = 400;
 export const HEAD_ONLY = words('title meta link style script base template noscript');
 
 // `quirks`: the document is rendered in quirks mode (no doctype), where a table does not close a paragraph.
@@ -91,6 +92,9 @@ export function parseHtml(src, quirks, tokens) {
     }
     const node = add(element(name, tok));
     if (foreign ? tok.selfClosing : VOID_TAGS.has(name)) return;
+    // Browsers limit the nesting depth of their parser as well. Deeper elements are kept as leaves here; the
+    // comparison with the browser's tree then marks that part as not editable.
+    if (stack.length >= MAX_DEPTH) return;
     stack.push(node);
     if (name === 'svg' || name === 'math') foreign++;
   }

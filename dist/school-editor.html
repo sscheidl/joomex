@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bKghPDykdow5oDzFrvOd8S/nlTyTLx+L6vfftGHUpzk='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-d8KrrPG58+ch4lgUcCfjoxpGlgXQ6Dl98eIxzGkiuMo='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="html-school-editor 0.1.0-alpha.1">
@@ -141,7 +141,7 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
         <button id="bImage" type="button" title="Bild von diesem Computer einfügen &lt;img&gt;">Bild</button>
       </span>
     </div>
-    <div id="lockNote" class="note warn" hidden>Die Seite wird rechts nur angezeigt: Im HTML-Code ist etwas nicht richtig geschlossen oder verschachtelt. Korrigiere es links – danach kannst du hier wieder schreiben.</div>
+    <div id="lockNote" class="note warn" hidden></div>
     <div id="pvBox"><iframe id="pv" sandbox="allow-same-origin" title="Vorschau deiner Seite zum Bearbeiten"></iframe></div>
     <div id="inactive" class="note" hidden title="Skripte, Formulare und Dateien von außerhalb laufen bzw. laden im Editor nicht. Im Code und in der gespeicherten Datei bleiben sie unverändert erhalten."><span id="inactiveText"></span> Im Code bleibt alles erhalten.</div>
   </section>
@@ -448,6 +448,7 @@ const TABLE_CHILDREN = words('tbody thead tfoot caption colgroup');
 const LI = words('li');
 const DD_DT = words('dd dt');
 const P = words('p');
+const MAX_DEPTH = 400;
 const HEAD_ONLY = words('title meta link style script base template noscript');
 
 // `quirks`: the document is rendered in quirks mode (no doctype), where a table does not close a paragraph.
@@ -516,6 +517,9 @@ function parseHtml(src, quirks, tokens) {
     }
     const node = add(element(name, tok));
     if (foreign ? tok.selfClosing : VOID_TAGS.has(name)) return;
+    // Browsers limit the nesting depth of their parser as well. Deeper elements are kept as leaves here; the
+    // comparison with the browser's tree then marks that part as not editable.
+    if (stack.length >= MAX_DEPTH) return;
     stack.push(node);
     if (name === 'svg' || name === 'math') foreign++;
   }
@@ -611,9 +615,30 @@ const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', o
 const LOCKED = words('svg math select textarea input button canvas style');
 const DROP_ATTRS = words('contenteditable autofocus srcdoc formaction action ping background poster data manifest http-equiv target sandbox integrity nonce srcset imagesrcset imagesizes sizes lowsrc dynsrc codebase archive classid code is');
 const LEADING_LF = words('pre textarea listing');
+const NAMED = words('img form embed object iframe');
 const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import/i;
 
 const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
+
+// Inside a form, controls named like DOM properties (name="childNodes") shadow those properties on the form
+// element. Nodes of an opened document are therefore read through the original accessors only.
+const accessor = (proto, name) => { const get = Object.getOwnPropertyDescriptor(proto, name).get; return (node) => get.call(node); };
+const typeOf = accessor(Node.prototype, 'nodeType');
+const rawChildren = accessor(Node.prototype, 'childNodes');
+const childrenOf = (node) => Array.from(rawChildren(node));
+const textOf = accessor(Node.prototype, 'textContent');
+const nameOf = accessor(Element.prototype, 'localName');
+const nsOf = accessor(Element.prototype, 'namespaceURI');
+const rawAttrs = accessor(Element.prototype, 'attributes');
+const attrsOf = (el) => Array.from(rawAttrs(el));
+const attrOf = (el, name) => Element.prototype.getAttribute.call(el, name);
+const docBody = accessor(Document.prototype, 'body');
+const docHead = accessor(Document.prototype, 'head');
+const docRoot = accessor(Document.prototype, 'documentElement');
+const docTitle = accessor(Document.prototype, 'title');
+const docMode = accessor(Document.prototype, 'compatMode');
+const docType = accessor(Document.prototype, 'doctype');
+const bodyOf = (dom) => { const b = docBody(dom); return b && nameOf(b) === 'body' ? b : null; };
 
 // ---------------------------------------------------------------- character references
 
@@ -657,10 +682,11 @@ function rawPos(src, t, dec, up) {
 
 function analyze(src, tokens) {
   const dom = new DOMParser().parseFromString(src, 'text/html');
-  const tree = parseHtml(src, dom.compatMode === 'BackCompat', tokens);
+  const tree = parseHtml(src, docMode(dom) === 'BackCompat', tokens);
   const body = locateBody(tree.root, src);
   const view = { src, dom, tree, body, ok: false };
-  if (dom.body && dom.body.localName === 'body') view.ok = matchKids(src, body, dom.body, true);
+  const domBody = bodyOf(dom);
+  if (domBody) view.ok = matchKids(src, body, domBody, true);
   return view;
 }
 
@@ -669,7 +695,7 @@ function analyze(src, tokens) {
 // `isTail`: the element is still open where the body ends, so the browser appends the white space that follows
 // the body's end tag to its last text.
 function matchKids(src, t, d, isTail) {
-  const dk = Array.from(d.childNodes);
+  const dk = childrenOf(d);
   const mk = [];
   for (const k of t.kids) {
     if (k.type === 'text') {
@@ -681,18 +707,18 @@ function matchKids(src, t, d, isTail) {
     mk.push(k);
   }
   // Whitespace written behind </body> ends up at the end of the body element.
-  if (isTail && dk.length === mk.length + 1 && dk[dk.length - 1].nodeType === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
+  if (isTail && dk.length === mk.length + 1 && typeOf(dk[dk.length - 1]) === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
   if (mk.length !== dk.length) return false;
   for (let i = 0; i < mk.length; i++) {
     const a = mk[i], b = dk[i];
     if (a.type === 'text') {
-      if (b.nodeType !== 3) return false;
+      if (typeOf(b) !== 3) return false;
       if (b.data !== a.text && !(isTail && i === mk.length - 1 && b.data.startsWith(a.text) && isWsOnly(b.data.slice(a.text.length)))) return false;
     } else if (a.type === 'comment') {
-      if (b.nodeType !== 8) return false;
+      if (typeOf(b) !== 8) return false;
     } else if (a.type === 'el') {
-      if (b.nodeType !== 1 || b.localName.toLowerCase() !== a.name) return false;
-      a.ok = b.localName !== 'template' && matchKids(src, a, b, isTail && i === mk.length - 1 && !a.explicitEnd && !a.synthetic);
+      if (typeOf(b) !== 1 || nameOf(b).toLowerCase() !== a.name) return false;
+      a.ok = nameOf(b) !== 'template' && matchKids(src, a, b, isTail && i === mk.length - 1 && !a.explicitEnd && !a.synthetic);
     } else return false;
   }
   t.mk = mk;
@@ -723,9 +749,10 @@ function reportText(r) {
 function safeAttrs(d, name, html, rep) {
   const out = [];
   let blockedImage = null, hasTitle = false;
-  for (const a of Array.from(d.attributes)) {
+  for (const a of attrsOf(d)) {
     const n = a.name, ln = n.toLowerCase(), v = a.value;
     if (ln.startsWith('on')) { rep.handlers++; continue; }
+    if (ln === 'name' && NAMED.has(name)) continue;          // would become a property of the preview document
     if (ln.startsWith('data-se-')) continue;
     if (DROP_ATTRS.has(ln)) { if (ln === 'srcset' || ln === 'background' || ln === 'poster') rep.images++; continue; }
     if (ln === 'href' || ln === 'xlink:href') {
@@ -748,13 +775,14 @@ function safeAttrs(d, name, html, rep) {
 }
 
 function describe(d, t, st) {
-  if (d.nodeType === 3) return { k: 3, data: t ? t.text : d.data };
-  if (d.nodeType !== 1) return { k: 8, data: d.nodeType === 8 ? d.data : '' };
-  const name = d.localName, html = d.namespaceURI === HTML_NS, rep = st.report;
+  const kind = typeOf(d);
+  if (kind === 3) return { k: 3, data: t ? t.text : d.data };
+  if (kind !== 1) return { k: 8, data: kind === 8 ? d.data : '' };
+  const name = nameOf(d), html = nsOf(d) === HTML_NS, rep = st.report;
   if (name === 'script' || (html && DROP.has(name))) {
     if (name === 'script') rep.scripts++;
-    else if (name === 'link') { if (/stylesheet/i.test(d.getAttribute('rel') || '')) rep.sheets++; else rep.other++; }
-    else if (name === 'meta') { if (/refresh/i.test(d.getAttribute('http-equiv') || '')) rep.refresh++; }
+    else if (name === 'link') { if (/stylesheet/i.test(attrOf(d, 'rel') || '')) rep.sheets++; else rep.other++; }
+    else if (name === 'meta') { if (/refresh/i.test(attrOf(d, 'http-equiv') || '')) rep.refresh++; }
     else if (name === 'base') rep.other++;
     else if (name === 'frame' || name === 'frameset') rep.frames++;
     return { k: 8, data: 'se:' + name };
@@ -766,11 +794,17 @@ function describe(d, t, st) {
   const attrs = safeAttrs(d, name, html, rep);
   if (t && !t.ok) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
-    if (!d.hasAttribute('title')) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
+    if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
   } else if (LOCKED.has(name)) attrs.push(['contenteditable', 'false']);
-  if (html && name === 'form') rep.forms++;
-  if (html && name === 'style' && CSS_FETCH.test(d.textContent)) rep.css++;
-  return { k: 1, name, ns: d.namespaceURI, attrs, kids: true };
+  if (html && name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
+  if (html && name === 'form') {
+    // A real form element would let its controls shadow DOM properties and could be submitted; a plain block
+    // stands in for it. The source keeps the form unchanged.
+    rep.forms++;
+    attrs.push(['data-se-form', '']);
+    return { k: 1, name: 'div', ns: HTML_NS, attrs, kids: true };
+  }
+  return { k: 1, name, ns: nsOf(d), attrs, kids: true };
 }
 
 const fits = (node, desc) => node.nodeType === desc.k && (desc.k !== 1 || (node.localName === desc.name && node.namespaceURI === desc.ns));
@@ -815,7 +849,7 @@ function syncKids(pv, tKids, dNodes, st) {
       else {
         const d = dNodes[j];
         if (t && t.ok) syncKids(node, t.mk, t.dk, st);
-        else syncKids(node, null, Array.from(d.localName === 'template' ? [] : d.childNodes), st);
+        else syncKids(node, null, nameOf(d) === 'template' ? [] : childrenOf(d), st);
       }
       st.info.set(node, { t, kids: Array.from(node.childNodes) });
     }
@@ -840,14 +874,15 @@ function syncKids(pv, tKids, dNodes, st) {
 function syncHead(view, st) {
   const head = st.doc.head, rep = st.report;
   const styles = [];
-  const srcHead = view.dom.head;
+  const srcHead = docHead(view.dom);
   if (srcHead) {
-    for (const el of Array.from(srcHead.children)) {
-      const name = el.localName;
-      if (name === 'style') { styles.push(el); if (CSS_FETCH.test(el.textContent)) rep.css++; }
+    for (const el of childrenOf(srcHead)) {
+      if (typeOf(el) !== 1) continue;
+      const name = nameOf(el);
+      if (name === 'style') { styles.push(el); if (CSS_FETCH.test(textOf(el))) rep.css++; }
       else if (name === 'script') rep.scripts++;
-      else if (name === 'link') { if (/stylesheet/i.test(el.getAttribute('rel') || '')) rep.sheets++; }
-      else if (name === 'meta') { if (/refresh/i.test(el.getAttribute('http-equiv') || '')) rep.refresh++; }
+      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; }
+      else if (name === 'meta') { if (/refresh/i.test(attrOf(el, 'http-equiv') || '')) rep.refresh++; }
       else if (name === 'base') rep.other++;
     }
   }
@@ -856,8 +891,8 @@ function syncHead(view, st) {
   styles.forEach((el, i) => {
     let target = have[i];
     if (!target) { target = st.doc.createElement('style'); target.setAttribute('data-se-user', ''); head.appendChild(target); }
-    if (target.textContent !== el.textContent) target.textContent = el.textContent;
-    const media = el.getAttribute('media');
+    if (target.textContent !== textOf(el)) target.textContent = textOf(el);
+    const media = attrOf(el, 'media');
     if (media === null) target.removeAttribute('media'); else if (target.getAttribute('media') !== media) target.setAttribute('media', media);
   });
 }
@@ -868,17 +903,17 @@ function renderView(view, doc, info) {
   const st = { doc, info, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
   syncHead(view, st);
-  syncAttrs(doc.documentElement, safeAttrs(dom.documentElement, 'html', true, st.report), st);
-  const srcBody = dom.body && dom.body.localName === 'body' ? dom.body : null;
+  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report), st);
+  const srcBody = bodyOf(dom);
   const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report) : [];
   bodyAttrs.push(['contenteditable', view.ok ? 'true' : 'false']);
   syncAttrs(doc.body, bodyAttrs, st);
-  if (dom.body && !srcBody) st.report.frames++;
+  if (docBody(dom) && !srcBody) st.report.frames++;
   if (view.ok) syncKids(doc.body, view.body.mk, view.body.dk, st);
-  else syncKids(doc.body, null, srcBody ? Array.from(srcBody.childNodes) : [], st);
+  else syncKids(doc.body, null, srcBody ? childrenOf(srcBody) : [], st);
   info.set(doc.body, { t: view.ok ? view.body : null, kids: Array.from(doc.body.childNodes) });
   view.body.pv = doc.body;
-  return { changed: st.changed, report: st.report, title: dom.title };
+  return { changed: st.changed, report: st.report, title: docTitle(dom) };
 }
 
 // ---------------------------------------------------------------- position mapping (preview in sync with the text)
@@ -954,13 +989,14 @@ function srcElementAt(view, off) {
 function canonDom(doc, blockNames, keepNames) {
   const toks = [];
   const walk = (node, keep) => {
-    for (const c of Array.from(node.childNodes)) {
-      if (c.nodeType === 3) toks.push({ text: keep ? c.data : c.data.replace(/[ \t\n\f\r]+/g, ' '), keep });
-      else if (c.nodeType === 8) toks.push({ comment: true, s: '<!--' + c.data + '-->' });
-      else if (c.nodeType === 1) {
-        const name = c.localName, block = blockNames.has(name) || name === 'br';
+    for (const c of childrenOf(node)) {
+      const kind = typeOf(c);
+      if (kind === 3) toks.push({ text: keep ? c.data : c.data.replace(/[ \t\n\f\r]+/g, ' '), keep });
+      else if (kind === 8) toks.push({ comment: true, s: '<!--' + c.data + '-->' });
+      else if (kind === 1) {
+        const name = nameOf(c), block = blockNames.has(name) || name === 'br';
         let s = '<' + name;
-        for (const a of Array.from(c.attributes)) s += ' ' + a.name + '=' + JSON.stringify(a.value);
+        for (const a of attrsOf(c)) s += ' ' + a.name + '=' + JSON.stringify(a.value);
         toks.push({ block, s: s + '>' });
         walk(name === 'template' && c.content ? c.content : c, keep || keepNames.has(name));
         toks.push({ block, s: '</' + name + '>' });
@@ -987,9 +1023,9 @@ function canonDom(doc, blockNames, keepNames) {
       if (v !== k.text) { k.text = v; again = true; }
     }
   }
-  const dt = doc.doctype;
+  const dt = docType(doc);
   let out = dt ? '<!' + dt.name + '|' + dt.publicId + '|' + dt.systemId + '>' : '';
-  out += doc.compatMode;
+  out += docMode(doc);
   for (const k of toks) out += k.text != null ? (k.text === '' ? '' : JSON.stringify(k.text)) : k.s;
   return out;
 }
@@ -1362,20 +1398,29 @@ function formatSource(src, root) {
 
 const ENTITY = /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
 
+// Very long lines (embedded images, minified pages) are shown without colours: thousands of elements in one
+// line would make every keystroke slow.
+const LONG_LINE = 4000;
+
 function highlightLines(src, tokens) {
   const lines = [];
-  let line = '';
+  let line = '', lineFrom = 0, nextBreak = -2;
+  const endLine = (at) => {
+    lines.push(at - lineFrom > LONG_LINE ? escapeText(src.slice(lineFrom, at)) : line);
+    line = '';
+    lineFrom = at + 1;
+  };
   const put = (cls, from, to) => {
     if (to <= from) return;
-    let text = src.slice(from, to);
+    let at = from;
     for (;;) {
-      const nl = text.indexOf('\n');
-      const part = nl < 0 ? text : text.slice(0, nl);
-      if (part) line += cls ? '<span class="' + cls + '">' + escapeText(part) + '</span>' : escapeText(part);
-      if (nl < 0) break;
-      lines.push(line);
-      line = '';
-      text = text.slice(nl + 1);
+      if (nextBreak !== -1 && nextBreak < at) nextBreak = src.indexOf('\n', at);      // looked up once per line
+      const nl = nextBreak;
+      const stop = nl < 0 || nl >= to ? to : nl;
+      if (stop > at && stop - lineFrom <= LONG_LINE) line += cls ? '<span class="' + cls + '">' + escapeText(src.slice(at, stop)) + '</span>' : escapeText(src.slice(at, stop));
+      if (stop === to) break;
+      endLine(nl);
+      at = nl + 1;
     }
   };
   for (const tok of tokens) {
@@ -1409,7 +1454,7 @@ function highlightLines(src, tokens) {
       put('tg', close, tok.end);
     } else put('er', tok.start, tok.end);
   }
-  lines.push(line);
+  endLine(src.length);
   return lines;
 }
 
@@ -1958,6 +2003,8 @@ const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
 
 const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
 const DEFAULT_NAME = 'meine-seite.html';
+const LOCK_NORMAL = 'Die Seite wird rechts nur angezeigt: Im HTML-Code ist etwas nicht richtig geschlossen oder verschachtelt. Korrigiere es links – danach kannst du hier wieder schreiben.';
+const LOCK_FAILED = 'Diese Seite kann rechts nicht angezeigt werden. Im HTML-Code links kannst du weiterarbeiten.';
 const HIGHLIGHT_LIMIT = 1500000;
 const LINE_HEIGHT = 20;
 const FILE_TYPES = [{ description: 'HTML-Datei', accept: { 'text/html': ['.html', '.htm'] } }];
@@ -2124,15 +2171,26 @@ function setPreviewSelection(offsets) {
 function render(restore) {
   clearTimeout(renderTimer);
   const t0 = now();
-  const view = analyze(state.text, tokensFor(state.text));
-  const res = renderView(view, pvDoc, info);
+  let view, res;
+  try {
+    view = analyze(state.text, tokensFor(state.text));
+    res = renderView(view, pvDoc, info);
+  } catch (e) {
+    // Last line of defence: show nothing editable rather than a page that does not match the text.
+    view = { ok: false, failed: true };
+    res = { changed: true, report: {}, title: '' };
+    pvDoc.body.textContent = '';
+    pvDoc.body.setAttribute('contenteditable', 'false');
+    info.set(pvDoc.body, { t: null, kids: [] });
+  }
   state.view = view;
   state.pvRev = state.rev;
   state.visualDirty = false;
-  const inactive = reportText(res.report);
+  const inactive = view.failed ? '' : reportText(res.report);
   els.inactive.hidden = !inactive;
   els.inactiveText.textContent = inactive ? 'Im Editor ausgeschaltet: ' + inactive + '.' : '';
   els.lockNote.hidden = view.ok;
+  els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
   els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
   if (res.changed && restore && previewFocused()) setPreviewSelection(restore);
   renderCost = now() - t0;
@@ -2386,12 +2444,16 @@ async function formatDoc() {
     await infoBox('Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei zählt jedes Leerzeichen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert.');
     return;
   }
-  const before = new DOMParser().parseFromString(src, 'text/html');
-  const out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
-  if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
-  const after = new DOMParser().parseFromString(out, 'text/html');
-  const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
-  if (!sameInk || canonDom(before, FMT_BLOCK, FMT_KEEP) !== canonDom(after, FMT_BLOCK, FMT_KEEP)) {
+  let out = null, verified = false;
+  try {
+    const before = new DOMParser().parseFromString(src, 'text/html');
+    out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
+    if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
+    const after = new DOMParser().parseFromString(out, 'text/html');
+    const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
+    verified = sameInk && canonDom(before, FMT_BLOCK, FMT_KEEP) === canonDom(after, FMT_BLOCK, FMT_KEEP);
+  } catch (e) { verified = false; }
+  if (!verified) {
     await infoBox('Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt. Dein Code bleibt unverändert.');
     return;
   }

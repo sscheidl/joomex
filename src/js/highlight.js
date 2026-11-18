@@ -4,20 +4,29 @@ import { escapeText } from './util.js';
 
 const ENTITY = /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
 
+// Very long lines (embedded images, minified pages) are shown without colours: thousands of elements in one
+// line would make every keystroke slow.
+const LONG_LINE = 4000;
+
 export function highlightLines(src, tokens) {
   const lines = [];
-  let line = '';
+  let line = '', lineFrom = 0, nextBreak = -2;
+  const endLine = (at) => {
+    lines.push(at - lineFrom > LONG_LINE ? escapeText(src.slice(lineFrom, at)) : line);
+    line = '';
+    lineFrom = at + 1;
+  };
   const put = (cls, from, to) => {
     if (to <= from) return;
-    let text = src.slice(from, to);
+    let at = from;
     for (;;) {
-      const nl = text.indexOf('\n');
-      const part = nl < 0 ? text : text.slice(0, nl);
-      if (part) line += cls ? '<span class="' + cls + '">' + escapeText(part) + '</span>' : escapeText(part);
-      if (nl < 0) break;
-      lines.push(line);
-      line = '';
-      text = text.slice(nl + 1);
+      if (nextBreak !== -1 && nextBreak < at) nextBreak = src.indexOf('\n', at);      // looked up once per line
+      const nl = nextBreak;
+      const stop = nl < 0 || nl >= to ? to : nl;
+      if (stop > at && stop - lineFrom <= LONG_LINE) line += cls ? '<span class="' + cls + '">' + escapeText(src.slice(at, stop)) + '</span>' : escapeText(src.slice(at, stop));
+      if (stop === to) break;
+      endLine(nl);
+      at = nl + 1;
     }
   };
   for (const tok of tokens) {
@@ -51,7 +60,7 @@ export function highlightLines(src, tokens) {
       put('tg', close, tok.end);
     } else put('er', tok.start, tok.end);
   }
-  lines.push(line);
+  endLine(src.length);
   return lines;
 }
 
