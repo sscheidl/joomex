@@ -1,0 +1,2806 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-d8KrrPG58+ch4lgUcCfjoxpGlgXQ6Dl98eIxzGkiuMo='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.1">
+<title>HTML-Schuleditor</title>
+<style>
+:root {
+  --ink: #212529; --soft: #5c6670; --line: #ced4da; --panel: #f4f6f8; --accent: #1864ab; --accent-ink: #fff;
+  --warn-bg: #fff4d6; --warn-ink: #664d03; --code: 14px/20px Consolas, "Cascadia Mono", "Lucida Console", "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; color: var(--ink); background: var(--panel); font: 15px/1.4 "Segoe UI", system-ui, Arial, sans-serif; overflow: hidden; }
+[hidden] { display: none !important; }
+
+button { font: inherit; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+button:hover:not(:disabled) { border-color: var(--accent); background: #edf4fb; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #74c0fc; outline-offset: 1px; }
+button:disabled { color: #adb5bd; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.primary:hover:not(:disabled) { background: #124f88; }
+button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); }
+
+#top { display: flex; align-items: center; gap: 14px; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: 4px; }
+.brand strong { font-size: 17px; color: var(--accent); }
+.brand span { font-size: 12px; color: var(--soft); }
+.group { display: inline-flex; gap: 5px; }
+.doc { margin-left: auto; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+#docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+#docState { font-size: 13px; color: #2b8a3e; white-space: nowrap; }
+#docState.dirty { color: #c92a2a; font-weight: 600; }
+
+#work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, var(--left, 50%)) 8px minmax(0, 1fr); }
+#work.dragging iframe, #work.dragging textarea { pointer-events: none; }
+section { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fff; }
+.paneHead { display: flex; align-items: baseline; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.paneHead h2 { margin: 0; font-size: 15px; }
+.hint { font-size: 13px; color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#split { background: var(--line); cursor: col-resize; touch-action: none; }
+#split:hover { background: #74c0fc; }
+
+#srcBox { position: relative; flex: 1; min-height: 0; overflow: hidden; font: var(--code); background: #fff; }
+#gutter { position: absolute; left: 0; top: 0; bottom: 0; width: 46px; overflow: hidden; background: #f1f3f5; color: #868e96; text-align: right; user-select: none; border-right: 1px solid #e9ecef; }
+#gutterIn { padding: 8px 7px 8px 0; white-space: pre; }
+#hl, #src { position: absolute; left: 46px; top: 0; width: calc(100% - 46px); height: 100%; margin: 0; border: 0; padding: 8px; font: inherit; letter-spacing: 0; white-space: pre; tab-size: 2; }
+#hl { overflow: hidden; pointer-events: none; color: var(--ink); }
+#hlIn { width: max-content; min-width: 100%; }
+#hlIn > div { height: 20px; }
+#src { display: block; resize: none; outline: none; overflow: auto; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #000; overflow-wrap: normal; }
+#src::selection { background: rgba(51, 154, 240, .35); color: transparent; }
+#srcBox.plain #hl { display: none; }
+#srcBox.plain #src { color: var(--ink); -webkit-text-fill-color: var(--ink); }
+.tg { color: #1864ab; } .an { color: #c2410c; } .av { color: #2b8a3e; } .cm { color: #868e96; font-style: italic; }
+.dt { color: #868e96; } .en { color: #9c36b5; } .rw { color: #495057; } .er { color: #c92a2a; text-decoration: underline wavy; }
+::highlight(se-link) { background-color: #ffec99; }
+
+#fmt { display: flex; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+#fmt button { padding: 4px 9px; }
+#fmt .b { font-weight: 700; min-width: 34px; } #fmt .i { font-style: italic; min-width: 34px; font-family: Georgia, serif; }
+#pvBox { flex: 1; min-height: 0; display: flex; }
+#pv { flex: 1; width: 100%; border: 0; background: #fff; }
+.note { padding: 5px 12px; font-size: 13px; color: var(--soft); background: var(--panel); border-top: 1px solid var(--line); }
+.note.warn { color: var(--warn-ink); background: var(--warn-bg); border-top: 0; border-bottom: 1px solid #f0d58a; }
+
+#foot { display: flex; gap: 16px; align-items: center; padding: 4px 12px; min-height: 28px; font-size: 13px; background: #fff; border-top: 1px solid var(--line); }
+#msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#msg.warn { color: #a04a00; font-weight: 600; } #msg.ok { color: #2b8a3e; font-weight: 600; }
+#pos, .ver { color: var(--soft); white-space: nowrap; }
+#fatal { position: fixed; inset: 0; display: grid; place-items: center; padding: 40px; background: #fff; font-size: 20px; text-align: center; }
+
+dialog { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; width: min(520px, 92vw); color: var(--ink); box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
+dialog::backdrop { background: rgba(33, 37, 41, .45); }
+dialog h3 { margin: 0 0 10px; font-size: 18px; }
+dialog p { margin: 0 0 12px; }
+dialog ul { margin: 0 0 12px; padding-left: 20px; }
+dialog li { margin-bottom: 6px; }
+dialog label { display: block; margin: 10px 0 4px; font-weight: 600; }
+dialog input[type="text"] { width: 100%; font: inherit; padding: 7px 9px; border: 1px solid #adb5bd; border-radius: 6px; }
+dialog .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+dialog .pick { display: flex; align-items: center; gap: 10px; }
+#imgName { font-size: 13px; color: var(--soft); overflow: hidden; text-overflow: ellipsis; }
+#imgPrev { display: block; max-width: 100%; max-height: 160px; margin-top: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.err { min-height: 1.2em; margin: 8px 0 0; color: #c92a2a; font-size: 14px; }
+
+@media (max-width: 1450px) {
+  .brand span { display: none; }
+  #top { gap: 10px; }
+}
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand"><strong>HTML-Schuleditor</strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="group" role="group" aria-label="Datei">
+    <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
+    <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
+    <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)">Speichern</button>
+    <button id="bDownload" type="button" title="Eine Kopie in den Ordner „Downloads“ laden">Herunterladen</button>
+  </div>
+  <div class="group" role="group" aria-label="Verlauf">
+    <button id="bUndo" type="button" title="Rückgängig (Strg+Z)">Rückgängig</button>
+    <button id="bRedo" type="button" title="Wiederholen (Strg+Y)">Wiederholen</button>
+  </div>
+  <div class="group">
+    <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
+  </div>
+  <div class="doc"><span id="docName"></span><span id="docState"></span></div>
+  <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
+</header>
+
+<main id="work">
+  <section id="srcPane" aria-label="HTML-Code">
+    <div class="paneHead"><h2>HTML-Code</h2><span class="hint">Hier steht der ganze Code deiner Seite.</span></div>
+    <div id="srcBox">
+      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
+      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite"></textarea>
+    </div>
+  </section>
+  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
+  <section id="pvPane" aria-label="Seite">
+    <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="pvTitle"></span></div>
+    <div id="fmt" role="toolbar" aria-label="Text gestalten">
+      <span class="group">
+        <button id="bP" type="button" title="Absatz &lt;p&gt;">Absatz</button>
+        <button id="bH1" type="button" title="Große Überschrift &lt;h1&gt;">Ü1</button>
+        <button id="bH2" type="button" title="Mittlere Überschrift &lt;h2&gt;">Ü2</button>
+        <button id="bH3" type="button" title="Kleine Überschrift &lt;h3&gt;">Ü3</button>
+      </span>
+      <span class="group">
+        <button id="bBold" type="button" class="b" title="Fett &lt;b&gt; (Strg+B)">F</button>
+        <button id="bItalic" type="button" class="i" title="Kursiv &lt;i&gt; (Strg+I)">K</button>
+      </span>
+      <span class="group">
+        <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
+        <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
+      </span>
+      <span class="group">
+        <button id="bLink" type="button" title="Link einfügen &lt;a&gt;">Link</button>
+        <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
+        <button id="bImage" type="button" title="Bild von diesem Computer einfügen &lt;img&gt;">Bild</button>
+      </span>
+    </div>
+    <div id="lockNote" class="note warn" hidden></div>
+    <div id="pvBox"><iframe id="pv" sandbox="allow-same-origin" title="Vorschau deiner Seite zum Bearbeiten"></iframe></div>
+    <div id="inactive" class="note" hidden title="Skripte, Formulare und Dateien von außerhalb laufen bzw. laden im Editor nicht. Im Code und in der gespeicherten Datei bleiben sie unverändert erhalten."><span id="inactiveText"></span> Im Code bleibt alles erhalten.</div>
+  </section>
+</main>
+
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.1</span></footer>
+
+<div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
+
+<dialog id="dlgInfo"><p id="infoText"></p><div class="row"><button type="button" class="primary" data-close="ok">OK</button></div></dialog>
+
+<dialog id="dlgConfirm"><p id="confirmText"></p><div class="row"><button type="button" class="primary" data-close="cancel">Abbrechen</button><button type="button" id="confirmOk" data-close="ok"></button></div></dialog>
+
+<dialog id="dlgLink">
+  <h3>Link einfügen</h3>
+  <label for="linkUrl">Adresse (wohin führt der Link?)</label>
+  <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
+  <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
+  <p id="linkErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="linkOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgImage">
+  <h3>Bild einfügen</h3>
+  <p>Das Bild wird in deine Seite hineinkopiert. Erlaubt sind PNG, JPG, GIF und WebP.</p>
+  <div class="pick"><button type="button" id="imgPick">Bild auswählen …</button><span id="imgName"></span></div>
+  <img id="imgPrev" alt="" hidden>
+  <label for="imgAlt">Beschreibung des Bildes (Alternativtext)</label>
+  <input id="imgAlt" type="text" autocomplete="off" maxlength="200" placeholder="Zum Beispiel: Unsere Katze schläft auf dem Sofa">
+  <p id="imgErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <h3>Kurze Hilfe</h3>
+  <ul>
+    <li><b>Links</b> steht der HTML-Code, <b>rechts</b> siehst du deine Seite. Du kannst auf beiden Seiten schreiben – die andere Seite ändert sich mit.</li>
+    <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
+    <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
+    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten.</li>
+    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv</li>
+  </ul>
+  <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
+</dialog>
+
+<input id="fileIn" type="file" accept=".html,.htm,text/html" hidden>
+<input id="imgIn" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+<script>
+(function () {
+'use strict';
+// ---- util.js
+// Small pure helpers shared by all modules (no DOM access).
+
+const words = (s) => new Set(s.split(' '));
+
+function escapeText(s) {
+  return s.replace(/[&<>\u00a0]/g, (c) => (c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&nbsp;'));
+}
+
+function escapeAttr(s) {
+  return s.replace(/[&"<\u00a0]/g, (c) => (c === '&' ? '&amp;' : c === '"' ? '&quot;' : c === '<' ? '&lt;' : '&nbsp;'));
+}
+
+function commonPrefix(a, b) {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i++;
+  return i;
+}
+
+function commonSuffix(a, b, skip) {
+  const n = Math.min(a.length, b.length) - skip;
+  let i = 0;
+  while (i < n && a.charCodeAt(a.length - 1 - i) === b.charCodeAt(b.length - 1 - i)) i++;
+  return i;
+}
+
+// Maps a caret offset in `oldText` to the matching offset in `newText` by keeping the unchanged
+// prefix and suffix fixed. An offset inside the changed region lands at the end of the new region.
+function mapOffset(oldText, newText, pos) {
+  if (oldText === newText) return pos;
+  const p = commonPrefix(oldText, newText);
+  if (pos <= p) return pos;
+  const s = commonSuffix(oldText, newText, p);
+  if (pos >= oldText.length - s) return pos + newText.length - oldText.length;
+  return newText.length - s;
+}
+
+// End of the region that differs between two texts, as an offset in `newText`.
+function changeEnd(oldText, newText) {
+  const p = commonPrefix(oldText, newText);
+  return newText.length - commonSuffix(oldText, newText, p);
+}
+
+// ---------------------------------------------------------------- link addresses
+
+const SAFE_SCHEMES = words('http https mailto tel');
+
+// Validates an address typed into the link dialog. Input is plain text and is only ever stored as an
+// attribute value; this check additionally refuses schemes that would run code when the saved page is used.
+// Returns { ok: true, url } or { ok: false, reason }.
+function checkLinkUrl(input) {
+  let url = String(input).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, '').trim();
+  if (!url) return { ok: false, reason: 'empty' };
+  if (url.length > 2000) return { ok: false, reason: 'long' };
+  // A scheme may be disguised with whitespace, control characters or character references.
+  const squeezed = url.replace(/\s+/g, '');
+  const decoded = squeezed.replace(/&#x([0-9a-f]+);?/gi, (m, h) => safeChar(parseInt(h, 16)))
+    .replace(/&#([0-9]+);?/g, (m, d) => safeChar(parseInt(d, 10)))
+    .replace(/&(colon|tab|newline);?/gi, (m, n) => (n.toLowerCase() === 'colon' ? ':' : ''));
+  for (const candidate of [squeezed, decoded]) {
+    const m = /^([a-z][a-z0-9+.\-]*):/i.exec(candidate);
+    if (m && !SAFE_SCHEMES.has(m[1].toLowerCase())) return { ok: false, reason: 'scheme' };
+  }
+  url = url.replace(/\s/g, '%20').replace(/</g, '%3C').replace(/>/g, '%3E').replace(/"/g, '%22');
+  if (/^www\.[^\s/]+\.[a-z]{2,}/i.test(url)) url = 'https://' + url;
+  return { ok: true, url };
+}
+
+function safeChar(code) {
+  return code > 32 && code < 0x10ffff ? String.fromCodePoint(code) : '';
+}
+
+// True for addresses that stay inert as an href in a saved page (used for links cloned inside the preview).
+function isSafeHref(value) {
+  return checkLinkUrl(value).ok;
+}
+
+function isRasterDataUrl(value) {
+  return /^\s*data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=\s]*$/i.test(value);
+}
+
+// ---------------------------------------------------------------- file bytes <-> text
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+// Decodes the bytes of an opened file. Internally the editor always uses LF line ends; the original
+// convention (and a UTF-8 byte order mark) is remembered and restored when the file is written.
+// Returns { text, bom, eol, mixedEol } or { error: 'binary' | 'utf16' | 'encoding' }.
+function decodeFileBytes(bytes, allowLegacy) {
+  let bom = false;
+  if (bytes.length >= 2 && ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff))) return { error: 'utf16' };
+  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) { bom = true; bytes = bytes.subarray(3); }
+  for (let i = 0; i < bytes.length; i++) if (bytes[i] === 0) return { error: 'binary' };
+  let text;
+  let legacy = false;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch (e) {
+    if (!allowLegacy) return { error: 'encoding' };
+    text = new TextDecoder('windows-1252').decode(bytes);
+    legacy = true;
+  }
+  const crlf = (text.match(/\r\n/g) || []).length;
+  const loneCr = (text.match(/\r(?!\n)/g) || []).length;
+  const loneLf = (text.match(/(^|[^\r])\n/g) || []).length;
+  const eol = crlf > 0 && crlf >= loneLf ? '\r\n' : '\n';
+  const mixedEol = loneCr > 0 || (crlf > 0 && loneLf > 0);
+  return { text: text.replace(/\r\n?/g, '\n'), bom, eol, mixedEol, legacy };
+}
+
+// Text that is written to disk for the given document settings.
+function encodeFileText(text, bom, eol) {
+  return (bom ? '\ufeff' : '') + (eol === '\r\n' ? text.replace(/\n/g, '\r\n') : text);
+}
+
+// ---- tokenizer.js
+// HTML tokenizer with source offsets. It follows the tokenization rules of the HTML standard closely enough
+// to find the exact extent of tags, comments and raw-text content. It never changes the text and it is never
+// trusted on its own: every structure derived from these tokens is compared with the browser's own parser
+// before it is used for editing (see project.js).
+
+const VOID_TAGS = words('area base basefont bgsound br col embed frame hr img input keygen link meta param source track wbr');
+const LITERAL_TEXT = words('script style xmp iframe noembed noframes');   // content is plain text, no character references
+const RCDATA_TEXT = words('textarea title');                              // content is text with character references
+
+const isWs = (c) => c === 32 || c === 10 || c === 9 || c === 12 || c === 13;
+const isAlpha = (c) => (c | 32) >= 97 && (c | 32) <= 122;
+
+const rawEndCache = {};
+function findRawEnd(src, from, name) {
+  const re = rawEndCache[name] || (rawEndCache[name] = new RegExp('</' + name + '(?=[\\t\\n\\f\\r />])', 'gi'));
+  re.lastIndex = from;
+  const m = re.exec(src);
+  return m ? m.index : src.length;
+}
+
+// Reads a start or end tag beginning at `start`. A tag that is cut off by the end of the text yields a
+// 'bogus' token, because the browser emits nothing for it.
+function readTag(src, start, nameStart, isEnd) {
+  const n = src.length;
+  let j = nameStart;
+  while (j < n) { const c = src.charCodeAt(j); if (isWs(c) || c === 47 || c === 62) break; j++; }
+  const tok = { type: isEnd ? 'end' : 'start', start, end: n, name: src.slice(nameStart, j).toLowerCase(), nameEnd: j, attrs: [], selfClosing: false };
+  for (;;) {
+    while (j < n && isWs(src.charCodeAt(j))) j++;
+    if (j >= n) { tok.type = 'bogus'; return tok; }
+    const c = src.charCodeAt(j);
+    if (c === 62) { tok.end = j + 1; return tok; }
+    if (c === 47) {
+      if (src.charCodeAt(j + 1) === 62) { tok.selfClosing = true; tok.end = j + 2; return tok; }
+      j++;
+      continue;
+    }
+    const nameAt = j++;                       // the first character always belongs to the attribute name
+    while (j < n) { const d = src.charCodeAt(j); if (isWs(d) || d === 47 || d === 62 || d === 61) break; j++; }
+    const nameTo = j;
+    while (j < n && isWs(src.charCodeAt(j))) j++;
+    let valueAt = -1, valueTo = -1;
+    if (src.charCodeAt(j) === 61) {
+      j++;
+      while (j < n && isWs(src.charCodeAt(j))) j++;
+      const q = src.charCodeAt(j);
+      if (q === 34 || q === 39) {
+        const e = src.indexOf(q === 34 ? '"' : "'", j + 1);
+        if (e < 0) { tok.type = 'bogus'; return tok; }
+        valueAt = j; valueTo = e + 1; j = valueTo;
+      } else if (j < n && q !== 62) {
+        valueAt = j;
+        while (j < n && !isWs(src.charCodeAt(j)) && src.charCodeAt(j) !== 62) j++;
+        valueTo = j;
+      }
+    }
+    tok.attrs.push(nameAt, nameTo, valueAt, valueTo);
+  }
+}
+
+// Token types: text, start, end, comment, doctype, bogus. Tokens cover the whole text without gaps.
+function tokenize(src) {
+  const toks = [];
+  const n = src.length;
+  let i = 0, textStart = 0;
+  const flush = (to) => { if (to > textStart) toks.push({ type: 'text', start: textStart, end: to }); };
+  const until = (from, what) => { const e = src.indexOf(what, from); return e < 0 ? n : e + what.length; };
+  while (i < n) {
+    const lt = src.indexOf('<', i);
+    if (lt < 0) break;
+    const c = src.charCodeAt(lt + 1);
+    let tok = null;
+    if (isAlpha(c)) {
+      tok = readTag(src, lt, lt + 1, false);
+    } else if (c === 47) {
+      const c2 = src.charCodeAt(lt + 2);
+      if (isAlpha(c2)) tok = readTag(src, lt, lt + 2, true);
+      else if (c2 === 62) tok = { type: 'bogus', start: lt, end: lt + 3 };
+      else if (lt + 2 < n) tok = { type: 'comment', bogus: true, start: lt, end: until(lt + 2, '>') };
+    } else if (c === 33) {
+      if (src.startsWith('<!--', lt)) {
+        let end;
+        if (src.startsWith('<!-->', lt)) end = lt + 5;
+        else if (src.startsWith('<!--->', lt)) end = lt + 6;
+        else {
+          const a = src.indexOf('-->', lt + 4), b = src.indexOf('--!>', lt + 4);
+          end = a < 0 && b < 0 ? n : b < 0 || (a >= 0 && a < b) ? a + 3 : b + 4;
+        }
+        tok = { type: 'comment', start: lt, end };
+      } else if (/^<!doctype/i.test(src.substr(lt, 9))) {
+        tok = { type: 'doctype', start: lt, end: until(lt + 9, '>') };
+      } else {
+        tok = { type: 'comment', bogus: true, start: lt, end: until(lt + 2, '>') };
+      }
+    } else if (c === 63) {
+      tok = { type: 'comment', bogus: true, start: lt, end: until(lt + 2, '>') };
+    }
+    if (!tok) { i = lt + 1; continue; }       // a lone '<' is ordinary text
+    flush(lt);
+    toks.push(tok);
+    i = textStart = tok.end;
+    if (tok.type === 'start') {
+      const literal = LITERAL_TEXT.has(tok.name);
+      if (literal || RCDATA_TEXT.has(tok.name) || tok.name === 'plaintext') {
+        const close = tok.name === 'plaintext' ? n : findRawEnd(src, tok.end, tok.name);
+        if (close > tok.end) toks.push({ type: 'text', start: tok.end, end: close, raw: literal || tok.name === 'plaintext' ? 'literal' : 'rcdata' });
+        i = textStart = close;
+      }
+    }
+  }
+  flush(n);
+  return toks;
+}
+
+// ---- tree.js
+// Builds a source-position tree from the tokens. The nesting rules are a deliberately small subset of the
+// HTML tree-construction rules (void elements, optional end tags, implied tbody, stray end tags). The tree is
+// only used where project.js has confirmed that the browser's parser produced the same structure; everything
+// else stays read-only in the preview. Node ranges tile their parent completely, so re-emitting all children
+// of a node reproduces its inner source text byte for byte.
+
+const SPECIAL = words('address applet area article aside base basefont bgsound blockquote body br button caption center col colgroup dd details dir div dl dt embed fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html iframe img input keygen li link listing main marquee menu meta nav noembed noframes noscript object ol p param plaintext pre script search section select source style summary table tbody td template textarea tfoot th thead title tr track ul wbr xmp');
+const SCOPE = words('applet caption html table td th marquee object template');
+const BUTTON_SCOPE = words('applet caption html table td th marquee object template button');
+const LIST_SCOPE = words('applet caption html table td th marquee object template ol ul');
+const TABLE_SCOPE = words('html table template');
+const ROW_SCOPE = words('html table template tr');
+const P_CLOSERS = words('address article aside blockquote center details dialog dir div dl fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr listing main menu nav ol p pre search section summary table ul xmp li dd dt');
+const HEADINGS = words('h1 h2 h3 h4 h5 h6');
+const SCOPED_END = words('address article aside blockquote button center details dialog dir div dl fieldset figcaption figure footer form header hgroup listing main menu nav ol pre search section summary ul dd dt body html');
+const TABLE_PARTS = words('table tbody thead tfoot tr td th caption colgroup');
+const CELLS = words('td th');
+const ROWS = words('tr');
+const SECTIONS = words('tbody thead tfoot');
+const TABLE_CHILDREN = words('tbody thead tfoot caption colgroup');
+const LI = words('li');
+const DD_DT = words('dd dt');
+const P = words('p');
+const MAX_DEPTH = 400;
+const HEAD_ONLY = words('title meta link style script base template noscript');
+
+// `quirks`: the document is rendered in quirks mode (no doctype), where a table does not close a paragraph.
+function parseHtml(src, quirks, tokens) {
+  if (!tokens) tokens = tokenize(src);
+  const root = { type: 'root', name: '#root', start: 0, tagEnd: 0, closeStart: src.length, end: src.length, children: [], parent: null };
+  const stack = [root];
+  let foreign = 0;
+  const top = () => stack[stack.length - 1];
+  const add = (node) => { node.parent = top(); top().children.push(node); return node; };
+
+  function closeTo(k, pos, endTok) {
+    for (let s = stack.length - 1; s >= k; s--) {
+      const node = stack[s];
+      if (s === k && endTok) { node.closeStart = endTok.start; node.end = endTok.end; node.explicitEnd = true; }
+      else node.closeStart = node.end = pos;
+      if (node.name === 'svg' || node.name === 'math') foreign--;
+    }
+    stack.length = k;
+  }
+  function closeNearest(names, barriers, pos) {
+    for (let k = stack.length - 1; k > 0; k--) {
+      const nm = stack[k].name;
+      if (names.has(nm)) { closeTo(k, pos); return; }
+      if (barriers.has(nm)) return;
+    }
+  }
+  function closeItem(names, pos) {
+    for (let k = stack.length - 1; k > 0; k--) {
+      const nm = stack[k].name;
+      if (names.has(nm)) { closeTo(k, pos); return; }
+      if (SPECIAL.has(nm) && nm !== 'address' && nm !== 'div' && nm !== 'p') return;
+    }
+  }
+  function element(name, tok) {
+    return { type: 'el', name, start: tok.start, nameEnd: tok.nameEnd, tagEnd: tok.end, closeStart: tok.end, end: tok.end, children: [] };
+  }
+
+  function onStart(tok) {
+    const name = tok.name, pos = tok.start;
+    if (!foreign) {
+      if (P_CLOSERS.has(name)) {
+        if (name === 'li') closeItem(LI, pos);
+        else if (name === 'dd' || name === 'dt') closeItem(DD_DT, pos);
+        if (!(quirks && name === 'table')) closeNearest(P, BUTTON_SCOPE, pos);
+        if (HEADINGS.has(name) && HEADINGS.has(top().name)) closeTo(stack.length - 1, pos);
+      } else if (name === 'option') {
+        if (top().name === 'option') closeTo(stack.length - 1, pos);
+      } else if (name === 'optgroup') {
+        if (top().name === 'option') closeTo(stack.length - 1, pos);
+        if (top().name === 'optgroup') closeTo(stack.length - 1, pos);
+      } else if (name === 'tr') {
+        closeNearest(CELLS, TABLE_SCOPE, pos);
+        closeNearest(ROWS, TABLE_SCOPE, pos);
+        if (top().name === 'table') {
+          const tbody = add({ type: 'el', name: 'tbody', implied: true, start: pos, nameEnd: pos, tagEnd: pos, closeStart: pos, end: pos, children: [] });
+          stack.push(tbody);
+        }
+      } else if (name === 'td' || name === 'th') {
+        closeNearest(CELLS, ROW_SCOPE, pos);
+      } else if (TABLE_CHILDREN.has(name)) {
+        closeNearest(CELLS, TABLE_SCOPE, pos);
+        closeNearest(ROWS, TABLE_SCOPE, pos);
+        closeNearest(TABLE_CHILDREN, TABLE_SCOPE, pos);
+      }
+    }
+    const node = add(element(name, tok));
+    if (foreign ? tok.selfClosing : VOID_TAGS.has(name)) return;
+    // Browsers limit the nesting depth of their parser as well. Deeper elements are kept as leaves here; the
+    // comparison with the browser's tree then marks that part as not editable.
+    if (stack.length >= MAX_DEPTH) return;
+    stack.push(node);
+    if (name === 'svg' || name === 'math') foreign++;
+  }
+
+  function onEnd(tok) {
+    const name = tok.name;
+    let barriers = SPECIAL;
+    let isMatch = (nm) => nm === name;
+    if (HEADINGS.has(name)) { isMatch = (nm) => HEADINGS.has(nm); barriers = SCOPE; }
+    else if (TABLE_PARTS.has(name)) barriers = TABLE_SCOPE;
+    else if (name === 'li') barriers = LIST_SCOPE;
+    else if (name === 'p') barriers = BUTTON_SCOPE;
+    else if (SCOPED_END.has(name)) barriers = SCOPE;
+    for (let k = stack.length - 1; k > 0; k--) {
+      const nm = stack[k].name;
+      if (isMatch(nm)) { closeTo(k, tok.start, tok); return; }
+      if (barriers.has(nm)) break;
+    }
+    if ((name === 'p' || name === 'br') && !foreign) {
+      // The browser turns a stray </p> into an empty paragraph and a stray </br> into a line break.
+      add({ type: 'el', name, synthetic: true, explicitEnd: name === 'p', start: tok.start, nameEnd: tok.start, tagEnd: tok.start, closeStart: tok.start, end: tok.end, children: [] });
+    } else {
+      add({ type: 'junk', start: tok.start, end: tok.end });
+    }
+  }
+
+  for (const tok of tokens) {
+    if (tok.type === 'start') onStart(tok);
+    else if (tok.type === 'end') onEnd(tok);
+    else if (tok.type === 'text') add({ type: 'text', start: tok.start, end: tok.end, raw: tok.raw });
+    else if (tok.type === 'comment') add({ type: 'comment', start: tok.start, end: tok.end, bogus: !!tok.bogus });
+    else if (tok.type === 'doctype') add({ type: top() === root ? 'doctype' : 'junk', start: tok.start, end: tok.end });
+    else add({ type: 'junk', start: tok.start, end: tok.end });
+  }
+  closeTo(1, src.length);
+  finish(root);
+  return { src, tokens, root };
+}
+
+// Sets `kids` (children without junk), `lead` (start including junk directly in front of a node) and `tail`
+// (start of junk behind the last child).
+function finish(node) {
+  node.kids = [];
+  let junkAt = -1;
+  for (const c of node.children) {
+    if (c.type === 'junk') { if (junkAt < 0) junkAt = c.start; continue; }
+    c.lead = junkAt < 0 ? c.start : junkAt;
+    junkAt = -1;
+    node.kids.push(c);
+    if (c.type === 'el') finish(c);
+  }
+  node.tail = junkAt < 0 ? node.closeStart : junkAt;
+}
+
+const isBlank = (src, node) => node.type === 'text' && !/[^ \t\n\f\r]/.test(src.slice(node.start, node.end));
+
+// Finds the node whose children are the body content. Without a <body> tag a virtual body is returned that
+// covers the content the browser would place into the implied body element.
+function locateBody(root, src) {
+  const html = root.kids.find((k) => k.type === 'el' && k.name === 'html');
+  const container = html || root;
+  const explicit = container.kids.find((k) => k.type === 'el' && k.name === 'body');
+  if (explicit) return explicit;
+  const kids = container.kids;
+  let i = 0;
+  while (i < kids.length) {
+    const k = kids[i];
+    const skip = k.type === 'doctype' || k.type === 'comment' || isBlank(src, k) ||
+      (k.type === 'el' && (k.name === 'head' || k.name === 'html' || HEAD_ONLY.has(k.name)));
+    if (!skip) break;
+    i++;
+  }
+  const bodyKids = kids.slice(i);
+  const end = container.tail;
+  const start = bodyKids.length ? bodyKids[0].lead : end;
+  return { type: 'el', name: 'body', virtual: true, start, nameEnd: start, tagEnd: start, closeStart: end, tail: end, end, children: bodyKids, kids: bodyKids, parent: container };
+}
+
+// ---- project.js
+// Source text -> safe visual projection.
+//
+// analyze()    parses the text twice: with the browser's own parser (inert document, nothing runs or loads) and
+//              with the position tree from tree.js. Only where both agree is a part of the page editable.
+// renderView() brings the preview document in line with that analysis by changing as little as possible, so
+//              caret, selection and scroll position survive. Dangerous or network-bound content is never
+//              created in the preview; it stays untouched in the source text.
+
+const HTML_NS = 'http://www.w3.org/1999/xhtml';
+const HREF_HOLDER = 'data-se-href';
+
+const DROP = words('script link meta base title template noframes noembed frameset frame param source track head html body');
+const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', object: 'Eingebettetes Objekt', embed: 'Eingebettetes Objekt', applet: 'Eingebettetes Objekt', audio: 'Audio', video: 'Video', portal: 'Eingebettete Seite', fencedframe: 'Eingebettete Seite' });
+const LOCKED = words('svg math select textarea input button canvas style');
+const DROP_ATTRS = words('contenteditable autofocus srcdoc formaction action ping background poster data manifest http-equiv target sandbox integrity nonce srcset imagesrcset imagesizes sizes lowsrc dynsrc codebase archive classid code is');
+const LEADING_LF = words('pre textarea listing');
+const NAMED = words('img form embed object iframe');
+const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import/i;
+
+const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
+
+// Inside a form, controls named like DOM properties (name="childNodes") shadow those properties on the form
+// element. Nodes of an opened document are therefore read through the original accessors only.
+const accessor = (proto, name) => { const get = Object.getOwnPropertyDescriptor(proto, name).get; return (node) => get.call(node); };
+const typeOf = accessor(Node.prototype, 'nodeType');
+const rawChildren = accessor(Node.prototype, 'childNodes');
+const childrenOf = (node) => Array.from(rawChildren(node));
+const textOf = accessor(Node.prototype, 'textContent');
+const nameOf = accessor(Element.prototype, 'localName');
+const nsOf = accessor(Element.prototype, 'namespaceURI');
+const rawAttrs = accessor(Element.prototype, 'attributes');
+const attrsOf = (el) => Array.from(rawAttrs(el));
+const attrOf = (el, name) => Element.prototype.getAttribute.call(el, name);
+const docBody = accessor(Document.prototype, 'body');
+const docHead = accessor(Document.prototype, 'head');
+const docRoot = accessor(Document.prototype, 'documentElement');
+const docTitle = accessor(Document.prototype, 'title');
+const docMode = accessor(Document.prototype, 'compatMode');
+const docType = accessor(Document.prototype, 'doctype');
+const bodyOf = (dom) => { const b = docBody(dom); return b && nameOf(b) === 'body' ? b : null; };
+
+// ---------------------------------------------------------------- character references
+
+let decoderEl = null;
+function decodeText(raw) {
+  if (raw.indexOf('&') < 0 && raw.indexOf('\r') < 0 && raw.indexOf('\0') < 0) return raw;
+  if (!decoderEl) decoderEl = document.implementation.createHTMLDocument('').createElement('textarea');
+  decoderEl.innerHTML = raw;
+  return decoderEl.textContent;
+}
+
+const refCache = new Map();
+function refValue(ref) {
+  let v = refCache.get(ref);
+  if (v === undefined) { v = decodeText(ref); refCache.set(ref, v); }
+  return v;
+}
+
+// Converts an offset in the decoded text of a text node into [source offset, decoded offset]. An offset inside
+// a character reference snaps to its start (or to its end with `up`).
+function rawPos(src, t, dec, up) {
+  const base = t.start + (t.skip || 0);
+  if (t.raw === 'literal') return [base + dec, dec];
+  const raw = src.slice(base, t.end);
+  if (raw.indexOf('&') < 0) return [base + dec, dec];
+  const re = /&(?:#[xX]?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);?/g;
+  let di = 0, ri = 0, m;
+  while ((m = re.exec(raw))) {
+    const val = refValue(m[0]);
+    if (val === m[0]) continue;
+    const lit = m.index - ri;
+    if (dec <= di + lit) return [base + ri + (dec - di), dec];
+    di += lit; ri = m.index;
+    if (dec < di + val.length) return up ? [base + ri + m[0].length, di + val.length] : [base + ri, di];
+    di += val.length; ri += m[0].length;
+  }
+  return [base + ri + (dec - di), dec];
+}
+
+// ---------------------------------------------------------------- analysis
+
+function analyze(src, tokens) {
+  const dom = new DOMParser().parseFromString(src, 'text/html');
+  const tree = parseHtml(src, docMode(dom) === 'BackCompat', tokens);
+  const body = locateBody(tree.root, src);
+  const view = { src, dom, tree, body, ok: false };
+  const domBody = bodyOf(dom);
+  if (domBody) view.ok = matchKids(src, body, domBody, true);
+  return view;
+}
+
+// Compares the children of position-tree node `t` with DOM element `d`. On success `t.mk` / `t.dk` hold the
+// aligned child lists. A difference inside a child element only marks that child as not editable (`ok`).
+// `isTail`: the element is still open where the body ends, so the browser appends the white space that follows
+// the body's end tag to its last text.
+function matchKids(src, t, d, isTail) {
+  const dk = childrenOf(d);
+  const mk = [];
+  for (const k of t.kids) {
+    if (k.type === 'text') {
+      k.skip = k === t.kids[0] && LEADING_LF.has(t.name) && src.charCodeAt(k.start) === 10 ? 1 : 0;
+      const raw = src.slice(k.start + k.skip, k.end);
+      k.text = k.raw === 'literal' ? raw : decodeText(raw);
+      if (!k.text) continue;
+    }
+    mk.push(k);
+  }
+  // Whitespace written behind </body> ends up at the end of the body element.
+  if (isTail && dk.length === mk.length + 1 && typeOf(dk[dk.length - 1]) === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
+  if (mk.length !== dk.length) return false;
+  for (let i = 0; i < mk.length; i++) {
+    const a = mk[i], b = dk[i];
+    if (a.type === 'text') {
+      if (typeOf(b) !== 3) return false;
+      if (b.data !== a.text && !(isTail && i === mk.length - 1 && b.data.startsWith(a.text) && isWsOnly(b.data.slice(a.text.length)))) return false;
+    } else if (a.type === 'comment') {
+      if (typeOf(b) !== 8) return false;
+    } else if (a.type === 'el') {
+      if (typeOf(b) !== 1 || nameOf(b).toLowerCase() !== a.name) return false;
+      a.ok = nameOf(b) !== 'template' && matchKids(src, a, b, isTail && i === mk.length - 1 && !a.explicitEnd && !a.synthetic);
+    } else return false;
+  }
+  t.mk = mk;
+  t.dk = dk;
+  return true;
+}
+
+// ---------------------------------------------------------------- inactive content report
+
+function newReport() {
+  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0 };
+}
+
+function reportText(r) {
+  const parts = [];
+  const add = (n, one, many) => { if (n) parts.push(n === 1 ? one : n + ' ' + many); };
+  add(r.scripts + r.handlers, '1 Skript', 'Skripte');
+  add(r.images, '1 Bild von außerhalb', 'Bilder von außerhalb');
+  add(r.sheets + r.css, '1 externe CSS-Datei', 'externe CSS-Dateien');
+  add(r.frames, '1 eingebetteter Inhalt', 'eingebettete Inhalte');
+  add(r.forms, '1 Formular', 'Formulare');
+  add(r.refresh + r.other, '1 weiterer Verweis', 'weitere Verweise');
+  return parts.join(', ');
+}
+
+// ---------------------------------------------------------------- projection
+
+function safeAttrs(d, name, html, rep) {
+  const out = [];
+  let blockedImage = null, hasTitle = false;
+  for (const a of attrsOf(d)) {
+    const n = a.name, ln = n.toLowerCase(), v = a.value;
+    if (ln.startsWith('on')) { rep.handlers++; continue; }
+    if (ln === 'name' && NAMED.has(name)) continue;          // would become a property of the preview document
+    if (ln.startsWith('data-se-')) continue;
+    if (DROP_ATTRS.has(ln)) { if (ln === 'srcset' || ln === 'background' || ln === 'poster') rep.images++; continue; }
+    if (ln === 'href' || ln === 'xlink:href') {
+      if (html && (name === 'a' || name === 'area')) { out.push([HREF_HOLDER, v]); continue; }
+      if (!v.startsWith('#')) { rep.other++; continue; }
+    } else if (ln === 'src') {
+      if (name === 'img' && html && isRasterDataUrl(v)) { out.push([n, v]); continue; }
+      if (name === 'img') { blockedImage = v; rep.images++; } else rep.other++;
+      continue;
+    } else if (ln === 'style') {
+      if (CSS_FETCH.test(v)) rep.css++;
+    } else if (ln === 'title') hasTitle = true;
+    out.push([n, v]);
+  }
+  if (blockedImage !== null) {
+    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage]);
+    if (!hasTitle) out.push(['title', 'Dieses Bild liegt nicht in der Seite und wird im Editor nicht geladen.']);
+  }
+  return out;
+}
+
+function describe(d, t, st) {
+  const kind = typeOf(d);
+  if (kind === 3) return { k: 3, data: t ? t.text : d.data };
+  if (kind !== 1) return { k: 8, data: kind === 8 ? d.data : '' };
+  const name = nameOf(d), html = nsOf(d) === HTML_NS, rep = st.report;
+  if (name === 'script' || (html && DROP.has(name))) {
+    if (name === 'script') rep.scripts++;
+    else if (name === 'link') { if (/stylesheet/i.test(attrOf(d, 'rel') || '')) rep.sheets++; else rep.other++; }
+    else if (name === 'meta') { if (/refresh/i.test(attrOf(d, 'http-equiv') || '')) rep.refresh++; }
+    else if (name === 'base') rep.other++;
+    else if (name === 'frame' || name === 'frameset') rep.frames++;
+    return { k: 8, data: 'se:' + name };
+  }
+  if (html && BOX[name]) {
+    rep.frames++;
+    return { k: 1, name: 'span', ns: HTML_NS, attrs: [['contenteditable', 'false'], ['data-se-box', '']], fixed: BOX[name] + ' (im Editor ausgeschaltet)' };
+  }
+  const attrs = safeAttrs(d, name, html, rep);
+  if (t && !t.ok) {
+    attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
+    if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
+  } else if (LOCKED.has(name)) attrs.push(['contenteditable', 'false']);
+  if (html && name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
+  if (html && name === 'form') {
+    // A real form element would let its controls shadow DOM properties and could be submitted; a plain block
+    // stands in for it. The source keeps the form unchanged.
+    rep.forms++;
+    attrs.push(['data-se-form', '']);
+    return { k: 1, name: 'div', ns: HTML_NS, attrs, kids: true };
+  }
+  return { k: 1, name, ns: nsOf(d), attrs, kids: true };
+}
+
+const fits = (node, desc) => node.nodeType === desc.k && (desc.k !== 1 || (node.localName === desc.name && node.namespaceURI === desc.ns));
+
+function syncAttrs(el, attrs, st) {
+  const want = new Set();
+  for (const pair of attrs) want.add(pair[0]);
+  for (const a of Array.from(el.attributes)) if (!want.has(a.name)) { el.removeAttribute(a.name); st.attrChanged = true; }
+  for (const pair of attrs) {
+    if (el.getAttribute(pair[0]) === pair[1]) continue;
+    try { el.setAttribute(pair[0], pair[1]); st.attrChanged = true; } catch (e) { /* name not allowed by the DOM: leave it out */ }
+  }
+}
+
+function make(desc, st) {
+  if (desc.k === 3) return st.doc.createTextNode('');
+  if (desc.k === 8) return st.doc.createComment('');
+  try { return st.doc.createElementNS(desc.ns, desc.name); } catch (e) { return st.doc.createElement('span'); }
+}
+
+// Makes the children of preview node `pv` equal to the projection of `dNodes`. `tKids` is the aligned list of
+// position-tree nodes, or null inside a part that is not editable.
+function syncKids(pv, tKids, dNodes, st) {
+  const old = Array.from(pv.childNodes), n = dNodes.length;
+  const descs = new Array(n);
+  for (let i = 0; i < n; i++) descs[i] = describe(dNodes[i], tKids ? tKids[i] : null, st);
+  let a = 0;
+  while (a < old.length && a < n && fits(old[a], descs[a])) a++;
+  let bo = old.length, bn = n;
+  while (bo > a && bn > a && fits(old[bo - 1], descs[bn - 1])) { bo--; bn--; }
+  const update = (node, j) => {
+    const desc = descs[j], t = tKids ? tKids[j] : null;
+    if (desc.k !== 1) {
+      if (node.data !== desc.data) { node.data = desc.data; st.changed = true; }
+      st.info.set(node, { t, data: desc.data });
+    } else {
+      syncAttrs(node, desc.attrs, st);
+      if (desc.fixed !== undefined) {
+        if (node.textContent !== desc.fixed) node.textContent = desc.fixed;
+        st.info.set(node.firstChild, { t: null, data: desc.fixed });
+      }
+      else {
+        const d = dNodes[j];
+        if (t && t.ok) syncKids(node, t.mk, t.dk, st);
+        else syncKids(node, null, nameOf(d) === 'template' ? [] : childrenOf(d), st);
+      }
+      st.info.set(node, { t, kids: Array.from(node.childNodes) });
+    }
+    if (t) {
+      t.pv = node;
+      // no visible counterpart: comments, stand-ins, style elements, line breaks between elements
+      t.hidden = desc.k === 8 || (desc.k === 1 && desc.name === 'style') || (desc.k === 3 && pv.localName !== 'pre' && pv.localName !== 'textarea' && /^[ \t\f\r]*\n[ \t\n\f\r]*$/.test(desc.data));
+    }
+  };
+  for (let i = 0; i < a; i++) update(old[i], i);
+  for (let j = bn; j < n; j++) update(old[bo + j - bn], j);
+  for (let i = a; i < bo; i++) { pv.removeChild(old[i]); st.changed = true; }
+  const ref = bo < old.length ? old[bo] : null;
+  for (let j = a; j < bn; j++) {
+    const node = make(descs[j], st);
+    update(node, j);
+    pv.insertBefore(node, ref);
+    st.changed = true;
+  }
+}
+
+function syncHead(view, st) {
+  const head = st.doc.head, rep = st.report;
+  const styles = [];
+  const srcHead = docHead(view.dom);
+  if (srcHead) {
+    for (const el of childrenOf(srcHead)) {
+      if (typeOf(el) !== 1) continue;
+      const name = nameOf(el);
+      if (name === 'style') { styles.push(el); if (CSS_FETCH.test(textOf(el))) rep.css++; }
+      else if (name === 'script') rep.scripts++;
+      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; }
+      else if (name === 'meta') { if (/refresh/i.test(attrOf(el, 'http-equiv') || '')) rep.refresh++; }
+      else if (name === 'base') rep.other++;
+    }
+  }
+  const have = Array.from(head.querySelectorAll('style[data-se-user]'));
+  while (have.length > styles.length) have.pop().remove();
+  styles.forEach((el, i) => {
+    let target = have[i];
+    if (!target) { target = st.doc.createElement('style'); target.setAttribute('data-se-user', ''); head.appendChild(target); }
+    if (target.textContent !== textOf(el)) target.textContent = textOf(el);
+    const media = attrOf(el, 'media');
+    if (media === null) target.removeAttribute('media'); else if (target.getAttribute('media') !== media) target.setAttribute('media', media);
+  });
+}
+
+// Updates the preview document `doc`. `info` (WeakMap) receives, for every preview node, its source node and a
+// snapshot of its rendered state; the serializer uses the snapshot to tell edited parts from untouched ones.
+function renderView(view, doc, info) {
+  const st = { doc, info, report: newReport(), changed: false, attrChanged: false };
+  const dom = view.dom;
+  syncHead(view, st);
+  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report), st);
+  const srcBody = bodyOf(dom);
+  const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report) : [];
+  bodyAttrs.push(['contenteditable', view.ok ? 'true' : 'false']);
+  syncAttrs(doc.body, bodyAttrs, st);
+  if (docBody(dom) && !srcBody) st.report.frames++;
+  if (view.ok) syncKids(doc.body, view.body.mk, view.body.dk, st);
+  else syncKids(doc.body, null, srcBody ? childrenOf(srcBody) : [], st);
+  info.set(doc.body, { t: view.ok ? view.body : null, kids: Array.from(doc.body.childNodes) });
+  view.body.pv = doc.body;
+  return { changed: st.changed, report: st.report, title: docTitle(dom) };
+}
+
+// ---------------------------------------------------------------- position mapping (preview in sync with the text)
+
+function srcOffsetOf(view, info, node, offset) {
+  const inf = info.get(node);
+  if (!inf || !inf.t) {
+    for (let p = node.parentNode; p; p = p.parentNode) { const pi = info.get(p); if (pi && pi.t) return pi.t.start; }
+    return view.body.tagEnd;
+  }
+  const t = inf.t;
+  if (node.nodeType === 3) return rawPos(view.src, t, Math.min(offset, node.data.length), false)[0];
+  if (node.nodeType !== 1) return t.start;
+  const c = node.childNodes[offset];
+  if (c) { const ci = info.get(c); if (ci && ci.t) return ci.t.lead; }
+  return offset >= node.childNodes.length ? t.tail : t.tagEnd;
+}
+
+// Source range of the element around a preview node (not the body itself), or null.
+function srcElementRange(info, body, node) {
+  for (let p = node; p && p !== body; p = p.parentNode) {
+    const inf = info.get(p);
+    if (p.nodeType === 1 && inf && inf.t && inf.t.end > inf.t.start) return [inf.t.start, inf.t.end];
+  }
+  return null;
+}
+
+const isLeafPv = (pv) => !pv || pv.nodeType !== 1 || pv.hasAttribute('data-se-box');
+
+// Preview position { node, offset } for a source offset inside the body.
+function previewPosOf(view, off) {
+  if (!view.ok) return null;
+  const src = view.src;
+  let t = view.body;
+  off = Math.max(t.tagEnd, Math.min(off, t.closeStart));
+  for (;;) {
+    const kids = t.mk || [];
+    let idx = 0;
+    while (idx < kids.length && off >= kids[idx].end) idx++;
+    const hit = kids[idx];
+    const prev = kids[idx - 1];
+    const between = () => (prev && prev.type === 'text' ? { node: prev.pv, offset: prev.pv.data.length } : { node: t.pv, offset: idx });
+    if (!hit) return between();
+    if (hit.type === 'text') {
+      const from = hit.start + (hit.skip || 0);
+      if (off <= from) return { node: hit.pv, offset: 0 };
+      return { node: hit.pv, offset: Math.min(hit.pv.data.length, hit.raw === 'literal' ? off - from : decodeText(src.slice(from, off)).length) };
+    }
+    if (hit.type !== 'el' || off < hit.tagEnd || !hit.ok || isLeafPv(hit.pv) || hit.tagEnd === hit.end) return between();
+    if (off > hit.closeStart) return { node: t.pv, offset: idx + 1 };
+    t = hit;
+  }
+}
+
+// Deepest editable element of the position tree whose source range contains `off`, or null.
+function srcElementAt(view, off) {
+  if (!view.ok) return null;
+  let t = view.body, found = null;
+  for (;;) {
+    const els = (t.mk || []).filter((k) => k.type === 'el' && k.end > k.start && k.pv && k.pv.nodeType === 1);
+    const hit = els.find((k) => off >= k.start && off < k.end) || els.find((k) => off === k.end);
+    if (!hit) return found;
+    found = hit;
+    if (!hit.ok) return found;
+    t = hit;
+  }
+}
+
+// ---------------------------------------------------------------- formatter verification
+
+// Canonical description of a parsed document that ignores exactly the white-space differences the formatter
+// is allowed to introduce (see format.js). Two documents with the same canonical form render the same.
+function canonDom(doc, blockNames, keepNames) {
+  const toks = [];
+  const walk = (node, keep) => {
+    for (const c of childrenOf(node)) {
+      const kind = typeOf(c);
+      if (kind === 3) toks.push({ text: keep ? c.data : c.data.replace(/[ \t\n\f\r]+/g, ' '), keep });
+      else if (kind === 8) toks.push({ comment: true, s: '<!--' + c.data + '-->' });
+      else if (kind === 1) {
+        const name = nameOf(c), block = blockNames.has(name) || name === 'br';
+        let s = '<' + name;
+        for (const a of attrsOf(c)) s += ' ' + a.name + '=' + JSON.stringify(a.value);
+        toks.push({ block, s: s + '>' });
+        walk(name === 'template' && c.content ? c.content : c, keep || keepNames.has(name));
+        toks.push({ block, s: '</' + name + '>' });
+      }
+    }
+  };
+  walk(doc, false);
+  const boundary = (i, dir) => {
+    for (let j = i + dir; ; j += dir) {
+      const k = toks[j];
+      if (!k) return true;
+      if (k.comment || k.text === '') continue;
+      return !!k.block;
+    }
+  };
+  for (let again = true; again;) {
+    again = false;
+    for (let i = 0; i < toks.length; i++) {
+      const k = toks[i];
+      if (k.text == null || k.keep || k.text === '') continue;
+      let v = k.text;
+      if (v[0] === ' ' && boundary(i, -1)) v = v.replace(/^ +/, '');
+      if (v[v.length - 1] === ' ' && boundary(i, 1)) v = v.replace(/ +$/, '');
+      if (v !== k.text) { k.text = v; again = true; }
+    }
+  }
+  const dt = docType(doc);
+  let out = dt ? '<!' + dt.name + '|' + dt.publicId + '|' + dt.systemId + '>' : '';
+  out += docMode(doc);
+  for (const k of toks) out += k.text != null ? (k.text === '' ? '' : JSON.stringify(k.text)) : k.s;
+  return out;
+}
+
+// ---- serialize.js
+// Preview DOM -> source text.
+//
+// Only the body content is rewritten; everything else in the document stays byte for byte as it is. Inside the
+// body, every node that still looks exactly as it was rendered is copied verbatim from the source text
+// (including inactive scripts, attributes, comments and character references). Only edited text and new
+// elements are written fresh, with a small fixed vocabulary of plain tags.
+
+const NEW_OK = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd b i strong em u s sub sup code kbd mark small span a img br hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
+const BLOCKS = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
+
+// White space in front of `pos` if `pos` is the first thing on its line, otherwise null.
+function lineIndentAt(src, pos) {
+  const nl = src.lastIndexOf('\n', pos - 1);
+  const lead = src.slice(nl + 1, pos);
+  return /^[ \t]*$/.test(lead) ? lead : null;
+}
+
+function isClean(ctx, node) {
+  const memo = ctx.memo.get(node);
+  if (memo !== undefined) return memo;
+  const inf = ctx.info.get(node);
+  let ok = !!inf;
+  if (ok && node.nodeType !== 1) ok = node.data === inf.data;
+  else if (ok) {
+    const want = inf.kids, have = node.childNodes;
+    ok = !!want && want.length === have.length;
+    for (let i = 0; ok && i < want.length; i++) ok = have[i] === want[i] && isClean(ctx, have[i]);
+  }
+  ctx.memo.set(node, ok);
+  return ok;
+}
+
+const mappedT = (ctx, node) => { const inf = ctx.info.get(node); return inf ? inf.t : null; };
+
+function mark(ctx, el, i, atEnd) {
+  for (const p of ctx.points) if (p.out == null && p.node === el && (atEnd ? p.offset >= i : p.offset === i)) p.out = ctx.s.length;
+}
+
+// Starts a new line for a freshly created block element unless the output already is at the start of a line.
+function freshLine(ctx, indent) {
+  const tail = (ctx.before + ctx.s).slice(-200);
+  if (!tail) return;
+  const m = /\n([ \t]*)$/.exec(tail);
+  if (!m) ctx.s += '\n' + indent;
+  else if (!m[1]) ctx.s += indent;
+}
+
+function childIndent(ctx, el, t, parentIndent) {
+  for (const c of Array.from(el.childNodes)) {
+    const ct = mappedT(ctx, c);
+    if (ct && ct.type === 'el' && !ct.implied && !ct.synthetic) {
+      const ind = lineIndentAt(ctx.src, ct.start);
+      if (ind != null) return ind;
+      break;
+    }
+  }
+  return t && t.virtual ? '' : parentIndent + '  ';
+}
+
+const isLoose = (ctx, c) => !mappedT(ctx, c) && (c.nodeType === 3 || (c.nodeType === 1 && !BLOCKS.has(c.localName) && !c.hasAttribute('data-se-box')));
+
+function emitKids(ctx, el, t, parentIndent) {
+  const kids = Array.from(el.childNodes);
+  const indent = childIndent(ctx, el, t, parentIndent);
+  let newBlockLast = false;
+  for (let i = 0; i < kids.length; i++) {
+    mark(ctx, el, i);
+    // New text typed directly into the body becomes a paragraph.
+    if (el === ctx.top && isLoose(ctx, kids[i])) {
+      let j = i, solid = false;
+      while (j < kids.length && isLoose(ctx, kids[j])) { if (kids[j].nodeType === 1 || /\S/.test(kids[j].data)) solid = true; j++; }
+      if (solid) {
+        freshLine(ctx, indent);
+        ctx.s += '<p>';
+        for (let k = i; k < j; k++) { if (k > i) mark(ctx, el, k); emitNode(ctx, kids[k], indent); }
+        ctx.s += '</p>';
+        newBlockLast = true;
+        i = j - 1;
+        continue;
+      }
+    }
+    newBlockLast = emitNode(ctx, kids[i], indent);
+  }
+  mark(ctx, el, kids.length, true);
+  if (t) ctx.s += ctx.src.slice(t.tail, t.closeStart);
+  if (newBlockLast) ctx.s += '\n' + parentIndent;
+}
+
+// An element whose end tag is omitted in the source must get one when what follows it has changed.
+function needsEndTag(ctx, c, t) {
+  if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
+  const sibs = t.parent ? t.parent.kids : [];
+  const origNext = sibs[sibs.indexOf(t) + 1] || null;
+  const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
+  return next !== origNext;
+}
+
+const NBSP = String.fromCharCode(160);
+const isSolid = (ch) => !!ch && ch !== ' ' && ch !== NBSP && ch !== '\n' && ch !== '\t' && ch !== '\r' && ch !== '\f';
+
+// Character next to a text node within the same line of text ('' at a block boundary or line break).
+function neighbourChar(c, before) {
+  const sib = before ? c.previousSibling : c.nextSibling;
+  if (!sib) return '';
+  if (sib.nodeType === 3) return sib.data ? (before ? sib.data[sib.data.length - 1] : sib.data[0]) : '';
+  return sib.nodeType === 1 && !BLOCKS.has(sib.localName) && sib.localName !== 'br' ? 'x' : '';
+}
+
+// In typed text the browser stores some spaces as no-break spaces. Between two visible characters that makes
+// no visible difference, so an ordinary space is written there; at the edges of a line it is kept.
+function tidySpaces(text, from, to, before, after) {
+  if (text.indexOf(NBSP, from) < 0) return text;
+  let out = text.slice(0, from);
+  for (let i = from; i < to; i++) {
+    const ch = text[i];
+    out += ch === NBSP && isSolid(i > 0 ? text[i - 1] : before) && isSolid(i + 1 < text.length ? text[i + 1] : after) ? ' ' : ch;
+  }
+  return out + text.slice(to);
+}
+
+function emitText(ctx, c, inf) {
+  const src = ctx.src, t = inf && inf.t;
+  const fresh = !t || !!t.raw;
+  const data = fresh && !(t && t.raw) ? tidySpaces(c.data, 0, c.data.length, neighbourChar(c, true), neighbourChar(c, false)) : c.data;
+  const mine = ctx.points.filter((p) => p.out == null && p.node === c);
+  if (fresh) {
+    if (t) ctx.s += src.slice(t.lead, t.start);
+    const at = ctx.s.length, esc = t && t.raw === 'literal' ? (x) => x : escapeText;
+    for (const p of mine) p.out = at + esc(data.slice(0, p.offset)).length;
+    ctx.s += esc(data);
+    return;
+  }
+  // Mapped text that was edited: keep the unchanged beginning and end exactly as written in the source.
+  const old = inf.data;
+  // The browser's editing engine drops line breaks at the edges of a text and swaps ordinary spaces for
+  // no-break spaces around the caret. Both are side effects, not edits: the source formatting is kept.
+  let lead = '';
+  const same = (o, n) => o === n || (o === 32 && n === 160);
+  const edges = (now) => {
+    const max = Math.min(old.length, now.length);
+    let p = 0;
+    while (p < max && same(old.charCodeAt(p), now.charCodeAt(p))) p++;
+    let q = 0;
+    while (q < max - p && same(old.charCodeAt(old.length - 1 - q), now.charCodeAt(now.length - 1 - q))) q++;
+    return [p, q];
+  };
+  let now = data;
+  let [p0, s0] = edges(now);
+  if (/[^ \t\n\f\r]/.test(old) && !c.parentNode.closest('pre, textarea')) {
+    const oldLead = /^[ \t\n\f\r]*/.exec(old)[0], oldTrail = /[ \t\n\f\r]*$/.exec(old)[0];
+    const trailLost = oldTrail.indexOf('\n') >= 0 && s0 < oldTrail.length && p0 < old.length;
+    const leadLost = oldLead.indexOf('\n') >= 0 && p0 < oldLead.length && s0 < old.length;
+    if (trailLost || leadLost) {
+      lead = leadLost ? oldLead : '';
+      now = lead + data + (trailLost ? oldTrail : '');
+      [p0, s0] = edges(now);
+    }
+  }
+  const from = t.start + (t.skip || 0);
+  const [rp, dp] = rawPos(src, t, p0, false);
+  const [rs, ds] = rawPos(src, t, old.length - s0, true);
+  const keptEnd = old.length - ds;
+  now = tidySpaces(now, dp, now.length - keptEnd, neighbourChar(c, true), neighbourChar(c, false));
+  const head = src.slice(from, rp), mid = escapeText(now.slice(dp, now.length - keptEnd)), tail = src.slice(rs, t.end);
+  ctx.s += src.slice(t.lead, from);
+  const at = ctx.s.length;
+  for (const p of mine) {
+    const o = Math.min(p.offset, data.length) + lead.length;
+    if (o <= dp) p.out = at + rawPos(src, t, o, false)[0] - from;
+    else if (o >= now.length - keptEnd) p.out = at + head.length + mid.length + rawPos(src, t, o - (now.length - old.length), true)[0] - rs;
+    else p.out = at + head.length + escapeText(now.slice(dp, o)).length;
+  }
+  ctx.s += head + mid + tail;
+}
+
+function emitNew(ctx, c, indent) {
+  if (c.hasAttribute('data-se-box')) return false;
+  let name = c.localName;
+  const known = c.namespaceURI === HTML_NS && NEW_OK.has(name);
+  let attrs = '';
+  if (known) {
+    for (const a of Array.from(c.attributes)) {
+      const n = a.name.toLowerCase();
+      let outName = n;
+      if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(a.value)) continue; outName = 'href'; }
+      else if (n === 'src') { if (name !== 'img' || !isRasterDataUrl(a.value)) continue; }
+      else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'style' || n === 'id' || n === 'href' || n === 'contenteditable') continue;
+      else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
+      attrs += ' ' + outName + '="' + escapeAttr(a.value) + '"';
+    }
+  }
+  if (!known || (name === 'span' && !attrs)) { emitInner(ctx, c, indent); return false; }
+  if (name === 'div' && !attrs && !Array.from(c.children).some((k) => BLOCKS.has(k.localName))) name = 'p';
+  const block = BLOCKS.has(name);
+  if (block) freshLine(ctx, indent);
+  ctx.s += '<' + name + attrs + '>';
+  if (!VOID_TAGS.has(name)) { emitKids(ctx, c, null, indent); ctx.s += '</' + name + '>'; }
+  return block;
+}
+
+// Children of an element that is itself not written (decorative wrappers the browser may create).
+function emitInner(ctx, c, indent) {
+  const kids = Array.from(c.childNodes);
+  for (let i = 0; i < kids.length; i++) { mark(ctx, c, i); emitNode(ctx, kids[i], indent); }
+  mark(ctx, c, kids.length, true);
+}
+
+// Writes one preview node. Returns true if it produced a new block element.
+function emitNode(ctx, c, indent) {
+  const src = ctx.src;
+  const inf = ctx.info.get(c), t = inf && inf.t;
+  const standIn = c.nodeType === 1 && c.hasAttribute('data-se-box');       // label text of a stand-in is never written
+  if (t && !inf.rename && (standIn || isClean(ctx, c))) {
+    const at = ctx.s.length;
+    ctx.s += src.slice(t.lead, t.end);
+    for (const p of ctx.points) if (p.out == null && (p.node === c || c.contains(p.node))) p.out = at + srcOffsetOf(ctx.view, ctx.info, p.node, p.offset) - t.lead;
+    if (needsEndTag(ctx, c, t)) ctx.s += '</' + src.slice(t.start + 1, t.nameEnd) + '>';
+    return false;
+  }
+  if (c.nodeType === 3) { emitText(ctx, c, inf); return false; }
+  if (c.nodeType !== 1) { if (t) ctx.s += src.slice(t.lead, t.end); return false; }
+  if (!t) return emitNew(ctx, c, indent);
+  // Element from the source whose content (or tag name) was changed: keep its tags, rewrite the inside.
+  ctx.s += src.slice(t.lead, t.start);
+  if (t.implied) { emitKids(ctx, c, t, indent); return false; }
+  const name = inf.rename || t.name;
+  ctx.s += t.synthetic ? '<' + name + '>' : inf.rename ? '<' + name + src.slice(t.nameEnd, t.tagEnd) : src.slice(t.start, t.tagEnd);
+  if (VOID_TAGS.has(name)) return false;
+  const own = lineIndentAt(src, t.start);
+  emitKids(ctx, c, t, own == null ? indent : own);
+  if (inf.rename) ctx.s += '</' + name + '>';
+  else if (t.explicitEnd) ctx.s += src.slice(t.closeStart, t.end);
+  else if (t.synthetic || needsEndTag(ctx, c, t)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
+  return false;
+}
+
+// Content without a visible counterpart (comments, scripts, style and similar elements) must not disappear from
+// the source just because the browser's editing engine dropped its invisible stand-in while joining or deleting
+// text. Such stand-ins are put back next to their surviving neighbours before the text is written.
+function rescueHidden(view) {
+  let moved = false;
+  const walk = (t, pvParent, cursor) => {
+    for (const k of t.mk || []) {
+      const pv = k.pv;
+      if (!pv) continue;
+      if (k.hidden) {
+        if (!pv.isConnected) {
+          const next = cursor ? cursor.nextSibling : pvParent.firstChild;
+          const blank = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
+          if (pv.nodeType === 3 && (blank(cursor) || blank(next))) continue;      // no runs of empty lines
+          pvParent.insertBefore(pv, next);
+          moved = true;
+        }
+        if (pv.parentNode === pvParent) cursor = pv;
+      } else if (pv.isConnected) {
+        if (pv.parentNode === pvParent) cursor = pv;
+        if (k.type === 'el' && k.ok) walk(k, pv, null);
+      } else if (k.type === 'el' && k.ok) cursor = walk(k, pvParent, cursor);
+    }
+    return cursor;
+  };
+  if (view.ok) walk(view.body, view.body.pv, null);
+  return moved;
+}
+
+// Returns the new document text for the current state of the preview body. `points` is an optional list of
+// { node, offset } preview positions; `sel` holds their offsets in the new text (or null).
+function serializeBody(view, info, pvBody, points) {
+  const src = view.src, body = view.body;
+  const ctx = { view, src, info, s: '', before: src.slice(Math.max(0, body.tagEnd - 200), body.tagEnd), points: points || [], memo: new Map(), top: pvBody };
+  const own = body.virtual ? '' : lineIndentAt(src, body.start);
+  emitKids(ctx, pvBody, body, own == null ? '' : own);
+  return {
+    text: src.slice(0, body.tagEnd) + ctx.s + src.slice(body.closeStart),
+    sel: ctx.points.map((p) => (p.out == null ? null : body.tagEnd + p.out)),
+  };
+}
+
+// ---- format.js
+// Explicit "tidy up" of the whole source text: one block element per line, two spaces per level.
+//
+// The formatter only moves white space that the HTML rules treat as insignificant for the default display of
+// the elements involved. Tags, attributes, comments, character references and the content of pre, textarea,
+// script, style and similar elements are copied verbatim. The result is never applied unchecked: the caller
+// parses both versions with the browser and compares them with canonDom() (project.js).
+
+const FMT_BLOCK = words('html head body address article aside blockquote center details dialog dir div dl dd dt fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr li main menu nav ol p section summary table thead tbody tfoot tr td th caption colgroup col ul title meta link base script style noscript template pre listing xmp plaintext');
+const FMT_KEEP = words('pre listing xmp plaintext script style textarea svg math select template noscript iframe noembed noframes object');
+
+const WS = /[ \t\n\f\r]+/g;
+const blank = (s) => !/[^ \t\n\f\r]/.test(s);
+
+function formatSource(src, root) {
+  const out = [];
+  const text = (n) => src.slice(n.start, n.end);
+  const pad = (depth) => '  '.repeat(depth);
+  const isBlock = (n) => n.type === 'doctype' || (n.type === 'el' && FMT_BLOCK.has(n.name));
+  const hasBlockInside = (n) => n.type === 'el' && n.children.some((c) => isBlock(c) || hasBlockInside(c));
+
+  // Inline content as one string. White space inside ordinary text collapses to single spaces.
+  function inline(n) {
+    if (n.type === 'text') return n.raw ? text(n) : text(n).replace(WS, ' ');
+    if (n.type !== 'el' || FMT_KEEP.has(n.name) || n.implied || hasBlockInside(n)) return text(n);
+    let s = src.slice(n.start, n.tagEnd);
+    for (const c of n.children) s += inline(c);
+    return s + src.slice(n.closeStart, n.end);
+  }
+
+  // A run of inline nodes on one line; a line break in the source follows every <br>.
+  function runText(nodes, depth) {
+    let s = '';
+    let afterBreak = false;
+    for (const n of nodes) {
+      let piece = inline(n);
+      if (afterBreak) { piece = piece.replace(/^ +/, ''); if (piece) { s += '\n' + pad(depth + 1); afterBreak = false; } }
+      s += piece;
+      if (n.type === 'el' && n.name === 'br' && !n.synthetic) afterBreak = true;
+    }
+    return s.replace(/^[ \t\n\f\r]+|[ \t\n\f\r]+$/g, '');
+  }
+
+  function kidsOf(node, depth) {
+    let run = [];
+    let gap = false, any = false;
+    const line = (s) => { if (gap && any) out.push(''); gap = false; any = true; out.push(s); };
+    const flush = () => {
+      if (!run.length) return;
+      const s = runText(run, depth);
+      run = [];
+      if (s) line(pad(depth) + s);
+    };
+    for (const c of node.children) {
+      if (isBlock(c) || (c.type === 'comment' && !run.length)) {
+        flush();
+        if (gap && any) { out.push(''); }
+        gap = false; any = true;
+        blockItem(c, depth);
+      } else if (c.type === 'text' && !c.raw && !run.length && blank(text(c))) {
+        if ((text(c).match(/\n/g) || []).length > 1) gap = true;       // keep one empty line where the author left one
+      } else run.push(c);
+    }
+    flush();
+  }
+
+  function blockItem(c, depth) {
+    if (c.type !== 'el' || FMT_KEEP.has(c.name) || VOID_TAGS.has(c.name) || c.synthetic) { out.push(pad(depth) + text(c).replace(/[ \t\n\f\r]+$/, '')); return; }
+    if (c.implied) { kidsOf(c, depth); return; }
+    const open = src.slice(c.start, c.tagEnd), close = src.slice(c.closeStart, c.end);
+    if (!c.children.some((k) => isBlock(k) || (k.type === 'comment' && text(k).indexOf('\n') >= 0))) {
+      out.push(pad(depth) + open + runText(c.children, depth) + close);
+      return;
+    }
+    out.push(pad(depth) + open);
+    kidsOf(c, c.name === 'html' ? depth : depth + 1);
+    if (close) out.push(pad(depth) + close);
+  }
+
+  kidsOf(root, 0);
+  return out.length ? out.join('\n') + '\n' : '';
+}
+
+// ---- highlight.js
+// Syntax colouring for the source pane: tokens -> one HTML string per source line. The strings only ever
+// contain escaped source text inside <span class="…"> elements with fixed class names.
+
+const ENTITY = /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
+
+// Very long lines (embedded images, minified pages) are shown without colours: thousands of elements in one
+// line would make every keystroke slow.
+const LONG_LINE = 4000;
+
+function highlightLines(src, tokens) {
+  const lines = [];
+  let line = '', lineFrom = 0, nextBreak = -2;
+  const endLine = (at) => {
+    lines.push(at - lineFrom > LONG_LINE ? escapeText(src.slice(lineFrom, at)) : line);
+    line = '';
+    lineFrom = at + 1;
+  };
+  const put = (cls, from, to) => {
+    if (to <= from) return;
+    let at = from;
+    for (;;) {
+      if (nextBreak !== -1 && nextBreak < at) nextBreak = src.indexOf('\n', at);      // looked up once per line
+      const nl = nextBreak;
+      const stop = nl < 0 || nl >= to ? to : nl;
+      if (stop > at && stop - lineFrom <= LONG_LINE) line += cls ? '<span class="' + cls + '">' + escapeText(src.slice(at, stop)) + '</span>' : escapeText(src.slice(at, stop));
+      if (stop === to) break;
+      endLine(nl);
+      at = nl + 1;
+    }
+  };
+  for (const tok of tokens) {
+    if (tok.type === 'text') {
+      if (tok.raw === 'literal') { put('rw', tok.start, tok.end); continue; }
+      let at = tok.start, m;
+      const text = src.slice(tok.start, tok.end);
+      if (text.indexOf('&') >= 0) {
+        ENTITY.lastIndex = 0;
+        while ((m = ENTITY.exec(text))) {
+          put('', at, tok.start + m.index);
+          at = tok.start + m.index + m[0].length;
+          put('en', tok.start + m.index, at);
+        }
+      }
+      put('', at, tok.end);
+    } else if (tok.type === 'comment') put('cm', tok.start, tok.end);
+    else if (tok.type === 'doctype') put('dt', tok.start, tok.end);
+    else if (tok.type === 'start' || tok.type === 'end') {
+      let at = tok.nameEnd;
+      put('tg', tok.start, at);
+      const a = tok.attrs;
+      for (let i = 0; i < a.length; i += 4) {
+        put('', at, a[i]);
+        put('an', a[i], a[i + 1]);
+        at = a[i + 1];
+        if (a[i + 2] >= 0) { put('', at, a[i + 2]); put('av', a[i + 2], a[i + 3]); at = a[i + 3]; }
+      }
+      const close = tok.end - (tok.selfClosing ? 2 : 1);
+      put('', at, close);
+      put('tg', close, tok.end);
+    } else put('er', tok.start, tok.end);
+  }
+  endLine(src.length);
+  return lines;
+}
+
+// Replaces only the line elements whose content changed. `state` keeps the previous strings.
+function patchLines(container, state, lines) {
+  const old = state.lines || [];
+  const max = Math.min(old.length, lines.length);
+  let a = 0;
+  while (a < max && old[a] === lines[a]) a++;
+  let bo = old.length, bn = lines.length;
+  while (bo > a && bn > a && old[bo - 1] === lines[bn - 1]) { bo--; bn--; }
+  const doc = container.ownerDocument;
+  const kids = container.children;
+  const common = Math.min(bo, bn);
+  for (let i = a; i < common; i++) kids[i].innerHTML = lines[i];
+  if (bn > bo) {
+    const frag = doc.createDocumentFragment();
+    for (let i = common; i < bn; i++) { const div = doc.createElement('div'); div.innerHTML = lines[i]; frag.appendChild(div); }
+    container.insertBefore(frag, kids[bo] || null);
+  } else {
+    for (let i = bo - 1; i >= common; i--) kids[i].remove();
+  }
+  state.lines = lines;
+}
+
+// DOM position inside the line elements for a source offset (for range highlights in the source pane).
+function linePoint(container, lineStarts, offset) {
+  let lo = 0, hi = lineStarts.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lineStarts[mid] <= offset) lo = mid; else hi = mid - 1; }
+  const div = container.children[lo];
+  if (!div) return null;
+  let rest = offset - lineStarts[lo];
+  const walker = container.ownerDocument.createTreeWalker(div, 4);
+  let node, last = null;
+  while ((node = walker.nextNode())) {
+    if (rest <= node.data.length) return { node, offset: rest, line: lo };
+    rest -= node.data.length;
+    last = node;
+  }
+  return last ? { node: last, offset: last.data.length, line: lo } : { node: div, offset: 0, line: lo };
+}
+
+// ---- history.js
+// One undo/redo history for the whole document, shared by both panes. Entries are complete text states.
+// Typing in one pane is grouped into steps (a pause of one second or four seconds of typing start a new step).
+function createHistory(limitChars) {
+  let entries = [], index = -1, size = 0;
+  return {
+    reset(text) { entries = [{ text, kind: 'load', time: 0, started: 0 }]; index = 0; size = text.length; },
+    record(text, kind, now) {
+      const top = entries[index];
+      if (top.text === text) return;
+      const typing = kind === 'src-type' || kind === 'vis-type';
+      if (typing && index > 0 && index === entries.length - 1 && top.kind === kind && now - top.time < 1000 && now - top.started < 4000) {
+        size += text.length - top.text.length;
+        top.text = text;
+        top.time = now;
+        return;
+      }
+      for (let i = entries.length - 1; i > index; i--) size -= entries[i].text.length;
+      entries.length = index + 1;
+      entries.push({ text, kind, time: now, started: now });
+      index++;
+      size += text.length;
+      while ((entries.length > 300 || size > limitChars) && index > 1) { size -= entries[0].text.length; entries.shift(); index--; }
+    },
+    seal() { if (index >= 0) entries[index].time = 0; },
+    undo() { if (index <= 0) return null; index--; entries[index].time = 0; return entries[index]; },
+    redo() { if (index >= entries.length - 1) return null; index++; entries[index].time = 0; return entries[index]; },
+    canUndo() { return index > 0; },
+    canRedo() { return index < entries.length - 1; },
+    count() { return entries.length; },
+  };
+}
+
+// ---- images.js
+// Local raster images: checked by their file signature, embedded as data: URLs. Large photos are scaled down
+// in memory (which also drops camera metadata). Nothing is read without an explicit file selection.
+const MAX_IMAGE_INPUT = 20 * 1024 * 1024;
+const SMALL_IMAGE = 200 * 1024;
+const MAX_IMAGE_EMBED = 450 * 1024;
+
+function sniffImage(b) {
+  if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.length >= 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif';
+  if (b.length >= 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';
+  return null;
+}
+
+function toDataUrl(blob, type) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const s = String(reader.result); resolve('data:' + type + ';base64,' + s.slice(s.indexOf(',') + 1)); };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Returns { dataUrl, scaled } or { error: 'big' | 'type' | 'gif' | 'decode' }.
+async function prepareImage(file) {
+  if (file.size > MAX_IMAGE_INPUT) return { error: 'big' };
+  let type, bitmap;
+  try {
+    type = sniffImage(new Uint8Array(await file.slice(0, 16).arrayBuffer()));
+    if (!type) return { error: 'type' };
+    bitmap = await createImageBitmap(file);
+  } catch (e) {
+    return { error: type ? 'decode' : 'type' };
+  }
+  try {
+    if (file.size <= SMALL_IMAGE) return { dataUrl: await toDataUrl(file, type), scaled: false };
+    if (type === 'image/gif') return { error: 'gif' };
+    let side = 1280, quality = 0.85;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const g = canvas.getContext('2d');
+      g.fillStyle = '#fff';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      g.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= MAX_IMAGE_EMBED) return { dataUrl: await toDataUrl(blob, 'image/jpeg'), scaled: true };
+      side = Math.round(side * 0.7);
+      quality = 0.8;
+    }
+    return { error: 'big' };
+  } catch (e) {
+    return { error: 'decode' };
+  } finally {
+    if (bitmap.close) bitmap.close();
+  }
+}
+
+// ---- commands.js
+// Editing commands on the preview document. Block structure (paragraph, headings, lists), links and images
+// are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
+// italic use the browser's own editing command. Every command works on the current selection of the preview.
+
+const PARA = words('p h1 h2 h3 h4 h5 h6');
+
+function getRange(doc) {
+  const sel = doc.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  return doc.body.contains(range.commonAncestorContainer) ? range : null;
+}
+
+const elementOf = (node) => (node.nodeType === 1 ? node : node.parentElement);
+const isEditableAt = (node) => { const el = elementOf(node); return !!el && el.isContentEditable; };
+
+function closestTag(node, body, names) {
+  for (let el = elementOf(node); el && el !== body.parentNode; el = el.parentElement) {
+    if (names.has(el.localName)) return el;
+    if (el === body) break;
+  }
+  return null;
+}
+
+function blockOf(node, body) {
+  for (let el = elementOf(node); el && el !== body; el = el.parentElement) if (BLOCKS.has(el.localName)) return el;
+  return body;
+}
+
+function saveSel(doc) {
+  const sel = doc.getSelection();
+  return sel && sel.rangeCount ? { an: sel.anchorNode, ao: sel.anchorOffset, fn: sel.focusNode, fo: sel.focusOffset } : null;
+}
+
+function restoreSel(doc, keep) {
+  if (!keep || !keep.an || !keep.fn || !keep.an.isConnected || !keep.fn.isConnected) return;
+  const clamp = (node, off) => Math.min(off, node.nodeType === 3 ? node.data.length : node.childNodes.length);
+  try { doc.getSelection().setBaseAndExtent(keep.an, clamp(keep.an, keep.ao), keep.fn, clamp(keep.fn, keep.fo)); } catch (e) { /* keep the browser's selection */ }
+}
+
+// True if the selection really covers part of `el` (a selection that merely ends at the very start of the
+// next block, as after a triple click, does not count).
+function covers(doc, range, el) {
+  if (!range.intersectsNode(el)) return false;
+  if (range.collapsed || !el.textContent) return true;
+  const part = doc.createRange();
+  part.selectNodeContents(el);
+  if (range.compareBoundaryPoints(0, part) > 0) part.setStart(range.startContainer, range.startOffset);
+  if (range.compareBoundaryPoints(2, part) < 0) part.setEnd(range.endContainer, range.endOffset);
+  return part.toString() !== '';
+}
+
+function elementsInRange(doc, range, names) {
+  const found = [];
+  const walker = doc.createTreeWalker(doc.body, 1);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) if (names.has(n.localName) && n.isContentEditable && covers(doc, range, n)) found.push(n);
+  return found;
+}
+
+// The inline content around `node` that is not inside a paragraph or heading yet (for example text directly
+// in the body or in a list item).
+function looseRun(doc, node) {
+  const body = doc.body;
+  let top = node;
+  if (top === body) top = body.childNodes[Math.min(getRange(doc).startOffset, body.childNodes.length - 1)] || null;
+  if (!top) return { parent: body, before: null, nodes: [] };
+  while (top.parentNode && top.parentNode !== body && !BLOCKS.has(top.parentNode.localName)) top = top.parentNode;
+  const parent = top.parentNode;
+  if (!parent || parent.localName === 'pre' || (top.nodeType === 1 && BLOCKS.has(top.localName))) return null;
+  const inlineNode = (n) => n && !(n.nodeType === 1 && BLOCKS.has(n.localName));
+  let first = top, last = top;
+  while (inlineNode(first.previousSibling)) first = first.previousSibling;
+  while (inlineNode(last.nextSibling)) last = last.nextSibling;
+  const blank = (n) => n.nodeType === 3 && !/\S/.test(n.data);
+  while (first !== last && blank(first)) first = first.nextSibling;
+  while (first !== last && blank(last)) last = last.previousSibling;
+  const nodes = [];
+  for (let n = first; n; n = n.nextSibling) { nodes.push(n); if (n === last) break; }
+  return { parent, before: first, nodes };
+}
+
+function wrapRun(doc, run, tag) {
+  const el = doc.createElement(tag);
+  run.parent.insertBefore(el, run.before);
+  for (const n of run.nodes) el.appendChild(n);
+  if (!el.firstChild) el.appendChild(doc.createElement('br'));
+  return el;
+}
+
+// Replaces an element by one with another tag name. Children are moved, not copied. If the element came from
+// the source text, the mapping keeps pointing at it so its attributes are written back unchanged.
+function rename(env, el, tag, keep) {
+  const fresh = env.doc.createElement(tag);
+  for (const a of Array.from(el.attributes)) { try { fresh.setAttribute(a.name, a.value); } catch (e) { /* skip */ } }
+  while (el.firstChild) fresh.appendChild(el.firstChild);
+  el.parentNode.replaceChild(fresh, el);
+  const inf = env.info.get(el);
+  if (inf && inf.t && !inf.t.synthetic && !inf.t.implied) { env.info.set(fresh, { t: inf.t, rename: tag }); inf.t.pv = fresh; }
+  if (keep) { if (keep.an === el) keep.an = fresh; if (keep.fn === el) keep.fn = fresh; }
+  return fresh;
+}
+
+function placeCaretIn(doc, el) {
+  try { doc.getSelection().collapse(el, 0); } catch (e) { /* ignore */ }
+}
+
+// Paragraph / heading. Returns 'ok', 'same' or 'none'.
+function setBlock(env, tag) {
+  const doc = env.doc, range = getRange(doc);
+  if (!range) return 'none';
+  const keep = saveSel(doc);
+  const targets = elementsInRange(doc, range, PARA);
+  if (!targets.length) {
+    const run = looseRun(doc, range.startContainer);
+    if (!run) return 'none';
+    const el = wrapRun(doc, run, tag);
+    if (run.nodes.length) restoreSel(doc, keep); else placeCaretIn(doc, el);
+    return 'ok';
+  }
+  let changed = false;
+  for (const el of targets) if (el.localName !== tag) { rename(env, el, tag, keep); changed = true; }
+  restoreSel(doc, keep);
+  return changed ? 'ok' : 'same';
+}
+
+function unlist(env, items, keep) {
+  const doc = env.doc, list = items[0].parentNode, parent = list.parentNode;
+  const ref = list.nextSibling;
+  const rest = [];
+  for (let n = items[items.length - 1].nextSibling; n; n = n.nextSibling) rest.push(n);
+  let second = null;
+  if (rest.some((n) => n.nodeType === 1)) { second = doc.createElement(list.localName); for (const n of rest) second.appendChild(n); }
+  else for (const n of rest) n.remove();
+  for (const li of items) {
+    if (Array.from(li.children).some((k) => BLOCKS.has(k.localName))) {
+      while (li.firstChild) parent.insertBefore(li.firstChild, ref);
+    } else {
+      const p = doc.createElement('p');
+      while (li.firstChild) p.appendChild(li.firstChild);
+      if (!p.firstChild) p.appendChild(doc.createElement('br'));
+      parent.insertBefore(p, ref);
+      if (keep) { if (keep.an === li) keep.an = p; if (keep.fn === li) keep.fn = p; }
+    }
+    li.remove();
+  }
+  if (second) parent.insertBefore(second, ref);
+  if (!list.children.length) list.remove();
+}
+
+// Bulleted ('ul') or numbered ('ol') list: create, switch kind, or turn list items back into paragraphs.
+function toggleList(env, type) {
+  const doc = env.doc, range = getRange(doc);
+  if (!range) return 'none';
+  const keep = saveSel(doc);
+  let items = elementsInRange(doc, range, words('li'));
+  items = items.filter((li) => !items.some((other) => other !== li && li.contains(other)));
+  if (items.length) {
+    const list = items[0].parentNode;
+    if (list.localName !== 'ul' && list.localName !== 'ol') return 'none';
+    if (list.localName !== type) rename(env, list, type, keep);
+    else unlist(env, items.filter((li) => li.parentNode === list), keep);
+    restoreSel(doc, keep);
+    return 'ok';
+  }
+  let targets = elementsInRange(doc, range, PARA);
+  let placed = null;
+  if (!targets.length) {
+    const run = looseRun(doc, range.startContainer);
+    if (!run) return 'none';
+    placed = wrapRun(doc, run, 'p');
+    targets = [placed];
+  }
+  const parent = targets[0].parentNode;
+  targets = targets.filter((el) => el.parentNode === parent);
+  const list = doc.createElement(type);
+  parent.insertBefore(list, targets[0]);
+  let lastLi = null;
+  for (const el of targets) {
+    for (let n = el.previousSibling; n && n !== list && n.nodeType === 3 && !/\S/.test(n.data) && lastLi; n = el.previousSibling) n.remove();
+    const li = doc.createElement('li');
+    while (el.firstChild) li.appendChild(el.firstChild);
+    list.appendChild(li);
+    el.remove();
+    if (keep) { if (keep.an === el) keep.an = li; if (keep.fn === el) keep.fn = li; }
+    lastLi = li;
+  }
+  if (placed && keep && !keep.an.isConnected) placeCaretIn(doc, lastLi); else restoreSel(doc, keep);
+  return 'ok';
+}
+
+const INLINE_ON = { bold: words('b strong'), italic: words('i em') };
+const INLINE_TAG = { bold: 'b', italic: 'i' };
+const STRUCTURE = words('body ul ol dl table thead tbody tfoot tr div section article header footer main nav aside blockquote figure');
+const isEmptyInline = (el) => !el.textContent && !el.querySelector('img, br, input');
+
+// Extends a collapsed range to the word around the caret. Returns false if there is no word.
+function expandToWord(range) {
+  const node = range.startContainer;
+  if (node.nodeType !== 3) return false;
+  const isWord = (ch) => /[\p{L}\p{N}]/u.test(ch);
+  let a = range.startOffset, b = a;
+  while (a > 0 && isWord(node.data[a - 1])) a--;
+  while (b < node.data.length && isWord(node.data[b])) b++;
+  if (a === b) return false;
+  range.setStart(node, a);
+  range.setEnd(node, b);
+  return true;
+}
+
+// Splits the text nodes at the range boundaries and returns the text nodes the range covers.
+function textNodesIn(doc, range) {
+  let sc = range.startContainer, so = range.startOffset, ec = range.endContainer, eo = range.endOffset;
+  if (ec.nodeType === 3) { if (eo < ec.data.length) ec.splitText(eo); }
+  if (sc.nodeType === 3 && so > 0) {
+    const rest = sc.splitText(so);
+    if (ec === sc) { ec = rest; eo -= so; }
+    sc = rest; so = 0;
+  }
+  range.setStart(sc, so);
+  range.setEnd(ec, ec.nodeType === 3 ? ec.data.length : eo);
+  const root = range.commonAncestorContainer.nodeType === 3 ? range.commonAncestorContainer.parentNode : range.commonAncestorContainer;
+  const found = [];
+  const walker = doc.createTreeWalker(root, 4);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (!n.data || !range.intersectsNode(n) || !isEditableAt(n)) continue;
+    if (!/\S/.test(n.data) && STRUCTURE.has(n.parentNode.localName)) continue;       // white space between blocks
+    found.push(n);
+  }
+  return found;
+}
+
+// Moves a text node out of a formatting element by splitting that element around it.
+function liftOut(doc, node, fmt, names) {
+  const parent = fmt.parentNode, ref = fmt.nextSibling;
+  let r = doc.createRange();
+  r.setStartAfter(node);
+  r.setEndAfter(fmt);
+  const tail = r.extractContents();
+  r = doc.createRange();
+  r.setStartBefore(node);
+  r.setEndAfter(fmt);
+  const mid = r.extractContents();
+  for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) unwrap(el);
+  for (const el of Array.from(tail.children)) if (isEmptyInline(el)) el.remove();
+  parent.insertBefore(mid, ref);
+  parent.insertBefore(tail, ref);
+  if (isEmptyInline(fmt)) fmt.remove();
+}
+
+// Bold / italic: wraps the selected text in <b> / <i>, or removes that formatting if all of it has it already.
+// Works on the document structure only, so the result does not depend on the page's style sheet.
+function toggleInline(env, command) {
+  const doc = env.doc, body = doc.body, names = INLINE_ON[command], tag = INLINE_TAG[command];
+  const live = getRange(doc);
+  if (!live) return 'none';
+  const range = live.cloneRange();
+  const caretOnly = range.collapsed, caretAt = range.startOffset;
+  if (caretOnly && !expandToWord(range)) return 'none';
+  const caretInWord = caretAt - range.startOffset;
+  const nodes = textNodesIn(doc, range);
+  if (!nodes.length) return 'none';
+  const fmtOf = (n) => closestTag(n, body, names);
+  if (nodes.every(fmtOf)) {
+    for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(doc, n, f, names);
+  } else {
+    let made = null;
+    const created = [];
+    for (const n of nodes) {
+      if (fmtOf(n)) { made = null; continue; }
+      if (made && made.nextSibling === n) { made.appendChild(n); continue; }
+      made = doc.createElement(tag);
+      n.parentNode.insertBefore(made, n);
+      made.appendChild(n);
+      created.push(made);
+    }
+    for (const el of created) {
+      const next = el.nextSibling;
+      if (next && next.nodeType === 1 && next.localName === tag && !next.attributes.length) { while (next.firstChild) el.appendChild(next.firstChild); next.remove(); }
+      const prev = el.previousSibling;
+      if (prev && prev.nodeType === 1 && prev.localName === tag && !prev.attributes.length) { while (el.firstChild) prev.appendChild(el.firstChild); el.remove(); }
+    }
+  }
+  const first = nodes[0], last = nodes[nodes.length - 1];
+  try {
+    if (caretOnly) doc.getSelection().collapse(first, Math.min(caretInWord, first.data.length));
+    else doc.getSelection().setBaseAndExtent(first, 0, last, last.data.length);
+  } catch (e) { /* keep the browser's selection */ }
+  return 'ok';
+}
+
+function unwrap(el) {
+  const parent = el.parentNode;
+  while (el.firstChild) parent.insertBefore(el.firstChild, el);
+  parent.removeChild(el);
+}
+
+const LINK = words('a');
+
+// Why a link cannot be created for this range, or '' if it can.
+function linkProblem(doc, range) {
+  if (closestTag(range.startContainer, doc.body, LINK) || closestTag(range.endContainer, doc.body, LINK)) return 'inlink';
+  if (!range.collapsed && blockOf(range.startContainer, doc.body) !== blockOf(range.endContainer, doc.body)) return 'multi';
+  return '';
+}
+
+function insertLink(env, range, url, text) {
+  const doc = env.doc;
+  const a = doc.createElement('a');
+  a.setAttribute(HREF_HOLDER, url);
+  if (range.collapsed) {
+    a.textContent = text || url;
+    range.insertNode(a);
+  } else {
+    const frag = range.extractContents();
+    for (const inner of Array.from(frag.querySelectorAll('a'))) unwrap(inner);
+    a.appendChild(frag);
+    range.insertNode(a);
+    for (const sib of [a.previousSibling, a.nextSibling]) {
+      if (sib && sib.nodeType === 1 && !sib.firstChild && !BLOCKS.has(sib.localName) && sib.localName !== 'br' && sib.localName !== 'img') sib.remove();
+    }
+  }
+  try { const sel = doc.getSelection(); sel.collapse(a.parentNode, Array.prototype.indexOf.call(a.parentNode.childNodes, a) + 1); } catch (e) { /* ignore */ }
+  return 'ok';
+}
+
+function removeLinks(env) {
+  const doc = env.doc, range = getRange(doc);
+  if (!range) return 'none';
+  const keep = saveSel(doc);
+  const found = new Set(elementsInRange(doc, range, LINK));
+  for (const node of [range.startContainer, range.endContainer]) { const a = closestTag(node, doc.body, LINK); if (a && a.isContentEditable) found.add(a); }
+  if (!found.size) return 'none';
+  for (const a of found) {
+    if (keep) for (const key of ['an', 'fn']) if (keep[key] === a) { keep[key] = a.parentNode; keep[key === 'an' ? 'ao' : 'fo'] = Array.prototype.indexOf.call(a.parentNode.childNodes, a); }
+    unwrap(a);
+  }
+  restoreSel(doc, keep);
+  return 'ok';
+}
+
+function insertImage(env, range, dataUrl, alt) {
+  const doc = env.doc;
+  const img = doc.createElement('img');
+  img.setAttribute('src', dataUrl);
+  img.setAttribute('alt', alt);
+  range.collapse(false);
+  range.insertNode(img);
+  try { doc.getSelection().collapse(img.parentNode, Array.prototype.indexOf.call(img.parentNode.childNodes, img) + 1); } catch (e) { /* ignore */ }
+  return 'ok';
+}
+
+// Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.
+function insertPlainText(env, text) {
+  const doc = env.doc;
+  let done = false;
+  try { done = doc.execCommand('insertText', false, text); } catch (e) { done = false; }
+  if (done) return 'ok';
+  const range = getRange(doc);
+  if (!range) return 'none';
+  range.deleteContents();
+  const frag = doc.createDocumentFragment();
+  text.split(/\r\n?|\n/).forEach((part, i) => { if (i) frag.appendChild(doc.createElement('br')); if (part) frag.appendChild(doc.createTextNode(part)); });
+  const last = frag.lastChild;
+  range.insertNode(frag);
+  if (last) { try { const sel = doc.getSelection(); sel.collapse(last.parentNode, Array.prototype.indexOf.call(last.parentNode.childNodes, last) + 1); } catch (e) { /* ignore */ } }
+  return 'ok';
+}
+
+// What the toolbar should show as active for the current caret position.
+function caretState(doc) {
+  const range = getRange(doc);
+  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false };
+  if (!range) return state;
+  const body = doc.body;
+  state.editable = isEditableAt(range.startContainer);
+  const para = closestTag(range.startContainer, body, PARA);
+  state.block = para ? para.localName : '';
+  const li = closestTag(range.startContainer, body, words('li'));
+  if (li && li.parentNode) state.list = li.parentNode.localName;
+  state.link = !!closestTag(range.startContainer, body, LINK);
+  state.bold = !!closestTag(range.startContainer, body, INLINE_ON.bold);
+  state.italic = !!closestTag(range.startContainer, body, INLINE_ON.italic);
+  return state;
+}
+
+// ---- app.js
+// Application shell: document state, synchronisation between the two panes, files, dialogs.
+//
+// Data model. `state.text` is the one authoritative document (always complete HTML source, LF line ends) and
+// `state.rev` counts its changes. The source pane shows exactly that text. The preview is a projection of
+// revision `state.pvRev`. Edits flow in one of two directions:
+//   source -> preview: the text changes first; the preview is brought up to date later (render), at the
+//                      latest before anything in the preview can be edited;
+//   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
+//                      new text revision, at the latest before the text is used for anything else.
+// Timers only decide how early these steps happen while the user pauses, never what is kept.
+
+const PREVIEW_CSS = 'html{background:#fff}' +
+  ':where(body){min-height:85vh}body{outline:none}' +
+  ':where(a[data-se-href]){color:#0000ee;text-decoration:underline}' +
+  ':where(img[data-se-src]){display:inline-block;min-width:96px;min-height:64px;box-sizing:border-box;padding:6px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif}' +
+  '[data-se-box]{display:inline-block;padding:8px 12px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif;user-select:none}' +
+  '[data-se-opaque]{outline:2px dashed #f59f00;outline-offset:2px}' +
+  ':where(input,select,textarea,button){pointer-events:none}' +
+  '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
+const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">' +
+  '<style id="se-base">' + PREVIEW_CSS + '</style></head><body></body></html>';
+
+const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
+const DEFAULT_NAME = 'meine-seite.html';
+const LOCK_NORMAL = 'Die Seite wird rechts nur angezeigt: Im HTML-Code ist etwas nicht richtig geschlossen oder verschachtelt. Korrigiere es links – danach kannst du hier wieder schreiben.';
+const LOCK_FAILED = 'Diese Seite kann rechts nicht angezeigt werden. Im HTML-Code links kannst du weiterarbeiten.';
+const HIGHLIGHT_LIMIT = 1500000;
+const LINE_HEIGHT = 20;
+const FILE_TYPES = [{ description: 'HTML-Datei', accept: { 'text/html': ['.html', '.htm'] } }];
+
+const $ = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const now = () => performance.now();
+
+const state = {
+  text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, composing: false, inCommand: false,
+  name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, loadSeq: 0,
+  srcMark: null, lineStarts: [0], lineCount: 0, plain: false,
+};
+const history = createHistory(40000000);
+const info = new WeakMap();
+const hlState = {};
+const els = {};
+let pvDoc = null, pvWin = null;
+let renderTimer = 0, commitTimer = 0, statusTimer = 0, markFrame = 0;
+let renderCost = 20, commitCost = 20;
+let tokenCache = { text: null, tokens: null };
+
+function tokensFor(text) {
+  if (tokenCache.text !== text) tokenCache = { text, tokens: tokenize(text) };
+  return tokenCache.tokens;
+}
+
+// ---------------------------------------------------------------- status line and dialogs
+
+function setStatus(message, kind) {
+  els.msg.textContent = message;
+  els.msg.className = kind || '';
+  clearTimeout(statusTimer);
+  if (message) statusTimer = setTimeout(() => { els.msg.textContent = ''; }, 9000);
+}
+
+function openDialog(dialog) {
+  return new Promise((resolve) => {
+    dialog.returnValue = '';
+    dialog.addEventListener('close', () => resolve(dialog.returnValue), { once: true });
+    dialog.showModal();
+  });
+}
+
+function infoBox(message) {
+  els.infoText.textContent = message;
+  return openDialog(els.dlgInfo);
+}
+
+async function confirmBox(message, okLabel) {
+  els.confirmText.textContent = message;
+  els.confirmOk.textContent = okLabel;
+  return (await openDialog(els.dlgConfirm)) === 'ok';
+}
+
+// ---------------------------------------------------------------- source pane
+
+function syncSourceScroll() {
+  const x = els.src.scrollLeft, y = els.src.scrollTop;
+  els.hlIn.style.transform = 'translate(' + -x + 'px,' + -y + 'px)';
+  els.gutterIn.style.transform = 'translateY(' + -y + 'px)';
+}
+
+function updateSourceView() {
+  const text = state.text;
+  const starts = [0];
+  for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) starts.push(i + 1);
+  state.lineStarts = starts;
+  const plain = text.length > HIGHLIGHT_LIMIT;
+  if (plain !== state.plain) { state.plain = plain; els.srcBox.classList.toggle('plain', plain); }
+  if (!plain) patchLines(els.hlIn, hlState, highlightLines(text, tokensFor(text)));
+  if (starts.length !== state.lineCount) {
+    state.lineCount = starts.length;
+    let s = '';
+    for (let i = 1; i <= starts.length; i++) s += i + '\n';
+    els.gutterIn.textContent = s;
+  }
+  syncSourceScroll();
+  applySourceMark(false);
+}
+
+// Writes a new text into the source field while keeping its caret and scroll position.
+function writeSource(oldText, newText) {
+  const ta = els.src;
+  const a = ta.selectionStart, b = ta.selectionEnd, top = ta.scrollTop, left = ta.scrollLeft;
+  ta.value = newText;
+  ta.setSelectionRange(mapOffset(oldText, newText, a), mapOffset(oldText, newText, b));
+  ta.scrollTop = top;
+  ta.scrollLeft = left;
+}
+
+function showCaretPosition() {
+  const pos = els.src.selectionStart, starts = state.lineStarts;
+  let lo = 0, hi = starts.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= pos) lo = mid; else hi = mid - 1; }
+  els.pos.textContent = 'Zeile ' + (lo + 1) + ', Spalte ' + (pos - starts[lo] + 1);
+}
+
+// Marks a source range without moving the keyboard focus (used to show where the preview caret is).
+function applySourceMark(reveal) {
+  if (!window.CSS || !CSS.highlights) return;
+  const mark = state.srcMark;
+  if (!mark || state.plain) { CSS.highlights.delete('se-link'); return; }
+  const a = linePoint(els.hlIn, state.lineStarts, mark[0]), b = linePoint(els.hlIn, state.lineStarts, mark[1]);
+  if (!a || !b) { CSS.highlights.delete('se-link'); return; }
+  try {
+    const range = new Range();
+    range.setStart(a.node, a.offset);
+    range.setEnd(b.node, b.offset);
+    CSS.highlights.set('se-link', new Highlight(range));
+  } catch (e) { CSS.highlights.delete('se-link'); }
+  if (reveal) {
+    const y = a.line * LINE_HEIGHT, view = els.src.clientHeight;
+    if (y < els.src.scrollTop || y > els.src.scrollTop + view - 2 * LINE_HEIGHT) els.src.scrollTop = Math.max(0, y - view / 3);
+  }
+}
+
+// ---------------------------------------------------------------- shared state updates
+
+const isDirty = () => state.text !== state.savedText;
+const previewFocused = () => document.activeElement === els.pv;
+
+function updateChrome() {
+  els.docName.textContent = state.name;
+  els.docState.textContent = isDirty() ? '● nicht gespeichert' : 'gespeichert';
+  els.docState.className = isDirty() ? 'dirty' : '';
+  els.bUndo.disabled = !history.canUndo();
+  els.bRedo.disabled = !history.canRedo();
+  document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
+}
+
+// Installs a new text revision that did not come from typing in the source field.
+function applyText(newText, kind) {
+  const old = state.text;
+  if (newText === old) return false;
+  state.text = newText;
+  state.rev++;
+  writeSource(old, newText);
+  if (kind) history.record(newText, kind, now());
+  updateSourceView();
+  return true;
+}
+
+// ---------------------------------------------------------------- source -> preview
+
+function scheduleRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(renderIfStale, clamp(renderCost * 3, 150, 700));
+}
+
+function renderIfStale() {
+  if (state.pvRev !== state.rev && !state.visualDirty) render(null);
+}
+
+function setPreviewSelection(offsets) {
+  if (!offsets || offsets[0] == null || offsets[1] == null) return;
+  const a = previewPosOf(state.view, offsets[0]), f = previewPosOf(state.view, offsets[1]);
+  if (!a || !f) return;
+  try { pvDoc.getSelection().setBaseAndExtent(a.node, a.offset, f.node, f.offset); } catch (e) { /* position no longer exists */ }
+}
+
+// Brings the preview in line with state.text. `restore` (source offsets) repositions the preview selection
+// when the update had to replace nodes.
+function render(restore) {
+  clearTimeout(renderTimer);
+  const t0 = now();
+  let view, res;
+  try {
+    view = analyze(state.text, tokensFor(state.text));
+    res = renderView(view, pvDoc, info);
+  } catch (e) {
+    // Last line of defence: show nothing editable rather than a page that does not match the text.
+    view = { ok: false, failed: true };
+    res = { changed: true, report: {}, title: '' };
+    pvDoc.body.textContent = '';
+    pvDoc.body.setAttribute('contenteditable', 'false');
+    info.set(pvDoc.body, { t: null, kids: [] });
+  }
+  state.view = view;
+  state.pvRev = state.rev;
+  state.visualDirty = false;
+  const inactive = view.failed ? '' : reportText(res.report);
+  els.inactive.hidden = !inactive;
+  els.inactiveText.textContent = inactive ? 'Im Editor ausgeschaltet: ' + inactive + '.' : '';
+  els.lockNote.hidden = view.ok;
+  els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
+  els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
+  if (res.changed && restore && previewFocused()) setPreviewSelection(restore);
+  renderCost = now() - t0;
+  updateChrome();
+  scheduleMarks();
+}
+
+// ---------------------------------------------------------------- preview -> source
+
+function scheduleCommit() {
+  clearTimeout(commitTimer);
+  commitTimer = setTimeout(() => { if (!state.composing) commitVisual('vis-type'); }, clamp(commitCost * 3, 90, 500));
+}
+
+// Turns pending edits of the preview into a new text revision. Safe to call at any time.
+function commitVisual(kind) {
+  clearTimeout(commitTimer);
+  if (!state.visualDirty) return false;
+  if (state.pvRev !== state.rev || !state.view || !state.view.ok) {
+    // Cannot happen through the guarded input paths; never let an outdated preview overwrite newer text.
+    render(null);
+    setStatus('Die Vorschau war nicht aktuell und wurde neu aufgebaut.', 'warn');
+    return false;
+  }
+  const t0 = now();
+  const sel = pvDoc.getSelection();
+  const points = sel && sel.rangeCount && pvDoc.body.contains(sel.anchorNode) && pvDoc.body.contains(sel.focusNode)
+    ? [{ node: sel.anchorNode, offset: sel.anchorOffset }, { node: sel.focusNode, offset: sel.focusOffset }] : [];
+  rescueHidden(state.view);
+  const out = serializeBody(state.view, info, pvDoc.body, points);
+  state.visualDirty = false;
+  applyText(out.text, kind || 'vis-type');
+  render(out.sel);
+  commitCost = now() - t0;
+  return true;
+}
+
+function markVisualDirty() {
+  state.visualDirty = true;
+  updateChrome();
+}
+
+// ---------------------------------------------------------------- selection links between the panes
+
+function scheduleMarks() {
+  if (markFrame) return;
+  markFrame = requestAnimationFrame(() => { markFrame = 0; updateMarks(); });
+}
+
+function updateMarks() {
+  const inSync = state.view && state.view.ok && state.pvRev === state.rev && !state.visualDirty;
+  const pvHighlights = pvWin.CSS && pvWin.CSS.highlights;
+  if (previewFocused()) {
+    if (pvHighlights) pvHighlights.delete('se-src');
+    updateToolbar();
+    if (!inSync) return;
+    const sel = pvDoc.getSelection();
+    let mark = null;
+    if (sel && sel.rangeCount && pvDoc.body.contains(sel.anchorNode)) {
+      const range = sel.getRangeAt(0);
+      if (range.collapsed) mark = srcElementRange(info, pvDoc.body, range.startContainer);
+      else {
+        const a = srcOffsetOf(state.view, info, range.startContainer, range.startOffset);
+        const b = srcOffsetOf(state.view, info, range.endContainer, range.endOffset);
+        if (b > a) mark = [a, b];
+      }
+    }
+    state.srcMark = mark;
+    applySourceMark(true);
+  } else if (document.activeElement === els.src) {
+    for (const b of els.fmt.querySelectorAll('[aria-pressed]')) b.setAttribute('aria-pressed', 'false');
+    showCaretPosition();
+    if (state.srcMark) { state.srcMark = null; applySourceMark(false); }
+    if (!pvHighlights) return;
+    const t = inSync ? srcElementAt(state.view, els.src.selectionStart) : null;
+    if (!t) { pvHighlights.delete('se-src'); return; }
+    try {
+      const range = pvDoc.createRange();
+      range.selectNode(t.pv);
+      pvHighlights.set('se-src', new pvWin.Highlight(range));
+      const box = t.pv.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > pvWin.innerHeight) t.pv.scrollIntoView({ block: 'center' });
+    } catch (e) { pvHighlights.delete('se-src'); }
+  }
+}
+
+function updateToolbar() {
+  const s = caretState(pvDoc);
+  const press = (el, on) => el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  press(els.bP, s.block === 'p');
+  press(els.bH1, s.block === 'h1');
+  press(els.bH2, s.block === 'h2');
+  press(els.bH3, s.block === 'h3');
+  press(els.bBold, s.bold);
+  press(els.bItalic, s.italic);
+  press(els.bUl, s.list === 'ul');
+  press(els.bOl, s.list === 'ol');
+  els.bUnlink.disabled = !s.link && !(pvDoc.getSelection() && !pvDoc.getSelection().isCollapsed);
+}
+
+// ---------------------------------------------------------------- history
+
+function stepHistory(entry) {
+  if (!entry) return;
+  const old = state.text;
+  applyText(entry.text, null);
+  render(null);
+  const end = changeEnd(old, entry.text);
+  if (previewFocused()) setPreviewSelection([end, end]);
+  else { els.src.setSelectionRange(end, end); state.srcMark = null; }
+  updateChrome();
+  scheduleMarks();
+}
+
+function undo() {
+  commitVisual('vis-type');
+  if (!history.canUndo()) { setStatus('Es gibt nichts mehr rückgängig zu machen.'); return; }
+  stepHistory(history.undo());
+}
+
+function redo() {
+  commitVisual('vis-type');
+  if (!history.canRedo()) { setStatus('Es gibt nichts zu wiederholen.'); return; }
+  stepHistory(history.redo());
+}
+
+// ---------------------------------------------------------------- toolbar commands
+
+// Keyboard input needs the editable body itself to be focused, not just the frame window.
+function focusPreview() {
+  pvWin.focus();
+  if (pvDoc.body.isContentEditable) pvDoc.body.focus({ preventScroll: true });
+}
+
+const env = { get doc() { return pvDoc; }, info };
+
+// Makes sure the preview is current and has an editable selection.
+function readyToEdit() {
+  commitVisual('vis-type');
+  renderIfStale();
+  if (!state.view.ok) { setStatus('Die Seite kann rechts gerade nicht bearbeitet werden. Korrigiere zuerst den Code links.', 'warn'); return null; }
+  const range = getRange(pvDoc);
+  if (!range || !isEditableAt(range.startContainer) || !isEditableAt(range.endContainer)) {
+    setStatus('Klicke zuerst rechts in deine Seite – an die Stelle, die du ändern möchtest.', 'warn');
+    return null;
+  }
+  return range;
+}
+
+function runCommand(fn, emptyMessage) {
+  if (!readyToEdit()) return;
+  focusPreview();
+  let result;
+  state.inCommand = true;
+  try { result = fn(); } finally { state.inCommand = false; }
+  if (result === 'none' && emptyMessage) setStatus(emptyMessage, 'warn');
+  history.seal();
+  markVisualDirty();
+  commitVisual('cmd');
+  history.seal();
+}
+
+function restoreRange(range) {
+  focusPreview();
+  try { const sel = pvDoc.getSelection(); sel.removeAllRanges(); sel.addRange(range); } catch (e) { /* ignore */ }
+}
+
+async function linkFlow() {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange();
+  const problem = linkProblem(pvDoc, range);
+  if (problem === 'inlink') { setStatus('Hier ist schon ein Link. Entferne ihn zuerst mit „Link entfernen“.', 'warn'); return; }
+  if (problem === 'multi') { setStatus('Markiere für einen Link nur Text innerhalb eines Absatzes.', 'warn'); return; }
+  const rev = state.rev, docId = state.docId;
+  els.linkUrl.value = '';
+  els.linkText.value = '';
+  els.linkTextRow.hidden = !range.collapsed;
+  els.linkErr.textContent = '';
+  const answer = await openDialog(els.dlgLink);
+  if (state.rev !== rev || state.docId !== docId) return;
+  restoreRange(range);
+  if (answer !== 'ok') return;
+  const url = els.linkOk.dataset.url, text = els.linkText.value.trim();
+  runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text));
+}
+
+function validateLinkDialog() {
+  const check = checkLinkUrl(els.linkUrl.value);
+  if (!check.ok) {
+    els.linkErr.textContent = check.reason === 'empty' ? 'Bitte gib eine Adresse ein, zum Beispiel https://www.beispiel.de oder seite2.html.'
+      : check.reason === 'long' ? 'Diese Adresse ist zu lang.'
+      : 'Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten.';
+    return false;
+  }
+  els.linkOk.dataset.url = check.url;
+  return true;
+}
+
+let pickedImage = null;
+
+async function imageFlow(dropped) {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange();
+  const rev = state.rev, docId = state.docId;
+  pickedImage = null;
+  els.imgAlt.value = '';
+  els.imgErr.textContent = '';
+  els.imgName.textContent = 'Noch kein Bild ausgewählt.';
+  els.imgPrev.hidden = true;
+  if (dropped) pickImage(dropped);
+  const answer = await openDialog(els.dlgImage);
+  const picked = pickedImage;
+  pickedImage = null;
+  els.imgPrev.removeAttribute('src');
+  if (state.rev !== rev || state.docId !== docId) return;
+  restoreRange(range);
+  if (answer !== 'ok' || !picked) return;
+  const alt = els.imgAlt.value.trim();
+  runCommand(() => insertImage(env, getRange(pvDoc) || range, picked.dataUrl, alt));
+  if (picked.scaled) setStatus('Das Bild wurde verkleinert, damit deine Seite nicht zu groß wird.');
+}
+
+async function pickImage(file) {
+  els.imgErr.textContent = '';
+  els.imgName.textContent = 'Bild wird geprüft …';
+  const result = await prepareImage(file);
+  if (result.error) {
+    pickedImage = null;
+    els.imgPrev.hidden = true;
+    els.imgName.textContent = 'Noch kein Bild ausgewählt.';
+    els.imgErr.textContent = result.error === 'type' ? 'Diese Datei ist kein unterstütztes Bild. Erlaubt sind PNG, JPG, GIF und WebP.'
+      : result.error === 'gif' ? 'Dieses GIF ist zu groß (höchstens 200 KB).'
+      : result.error === 'big' ? 'Dieses Bild ist zu groß und konnte nicht genug verkleinert werden.'
+      : 'Das Bild konnte nicht gelesen werden. Vielleicht ist die Datei beschädigt.';
+    return;
+  }
+  pickedImage = result;
+  els.imgName.textContent = file.name + (result.scaled ? ' (wird verkleinert eingefügt)' : '');
+  els.imgPrev.src = result.dataUrl;
+  els.imgPrev.hidden = false;
+}
+
+// ---------------------------------------------------------------- formatting the source
+
+async function formatDoc() {
+  commitVisual('vis-type');
+  const src = state.text;
+  if (/white-space\s*:\s*(pre|break-spaces)/i.test(src)) {
+    await infoBox('Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei zählt jedes Leerzeichen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert.');
+    return;
+  }
+  let out = null, verified = false;
+  try {
+    const before = new DOMParser().parseFromString(src, 'text/html');
+    out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
+    if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
+    const after = new DOMParser().parseFromString(out, 'text/html');
+    const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
+    verified = sameInk && canonDom(before, FMT_BLOCK, FMT_KEEP) === canonDom(after, FMT_BLOCK, FMT_KEEP);
+  } catch (e) { verified = false; }
+  if (!verified) {
+    await infoBox('Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt. Dein Code bleibt unverändert.');
+    return;
+  }
+  history.seal();
+  applyText(out, 'cmd');
+  history.seal();
+  render(null);
+  setStatus('Der Code wurde aufgeräumt.');
+}
+
+// ---------------------------------------------------------------- files
+
+function replaceDocument(text, meta) {
+  state.docId++;
+  clearTimeout(renderTimer);
+  clearTimeout(commitTimer);
+  state.visualDirty = false;
+  state.text = text;
+  state.rev++;
+  state.savedText = meta.unsaved ? null : text;
+  state.name = meta.name || DEFAULT_NAME;
+  state.handle = meta.handle || null;
+  state.bom = !!meta.bom;
+  state.eol = meta.eol || '\n';
+  state.srcMark = null;
+  history.reset(text);
+  els.src.value = text;
+  els.src.setSelectionRange(0, 0);
+  els.src.scrollTop = 0;
+  els.src.scrollLeft = 0;
+  updateSourceView();
+  render(null);
+  pvDoc.documentElement.scrollTop = 0;
+  pvDoc.body.scrollTop = 0;
+  try { pvDoc.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
+}
+
+async function mayDiscard() {
+  commitVisual('vis-type');
+  if (!isDirty()) return true;
+  return confirmBox('Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.', 'Änderungen verwerfen');
+}
+
+async function newDoc() {
+  if (!(await mayDiscard())) return;
+  replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
+  setStatus('Neue Seite angelegt.');
+}
+
+async function loadFile(file, handle) {
+  const seq = ++state.loadSeq;
+  if (file.size > MAX_FILE_BYTES) {
+    await infoBox('Die Datei „' + file.name + '“ ist zu groß. Der Editor öffnet Dateien bis 5 MB. Deine aktuelle Seite bleibt unverändert.');
+    return false;
+  }
+  let bytes;
+  try { bytes = new Uint8Array(await file.arrayBuffer()); } catch (e) {
+    await infoBox('Die Datei „' + file.name + '“ konnte nicht gelesen werden. Deine aktuelle Seite bleibt unverändert.');
+    return false;
+  }
+  if (seq !== state.loadSeq) return false;
+  let decoded = decodeFileBytes(bytes, false);
+  if (decoded.error === 'encoding') {
+    const go = await confirmBox('Die Datei „' + file.name + '“ ist nicht als UTF-8 gespeichert. Der Editor kann sie umwandeln; prüfe danach die Umlaute und die Zeile mit „charset“. Die Datei auf dem Datenträger wird dabei nicht verändert.', 'Umwandeln und öffnen');
+    if (!go || seq !== state.loadSeq) return false;
+    decoded = decodeFileBytes(bytes, true);
+  }
+  if (decoded.error) {
+    await infoBox(decoded.error === 'utf16'
+      ? 'Die Datei „' + file.name + '“ ist als UTF-16 gespeichert. Das kann der Editor nicht öffnen. Deine aktuelle Seite bleibt unverändert.'
+      : 'Die Datei „' + file.name + '“ ist keine Textdatei. Deine aktuelle Seite bleibt unverändert.');
+    return false;
+  }
+  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy });
+  setStatus(decoded.legacy ? 'Geöffnet und in UTF-8 umgewandelt: ' + file.name + '. Bitte unter neuem Namen speichern.'
+    : decoded.mixedEol ? 'Geöffnet: ' + file.name + '. Die Zeilenenden waren uneinheitlich und werden beim Speichern vereinheitlicht.'
+    : 'Geöffnet: ' + file.name, decoded.legacy ? 'warn' : '');
+  return true;
+}
+
+async function openDoc() {
+  if (!(await mayDiscard())) return;
+  if (!window.showOpenFilePicker) { els.fileIn.click(); return; }
+  let handle;
+  try { [handle] = await window.showOpenFilePicker({ types: FILE_TYPES }); } catch (e) {
+    if (!e || e.name !== 'AbortError') els.fileIn.click();
+    return;
+  }
+  let file;
+  try { file = await handle.getFile(); } catch (e) { await infoBox('Die Datei konnte nicht gelesen werden. Deine aktuelle Seite bleibt unverändert.'); return; }
+  await loadFile(file, handle);
+}
+
+function markSaved(snapshot) {
+  if (snapshot.docId !== state.docId) return;
+  state.savedText = snapshot.text;
+  updateChrome();
+}
+
+async function writeToHandle(handle, blob) {
+  try {
+    const writer = await handle.createWritable();
+    await writer.write(blob);
+    await writer.close();
+    return 'ok';
+  } catch (e) {
+    return e && e.name === 'AbortError' ? 'abort' : e && e.name === 'NotAllowedError' ? 'denied' : 'fail';
+  }
+}
+
+function snapshotForSave() {
+  commitVisual('vis-type');                 // the file must contain the very last keystroke of the preview
+  return { text: state.text, docId: state.docId, name: state.name, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
+}
+
+function downloadDoc(given) {
+  const snap = given || snapshotForSave();
+  const url = URL.createObjectURL(snap.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = snap.name || DEFAULT_NAME;
+  a.hidden = true;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  markSaved(snap);
+  setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
+  return true;
+}
+
+async function saveDoc() {
+  const snap = snapshotForSave();
+  let handle = state.handle;
+  if (!handle) {
+    if (!window.showSaveFilePicker) return downloadDoc(snap);
+    try { handle = await window.showSaveFilePicker({ suggestedName: snap.name, types: FILE_TYPES }); } catch (e) {
+      if (e && e.name === 'AbortError') { setStatus('Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.', 'warn'); return false; }
+      return downloadDoc(snap);
+    }
+  }
+  const result = await writeToHandle(handle, snap.blob);
+  if (result !== 'ok') {
+    setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
+      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
+    return false;
+  }
+  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; }
+  markSaved(snap);
+  setStatus('Gespeichert: ' + (handle.name || snap.name), 'ok');
+  return true;
+}
+
+async function handleDroppedFile(file) {
+  if (/^image\//.test(file.type)) { imageFlow(file); return; }
+  if (!(await mayDiscard())) return;
+  loadFile(file, null);
+}
+
+// ---------------------------------------------------------------- event wiring
+
+function onSourceInput(e) {
+  const ta = els.src;
+  if (state.visualDirty) {
+    // Both panes changed at once (not reachable through the guarded focus paths). Keep both: the preview edit
+    // becomes its own history step, the source edit stays the current text.
+    const mine = ta.value;
+    commitVisual('vis-type');
+    history.seal();
+    ta.value = mine;
+    setStatus('Beide Seiten wurden gleichzeitig geändert. Mit „Rückgängig“ erreichst du die andere Fassung.', 'warn');
+  }
+  const value = ta.value;
+  if (value === state.text) return;
+  state.text = value;
+  state.rev++;
+  const type = e && e.inputType ? e.inputType : '';
+  history.record(value, /^(insertText|insertCompositionText|deleteContentBackward|deleteContentForward)$/.test(type) ? 'src-type' : 'src-edit', now());
+  updateSourceView();
+  updateChrome();
+  showCaretPosition();
+  scheduleRender();
+}
+
+function onSourceKeydown(e) {
+  if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    els.src.setRangeText('  ', els.src.selectionStart, els.src.selectionEnd, 'end');
+    onSourceInput({ inputType: 'insertText' });
+  }
+}
+
+function onShortcut(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
+  if (e.target && e.target.closest && e.target.closest('dialog')) return false;
+  const key = e.key.toLowerCase();
+  if (key === 's') { e.preventDefault(); saveDoc(); return true; }
+  if (key === 'o') { e.preventDefault(); openDoc(); return true; }
+  if (key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return true; }
+  if (key === 'y') { e.preventDefault(); redo(); return true; }
+  return false;
+}
+
+function hasFiles(e) {
+  return !!e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0;
+}
+
+function wireDrop(target, always) {
+  target.addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } else if (always) e.preventDefault(); });
+  target.addEventListener('drop', (e) => {
+    if (hasFiles(e)) { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) handleDroppedFile(file); }
+    else if (always) e.preventDefault();
+  });
+}
+
+function wirePreview() {
+  try { pvDoc.execCommand('defaultParagraphSeparator', false, 'p'); pvDoc.execCommand('styleWithCSS', false, false); } catch (e) { /* defaults stay */ }
+  const fresh = () => { if (!state.visualDirty) renderIfStale(); };
+  pvWin.addEventListener('focus', () => { fresh(); if (pvDoc.body.isContentEditable) pvDoc.body.focus({ preventScroll: true }); });
+  pvDoc.addEventListener('pointerdown', fresh, true);
+  pvWin.addEventListener('blur', () => commitVisual('vis-type'));
+  pvDoc.addEventListener('beforeinput', (e) => {
+    if (state.inCommand) return;
+    if (state.pvRev !== state.rev) { e.preventDefault(); render(null); return; }
+    const type = e.inputType || '';
+    if (type === 'historyUndo') { e.preventDefault(); undo(); }
+    else if (type === 'historyRedo') { e.preventDefault(); redo(); }
+    else if (type === 'formatBold') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
+    else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+    else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
+  });
+  pvDoc.addEventListener('input', () => { markVisualDirty(); if (!state.composing) scheduleCommit(); });
+  pvDoc.addEventListener('compositionstart', () => { state.composing = true; });
+  pvDoc.addEventListener('compositionend', () => { state.composing = false; if (state.visualDirty) scheduleCommit(); });
+  pvDoc.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+    if (!text) { setStatus('Hier kannst du nur Text einfügen. Bilder fügst du mit dem Knopf „Bild“ ein.', 'warn'); return; }
+    runCommand(() => insertPlainText(env, text.length > 200000 ? text.slice(0, 200000) : text));
+  });
+  pvDoc.addEventListener('dragstart', (e) => e.preventDefault());
+  wireDrop(pvDoc, true);
+  pvDoc.addEventListener('click', (e) => { const a = e.target && e.target.closest ? e.target.closest('a') : null; if (a) e.preventDefault(); });
+  pvDoc.addEventListener('keydown', (e) => {
+    if (onShortcut(e)) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'b') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
+      else if (key === 'i') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+    }
+  });
+  pvDoc.addEventListener('selectionchange', scheduleMarks);
+}
+
+function wireChrome() {
+  const keepFocus = (el) => el.addEventListener('mousedown', (e) => e.preventDefault());
+  const tool = (el, fn) => { keepFocus(el); el.addEventListener('click', fn); };
+  els.bNew.addEventListener('click', newDoc);
+  els.bOpen.addEventListener('click', openDoc);
+  tool(els.bSave, saveDoc);
+  tool(els.bDownload, () => downloadDoc(null));
+  tool(els.bUndo, undo);
+  tool(els.bRedo, redo);
+  tool(els.bFormat, formatDoc);
+  els.bHelp.addEventListener('click', () => openDialog(els.dlgHelp));
+  const noBlock = 'Setze den Cursor in einen Absatz oder eine Überschrift.';
+  tool(els.bP, () => runCommand(() => setBlock(env, 'p'), noBlock));
+  tool(els.bH1, () => runCommand(() => setBlock(env, 'h1'), noBlock));
+  tool(els.bH2, () => runCommand(() => setBlock(env, 'h2'), noBlock));
+  tool(els.bH3, () => runCommand(() => setBlock(env, 'h3'), noBlock));
+  const noText = 'Markiere zuerst den Text, den du ändern möchtest.';
+  tool(els.bBold, () => runCommand(() => toggleInline(env, 'bold'), noText));
+  tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
+  tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
+  tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
+  tool(els.bLink, linkFlow);
+  tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
+  tool(els.bImage, () => imageFlow(null));
+
+  for (const dialog of document.querySelectorAll('dialog')) {
+    dialog.addEventListener('click', (e) => { const v = e.target && e.target.dataset ? e.target.dataset.close : undefined; if (v !== undefined) dialog.close(v); });
+  }
+  els.linkOk.addEventListener('click', () => { if (validateLinkDialog()) els.dlgLink.close('ok'); });
+  els.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
+  els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
+  els.imgPick.addEventListener('click', () => els.imgIn.click());
+  els.imgIn.addEventListener('change', () => { const file = els.imgIn.files[0]; els.imgIn.value = ''; if (file) pickImage(file); });
+  els.imgOk.addEventListener('click', () => {
+    if (!pickedImage) { els.imgErr.textContent = 'Wähle zuerst ein Bild aus.'; return; }
+    if (!els.imgAlt.value.trim()) { els.imgErr.textContent = 'Beschreibe das Bild kurz – diesen Text hören Menschen, die das Bild nicht sehen können.'; return; }
+    els.dlgImage.close('ok');
+  });
+  els.imgAlt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
+  els.fileIn.addEventListener('change', () => { const file = els.fileIn.files[0]; els.fileIn.value = ''; if (file) loadFile(file, null); });
+
+  els.src.addEventListener('input', onSourceInput);
+  els.src.addEventListener('keydown', onSourceKeydown);
+  els.src.addEventListener('beforeinput', (e) => {
+    if (e.inputType === 'historyUndo') { e.preventDefault(); undo(); }
+    else if (e.inputType === 'historyRedo') { e.preventDefault(); redo(); }
+  });
+  els.src.addEventListener('focus', () => { commitVisual('vis-type'); scheduleMarks(); });
+  els.src.addEventListener('blur', renderIfStale);
+  els.src.addEventListener('scroll', syncSourceScroll);
+  for (const type of ['select', 'keyup', 'click']) els.src.addEventListener(type, scheduleMarks);
+  document.addEventListener('selectionchange', () => { if (document.activeElement === els.src) scheduleMarks(); });
+  document.addEventListener('keydown', onShortcut);
+  window.addEventListener('blur', () => commitVisual('vis-type'));
+  window.addEventListener('beforeunload', (e) => { commitVisual('vis-type'); if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
+  wireDrop(document, false);
+
+  els.split.addEventListener('pointerdown', (e) => {
+    els.split.setPointerCapture(e.pointerId);
+    els.work.classList.add('dragging');
+    const move = (ev) => { const box = els.work.getBoundingClientRect(); els.work.style.setProperty('--left', clamp((ev.clientX - box.left) / box.width * 100, 20, 80) + '%'); };
+    const stop = () => { els.work.classList.remove('dragging'); els.split.removeEventListener('pointermove', move); els.split.removeEventListener('pointerup', stop); els.split.removeEventListener('pointercancel', stop); };
+    els.split.addEventListener('pointermove', move);
+    els.split.addEventListener('pointerup', stop);
+    els.split.addEventListener('pointercancel', stop);
+  });
+}
+
+function start() {
+  for (const el of document.querySelectorAll('[id]')) els[el.id] = el;
+  let started = false;
+  els.pv.addEventListener('load', () => {
+    const doc = els.pv.contentDocument;
+    if (started || !doc || doc.URL !== 'about:srcdoc' || !doc.body) return;   // ignore the initial blank document
+    started = true;
+    pvDoc = doc;
+    pvWin = els.pv.contentWindow;
+    wirePreview();
+    wireChrome();
+    replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
+    document.documentElement.dataset.ready = 'yes';
+  });
+  els.pv.srcdoc = PREVIEW_SHELL;
+  setTimeout(() => { if (!started) els.fatal.hidden = false; }, 4000);
+}
+
+start();
+})();
+</script>
+</body>
+</html>
