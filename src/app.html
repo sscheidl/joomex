@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="__APP_ID__ __VERSION__">
+<title>__APP_NAME__</title>
+<style>
+__CSS__
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand"><strong>__APP_NAME__</strong><span>__APP_SUB__</span></div>
+  <div class="group" role="group" aria-label="Datei">
+    <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
+    <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
+    <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)">Speichern</button>
+    <button id="bDownload" type="button" title="Eine Kopie in den Ordner „Downloads“ laden">Herunterladen</button>
+  </div>
+  <div class="group" role="group" aria-label="Verlauf">
+    <button id="bUndo" type="button" title="Rückgängig (Strg+Z)">Rückgängig</button>
+    <button id="bRedo" type="button" title="Wiederholen (Strg+Y)">Wiederholen</button>
+  </div>
+  <div class="group">
+    <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
+  </div>
+  <div class="doc"><span id="docName"></span><span id="docState"></span></div>
+  <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
+</header>
+
+<main id="work">
+  <section id="srcPane" aria-label="HTML-Code">
+    <div class="paneHead"><h2>HTML-Code</h2><span class="hint">Hier steht der ganze Code deiner Seite.</span></div>
+    <div id="srcBox">
+      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
+      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite"></textarea>
+    </div>
+  </section>
+  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
+  <section id="pvPane" aria-label="Seite">
+    <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="pvTitle"></span></div>
+    <div id="fmt" role="toolbar" aria-label="Text gestalten">
+      <span class="group">
+        <button id="bP" type="button" title="Absatz &lt;p&gt;">Absatz</button>
+        <button id="bH1" type="button" title="Große Überschrift &lt;h1&gt;">Ü1</button>
+        <button id="bH2" type="button" title="Mittlere Überschrift &lt;h2&gt;">Ü2</button>
+        <button id="bH3" type="button" title="Kleine Überschrift &lt;h3&gt;">Ü3</button>
+      </span>
+      <span class="group">
+        <button id="bBold" type="button" class="b" title="Fett &lt;b&gt; (Strg+B)">F</button>
+        <button id="bItalic" type="button" class="i" title="Kursiv &lt;i&gt; (Strg+I)">K</button>
+      </span>
+      <span class="group">
+        <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
+        <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
+      </span>
+      <span class="group">
+        <button id="bLink" type="button" title="Link einfügen &lt;a&gt;">Link</button>
+        <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
+        <button id="bImage" type="button" title="Bild von diesem Computer einfügen &lt;img&gt;">Bild</button>
+      </span>
+    </div>
+    <div id="lockNote" class="note warn" hidden>Die Seite wird rechts nur angezeigt: Im HTML-Code ist etwas nicht richtig geschlossen oder verschachtelt. Korrigiere es links – danach kannst du hier wieder schreiben.</div>
+    <div id="pvBox"><iframe id="pv" sandbox="allow-same-origin" title="Vorschau deiner Seite zum Bearbeiten"></iframe></div>
+    <div id="inactive" class="note" hidden title="Skripte, Formulare und Dateien von außerhalb laufen bzw. laden im Editor nicht. Im Code und in der gespeicherten Datei bleiben sie unverändert erhalten."><span id="inactiveText"></span> Im Code bleibt alles erhalten.</div>
+  </section>
+</main>
+
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">__APP_ID__ __VERSION__</span></footer>
+
+<div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
+
+<dialog id="dlgInfo"><p id="infoText"></p><div class="row"><button type="button" class="primary" data-close="ok">OK</button></div></dialog>
+
+<dialog id="dlgConfirm"><p id="confirmText"></p><div class="row"><button type="button" class="primary" data-close="cancel">Abbrechen</button><button type="button" id="confirmOk" data-close="ok"></button></div></dialog>
+
+<dialog id="dlgLink">
+  <h3>Link einfügen</h3>
+  <label for="linkUrl">Adresse (wohin führt der Link?)</label>
+  <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
+  <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
+  <p id="linkErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="linkOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgImage">
+  <h3>Bild einfügen</h3>
+  <p>Das Bild wird in deine Seite hineinkopiert. Erlaubt sind PNG, JPG, GIF und WebP.</p>
+  <div class="pick"><button type="button" id="imgPick">Bild auswählen …</button><span id="imgName"></span></div>
+  <img id="imgPrev" alt="" hidden>
+  <label for="imgAlt">Beschreibung des Bildes (Alternativtext)</label>
+  <input id="imgAlt" type="text" autocomplete="off" maxlength="200" placeholder="Zum Beispiel: Unsere Katze schläft auf dem Sofa">
+  <p id="imgErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <h3>Kurze Hilfe</h3>
+  <ul>
+    <li><b>Links</b> steht der HTML-Code, <b>rechts</b> siehst du deine Seite. Du kannst auf beiden Seiten schreiben – die andere Seite ändert sich mit.</li>
+    <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
+    <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
+    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten.</li>
+    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv</li>
+  </ul>
+  <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
+</dialog>
+
+<input id="fileIn" type="file" accept=".html,.htm,text/html" hidden>
+<input id="imgIn" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+<script>
+__JS__
+</script>
+</body>
+</html>
