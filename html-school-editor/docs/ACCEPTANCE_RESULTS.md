@@ -62,7 +62,7 @@ Command for everything below: `node tests/run.mjs` (one case: `node tests/run.mj
 
 | ID | What is checked | Result (Edge) |
 | --- | --- | --- |
-| X-01 | more than 20 script and handler vectors plus a storage sentinel; click, hover, typing in the hostile page | PASS (9): nothing ran, sentinel not read, 0 requests, source intact |
+| X-01 | more than 20 script and handler vectors plus a storage sentinel; click, hover, typing in the test page | PASS (9): nothing ran, sentinel not read, 0 requests, source intact |
 | X-02 | Navigation, refresh, base, forms, frames, objects, popups; editable and read-only variant | PASS (16): 0 requests, no navigation, no new window |
 | X-03 | more than 30 kinds of external resource references; control page proves the server and browser would fetch | PASS (5): **0 delivered requests**; 11 attempts from inline CSS, all blocked by the policy (27 block reports) |
 | X-04 | Rich clipboard paste with a trusted key event; paste events; HTML-only clipboard; drop | PASS (7) |

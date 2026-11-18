@@ -5,14 +5,14 @@
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-18T21:48:37.746Z",
+ "date": "2026-11-18T22:19:21.463Z",
  "browser": "edge",
  "results": [
   {
    "id": "T-01",
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
-   "ms": 762,
+   "ms": 686,
    "error": null,
    "checks": [
     {
@@ -46,7 +46,7 @@
    "id": "T-02",
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
-   "ms": 667,
+   "ms": 693,
    "error": null,
    "checks": [
     {
@@ -71,7 +71,7 @@
    "id": "T-03",
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
-   "ms": 1113,
+   "ms": 1070,
    "error": null,
    "checks": [
     {
@@ -116,7 +116,7 @@
    "id": "T-04",
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
-   "ms": 1762,
+   "ms": 1765,
    "error": null,
    "checks": [
     {
@@ -181,7 +181,7 @@
    "id": "T-05",
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
-   "ms": 847,
+   "ms": 876,
    "error": null,
    "checks": [
     {
@@ -230,7 +230,7 @@
    "id": "T-06",
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
-   "ms": 3358,
+   "ms": 2957,
    "error": null,
    "checks": [
     {
@@ -331,7 +331,7 @@
    "id": "T-07",
    "title": "explicit formatting changes white space only and is verified",
    "status": "PASS",
-   "ms": 814,
+   "ms": 747,
    "error": null,
    "checks": [
     {
@@ -406,7 +406,7 @@
    "id": "T-08",
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
-   "ms": 1555,
+   "ms": 1218,
    "error": null,
    "checks": [
     {
@@ -495,7 +495,7 @@
    "id": "T-09",
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
-   "ms": 1380,
+   "ms": 1363,
    "error": null,
    "checks": [
     {
@@ -548,7 +548,7 @@
    "id": "T-10",
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
-   "ms": 1827,
+   "ms": 1744,
    "error": null,
    "checks": [
     {
@@ -612,7 +612,7 @@
    "id": "T-11",
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
-   "ms": 24411,
+   "ms": 24260,
    "error": null,
    "checks": [
     {
@@ -633,7 +633,7 @@
    "id": "T-12",
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PASS",
-   "ms": 3735,
+   "ms": 3442,
    "error": null,
    "checks": [
     {
@@ -651,7 +651,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 1998 ms, panes in sync after 2267 ms"
+     "detail": "162 keystrokes sent in 1695 ms, panes in sync after 1982 ms"
     },
     {
      "pass": true,
@@ -701,7 +701,7 @@
    "id": "T-13",
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
-   "ms": 4062,
+   "ms": 3996,
    "error": null,
    "checks": [
     {
@@ -762,7 +762,7 @@
    "id": "T-14",
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
-   "ms": 10878,
+   "ms": 10561,
    "error": null,
    "checks": [
     {
@@ -833,7 +833,7 @@
    "id": "T-15",
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PASS",
-   "ms": 1843,
+   "ms": 1865,
    "error": null,
    "checks": [
     {
@@ -893,7 +893,7 @@
    "id": "T-16",
    "title": "Save falls back to a real download when direct file access is missing",
    "status": "PASS",
-   "ms": 345,
+   "ms": 343,
    "error": null,
    "checks": [
     {
@@ -920,7 +920,7 @@
    "id": "T-17",
    "title": "no persistence between sessions",
    "status": "PASS",
-   "ms": 822,
+   "ms": 789,
    "error": null,
    "checks": [
     {
@@ -937,7 +937,7 @@
    "id": "X-01",
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
-   "ms": 1986,
+   "ms": 2011,
    "error": null,
    "checks": [
     {
@@ -982,7 +982,7 @@
    "id": "X-02",
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
-   "ms": 4674,
+   "ms": 4743,
    "error": null,
    "checks": [
     {
@@ -1110,7 +1110,7 @@
    "id": "X-04",
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "PASS",
-   "ms": 1169,
+   "ms": 1168,
    "error": null,
    "checks": [
     {
@@ -1127,7 +1127,7 @@
     {
      "pass": true,
      "label": "pasted markup-shaped text is stored as text",
-     "detail": "  <h1>Meine erste Webseite&lt;img src=x onerror=parent.document.documentElement.dataset.pwned=1&gt; &amp; Text</h1>"
+     "detail": "  <h1>Meine erste Webseite&lt;img src=x onerror=parent.document.documentElement.dataset.scriptRan=1&gt; &amp; Text</h1>"
     },
     {
      "pass": true,
@@ -1155,7 +1155,7 @@
    "id": "X-07",
    "title": "element names that shadow DOM properties do not disturb the editor",
    "status": "PASS",
-   "ms": 1101,
+   "ms": 1096,
    "error": null,
    "checks": [
     {
@@ -1276,7 +1276,7 @@
    "id": "R-01",
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
-   "ms": 30533,
+   "ms": 30757,
    "error": null,
    "checks": [
     {
@@ -1310,7 +1310,7 @@
    "id": "R-02",
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
-   "ms": 844,
+   "ms": 734,
    "error": null,
    "checks": [
     {

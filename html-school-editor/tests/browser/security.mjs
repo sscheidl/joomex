@@ -7,17 +7,17 @@ import { pathToFileURL } from 'node:url';
 import { Editor, PV, ARTEFACT, sleep, tmpFile, readFixture } from '../lib/harness.mjs';
 
 const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
-const MARK = 'parent.document.documentElement.dataset.pwned';
+const MARK = 'parent.document.documentElement.dataset.scriptRan';
 const attempts = (ed, origin) => ed.page.eventsOf('Network.requestWillBeSent').map((e) => e.request.url).filter((u) => u.startsWith(origin));
 const cspBlocks = (ed, origin) => ed.page.eventsOf('Audits.issueAdded').map((e) => e.issue.details.contentSecurityPolicyIssueDetails).filter((d) => d && String(d.blockedURL || '').startsWith(origin)).map((d) => d.blockedURL);
-const pwned = (ed) => ed.eval('JSON.stringify({ parent: document.documentElement.dataset.pwned || "", leak: document.documentElement.dataset.leak || "", title: document.title })');
+const markers = (ed) => ed.eval('JSON.stringify({ parent: document.documentElement.dataset.scriptRan || "", leak: document.documentElement.dataset.leak || "", title: document.title })');
 
-function hostileDoc(s) {
+function activeContentDoc(s) {
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Angriff</title>
+<title>Aktive Inhalte</title>
 <script>${MARK} = "head-inline"; parent.document.documentElement.dataset.leak = parent.localStorage.getItem("SYNTHETIC_SENTINEL");</script>
 <script src="${s}/x01/external.js"></script>
 <script type="module">import "${s}/x01/module.js"; ${MARK} = "module";</script>
@@ -30,7 +30,7 @@ function hostileDoc(s) {
 <details open ontoggle="${MARK} = 'toggle'"><summary>auf</summary>zu</details>
 <input autofocus onfocus="${MARK} = 'autofocus'">
 <p id="p" contenteditable onbeforeinput="${MARK} = 'beforeinput'" oninput="${MARK} = 'input'" onkeydown="${MARK} = 'keydown'">Tipp hier</p>
-<script>${MARK} = "body-inline"; top.document.title = "pwned"; try { parent.document.getElementById("src").value = "geloescht"; } catch (e) {}</script>
+<script>${MARK} = "body-inline"; top.document.title = "geaendert"; try { parent.document.getElementById("src").value = "geloescht"; } catch (e) {}</script>
 <a id="js" href="javascript:${MARK}='js-link'">Link</a>
 </body>
 </html>
@@ -59,7 +59,7 @@ function navigationDoc(s, withFrameset) {
 <form id="f" action="${s}/x02/form-post" method="post" target="_top"><input name="q" value="1"><button id="fb" type="submit">Senden</button><input type="image" src="${s}/x02/input-image.png"></form>
 <form action="javascript:${MARK}='form-js'"><button id="fb2" formaction="${s}/x02/formaction">Zwei</button></form>
 <iframe src="${s}/x02/iframe-src"></iframe>
-<iframe srcdoc="<script>top.document.documentElement.dataset.pwned='srcdoc'</script><img src='${s}/x02/srcdoc-img.png'>"></iframe>
+<iframe srcdoc="<script>top.document.documentElement.dataset.scriptRan='srcdoc'</script><img src='${s}/x02/srcdoc-img.png'>"></iframe>
 <object data="${s}/x02/object-data"></object>
 <embed src="${s}/x02/embed-src">
 ${withFrameset ? `<frameset><frame src="${s}/x02/frame-src"></frameset>
@@ -118,9 +118,9 @@ export const security = [
     async run(c, { browser, sink }) {
       await withEditor(browser, {}, async (ed) => {
         await ed.eval('localStorage.setItem("SYNTHETIC_SENTINEL", "dummy-only")');
-        const text = hostileDoc(sink.origin);
+        const text = activeContentDoc(sink.origin);
         const before = sink.hits.length;
-        await ed.openText('x01-angriff.html', text);
+        await ed.openText('x01-aktive-inhalte.html', text);
         await sleep(400);
         await ed.clickPv('d.getElementById("h")');
         await ed.page.mouse('mouseMoved', 700, 300, { button: 'none' });
@@ -129,8 +129,8 @@ export const security = [
         await ed.clickPv('d.getElementById("js")');
         await ed.settle();
         await sleep(1200);
-        c.eq(await pwned(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'no marker was set in the editor window, the storage sentinel was not read, the title is untouched');
-        c.eq(await ed.eval(PV + '.documentElement.dataset.pwned || ""'), '', 'no marker inside the preview document either');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'no marker was set in the editor window, the storage sentinel was not read, the title is untouched');
+        c.eq(await ed.eval(PV + '.documentElement.dataset.scriptRan || ""'), '', 'no marker inside the preview document either');
         c.eq(await ed.eval(PV + '.querySelectorAll("script").length'), 0, 'the preview contains no script elements');
         c.eq(await ed.eval(`((d) => Array.from(d.querySelectorAll("*")).filter((el) => el.getAttributeNames().some((n) => n.startsWith("on"))).length)(${PV})`), 0, 'the preview contains no event-handler attributes');
         const src = await ed.source();
@@ -169,7 +169,7 @@ export const security = [
         c.eq(await ed.eval('location.href'), url, variant + 'the editor window did not navigate');
         c.eq(await ed.eval(PV + '.URL'), 'about:srcdoc', variant + 'the preview frame did not navigate');
         c.eq((await browser.conn.send('Target.getTargets')).targetInfos.filter((t) => !targetsBefore.has(t.targetId)).length, 0, variant + 'no window or tab was opened');
-        c.eq(await pwned(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', variant + 'no script URL was executed');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', variant + 'no script URL was executed');
         c.eq(await ed.eval(PV + '.body.querySelectorAll("iframe, frame, object, embed, base, meta, form[action], a[href], area[href]").length'), 0, variant + 'the preview has no frames, base, refresh, form targets or live link addresses');
         c.eq(await ed.source(), navigationDoc(sink.origin, withFrameset), variant + 'the source is unchanged');
         c.note(variant + 'request attempts seen by the browser', JSON.stringify(attempts(ed, sink.origin)));
@@ -245,7 +245,7 @@ export const security = [
         await ed.eval(`((d) => { const dt = new DataTransfer(); dt.setData("text/html", ${JSON.stringify(rich)}); const ev = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }); d.body.dispatchEvent(ev); document.documentElement.dataset.dropPrevented = String(ev.defaultPrevented); })(${PV})`);
         c.eq(await ed.eval('document.documentElement.dataset.dropPrevented'), 'true', 'dropping rich content into the page is cancelled');
         await sleep(500);
-        c.eq(await pwned(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'nothing executed');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'nothing executed');
         c.eq(sink.hits.slice(before).join(','), '', 'nothing was fetched');
       });
     },

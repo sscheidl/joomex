@@ -58,11 +58,11 @@ class Connection {
   }
   send(method, params = {}, sessionId) {
     const id = ++this.nextId;
-    const payload = { id, method, params };
-    if (sessionId) payload.sessionId = sessionId;
+    const request = { id, method, params };
+    if (sessionId) request.sessionId = sessionId;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject, method });
-      this.ws.send(JSON.stringify(payload));
+      this.ws.send(JSON.stringify(request));
     });
   }
 }
