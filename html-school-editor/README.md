@@ -20,7 +20,7 @@ What it deliberately does not do: no autosave or recovery after closing, no temp
 
 ## Build and test
 
-Requirements for development only: Node.js 22 or newer, Git, and an installed Edge or Chrome for the browser tests. There are no npm dependencies.
+Requirements for development only: Node.js 22 or newer, Git, and an installed Edge or Chrome for the browser tests. There are no npm dependencies. Run the commands in this folder (`html-school-editor/`).
 
 ```bash
 node tools/build.mjs                 # writes dist/school-editor.html
@@ -28,10 +28,11 @@ node tools/build.mjs --check         # verifies that dist/ matches the sources (
 node --test tests/unit/*.test.mjs    # unit tests of the DOM-free modules
 node tests/run.mjs                   # acceptance suite in Edge and Chrome against dist/school-editor.html
 node tests/run.mjs --browser edge --only T-10,X-03
-node tools/check_publication.mjs --denylist <private list outside the repository>
 ```
 
 The acceptance suite starts the delivered file from `file://` in a fresh browser profile and drives it with real key and mouse events over the DevTools protocol. Results are written to `tests/results/acceptance-<browser>.json`. A browser that is not installed is recorded as `NOT MEASURED`.
+
+The publication check for the whole repository is described in [RULES.md](../RULES.md).
 
 A locally branded copy (different product name in the title bar) can be built with `node tools/build.mjs --brand local/brand.json`; the `local/` folder is ignored by Git. The file needs `name`, `sub` and `file`.
 
@@ -46,9 +47,10 @@ A locally branded copy (different product name in the title bar) can be built wi
 | [docs/STATUS.md](docs/STATUS.md) | Current state, artefact size and hash, open points, licences |
 | [docs/REVIEW_CODEX.md](docs/REVIEW_CODEX.md) | Hand-over for the independent review |
 | [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md) | Guide for pupils (German) |
+| [docs/brief/](docs/brief/) | The task brief this product was built from, with the numbered acceptance contract and the sanitized findings about the reference editor |
 
 ## Origin and licence
 
-The editor was written new for this repository. A third-party single-file editor was studied as a reference for interaction concepts; no code, assets or templates of it are contained here. Details and the limits of that statement are in [docs/SPECIFICATION.md](docs/SPECIFICATION.md#origin). There are no runtime or build dependencies.
+The editor was written new for this project. A third-party single-file editor was studied as a reference for interaction concepts; no code, assets or templates of it are contained here. Details and the limits of that statement are in [docs/SPECIFICATION.md](docs/SPECIFICATION.md#origin). There are no runtime or build dependencies.
 
-Own code: MIT, see [LICENSE](LICENSE).
+Own code in this folder: MIT, see [LICENSE](LICENSE).

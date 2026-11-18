@@ -2,6 +2,8 @@
 
 Artefact: `dist/school-editor.html`, 132,525 bytes, SHA-256 `ef9585a6c323bf9913f7dff2baf8d475eb5eb70b0c4700f5545ba6c120385079`.
 
+Contract: [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md). The cases X-07, R-01 and R-02 were added by the implementer and are not part of that contract.
+
 MEASURED 2026-11-18 on Windows 11 Pro (10.0.26300) with Microsoft Edge **157.0.4341.60**, new headless mode, fresh browser profile per run, artefact opened from `file://`. Chrome: **NOT MEASURED** (not installed). Evidence with every single check: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json); the Chrome file records the missing measurement.
 
 Command for everything below: `node tests/run.mjs` (one case: `node tests/run.mjs --browser edge --only T-10`). Input is real: key and mouse events are sent through the DevTools protocol, files are opened through the file input of the page, downloads are real browser downloads whose bytes are read from disk. Where a mock is used it is named.

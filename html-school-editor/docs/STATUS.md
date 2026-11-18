@@ -1,8 +1,10 @@
 # Status
 
-**Version:** 0.1.0-alpha.1 · **Date:** 2026-11-18 · **Branch:** `feature/alpha-1` (local, not pushed)
+**Version:** 0.1.0-alpha.1 · **Date:** 2026-11-18 · **Location:** `html-school-editor/` in this repository, branch `import/html-school-editor-0.1.0-alpha.1`
 
 ## Verdict: HOLD
+
+The product was developed on 2026-11-18 in a stand-alone local repository and imported here with its commits on the same day. The delivered file is byte-identical to the one that was measured (same SHA-256).
 
 Every functional, data-integrity and security check that could be measured on the development machine passes. The product is not released, because three things are still open:
 
@@ -33,7 +35,7 @@ MEASURED 2026-11-18 · Windows 11 Pro (10.0.26300) · Node v24.22.1.
 | Acceptance T-01…T-17, X-01…X-07 | Edge 157.0.4341.60, headless, artefact from `file://` | 24 of 24 cases pass |
 | Robustness R-01, R-02 | same | 2 of 2 pass (R-02 runs the source modules in a test page, not the single file) |
 | All of the above | Chrome | **NOT MEASURED** (not installed) |
-| Publication check with the private deny-list | — | 0 findings |
+| Repository publication check (`scripts/check_publication.py`) with the private deny-list | whole repository, 326 files | 0 findings |
 
 In total 242 individual checks in Edge. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
 
@@ -46,7 +48,7 @@ In total 242 individual checks in Edge. Per-check results: [`tests/results/accep
 | Build and test tools | Node.js standard library only | — | no |
 | Fonts, icons, images | — | — | none (system fonts, text labels) |
 
-The reference editor that was studied is not a dependency. No part of it is contained in this repository. See [SPECIFICATION.md](SPECIFICATION.md#3-origin) for what was read and for the limits of that statement. Whether the reference may be reused is irrelevant for this artefact, because nothing of it is reused; the question would return only if someone wanted to copy a passage from it later.
+The reference editor that was studied is not a dependency. No part of it is contained in this folder. See [SPECIFICATION.md](SPECIFICATION.md#3-origin) for what was read and for the limits of that statement. Whether the reference may be reused is irrelevant for this artefact, because nothing of it is reused; the question would return only if someone wanted to copy a passage from it later.
 
 ## Open points
 
@@ -79,4 +81,4 @@ Each has a regression check. The first acceptance run on 2026-11-18 passed 16 of
 
 ## Next step
 
-Hand over to the independent review. After it: Chrome run, manual check of the native dialogs, then a decision about a release. No push, pull request or release has been made.
+Hand over to the independent review. After it: Chrome run, manual check of the native dialogs, then a decision about a release. The branch is published as a draft pull request for that review. Nothing is merged and there is no release.

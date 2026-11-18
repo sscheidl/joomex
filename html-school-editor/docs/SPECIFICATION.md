@@ -1,6 +1,6 @@
 # Specification
 
-Product: an offline HTML learning editor in one file. Audience: pupils of about 12–13 years in a computer-science class, and their teachers. This document states what the product does. How it is built is in [ARCHITECTURE.md](ARCHITECTURE.md); what was measured is in [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
+Product: an offline HTML learning editor in one file. Audience: pupils of about 12–13 years in a computer-science class, and their teachers. This document states what the product does. The numbered requirements it answers (P-, S-, T-, X- and RF- identifiers) are defined in the task brief: [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md) and [brief/REFERENCE_FINDINGS.md](brief/REFERENCE_FINDINGS.md). How it is built is in [ARCHITECTURE.md](ARCHITECTURE.md); what was measured is in [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
 
 ## 1. Behaviour
 
@@ -70,7 +70,7 @@ Product: an offline HTML learning editor in one file. Audience: pupils of about 
 
 ## 3. Origin
 
-A third-party single-file HTML editor served as a reference for interaction concepts. It is referred to as `[REFERENCE-APP]` (its accompanying notes as `[REFERENCE-NOTES]`); identity, revision and hashes are kept in a private analysis case and are not published. No general licence for reuse was found for it. Its source was read to understand how it works. This repository contains no code, assets, templates or texts of it; all files here were written for this project. No formal clean-room process is claimed: the author of this code has seen the reference source.
+A third-party single-file HTML editor served as a reference for interaction concepts. It is referred to as `[REFERENCE-APP]` (its accompanying notes as `[REFERENCE-NOTES]`); identity, revision and hashes are kept in a private analysis case and are not published. No general licence for reuse was found for it. Its source was read to understand how it works. This folder contains no code, assets, templates or texts of it; all files here were written for this project. No formal clean-room process is claimed: the author of this code has seen the reference source.
 
 Source ranges of `[REFERENCE-APP]` that were read for this work: lines 555–604 (layout) and 622–1219 (state, highlighter, preview rendering, write-back, selection mapping, toolbar, file handling, formatter). The parts on templates, minification, validation and autosave (after line 1219) were not re-read; statements about them rely on the earlier audit findings RF-08, RF-11, RF-12 and RF-14.
 

@@ -4,25 +4,28 @@ Implementer: Claude Code. Reviewer: Codex. This file says what exists, what the 
 
 ## Scope of this change
 
-New repository, branch `feature/alpha-1` on top of an initial licence commit on `main` (`git log main..feature/alpha-1`). Everything is new:
+Folder `html-school-editor/`, branch `import/html-school-editor-0.1.0-alpha.1` on top of `release/pdf-book-1.0.0`. The product was developed in a stand-alone local repository and imported with its commits (`git log release/pdf-book-1.0.0..HEAD`). Nothing outside this folder is changed except one row and one sentence in the root `README.md`. Everything in the folder is new:
 
 | Area | Files |
 | --- | --- |
 | Product sources | `src/app.html`, `src/style.css`, `src/js/*.js` (11 modules, about 2,500 lines) |
-| Build and hygiene | `tools/build.mjs`, `tools/check_publication.mjs`, `package.json` |
+| Build | `tools/build.mjs`, `package.json` |
 | Delivered file | `dist/school-editor.html` (132,525 bytes, SHA-256 `ef9585a6…385079`, full value in [STATUS.md](STATUS.md)) |
 | Tests | `tests/unit/core.test.mjs`, `tests/browser/{functional,security,robustness}.mjs`, `tests/lib/{cdp,harness}.mjs`, `tests/fixtures/*`, `tests/results/*.json` |
 | Documents | `README.md`, `AGENTS.md`, `docs/*` |
+| Task brief (written by Codex before the implementation, not a subject of this review) | `docs/brief/*` |
 
-Not done and not to be assumed: no push, no remote repository, no pull request, no release, no CI workflow.
+Not done and not to be assumed: no merge, no release, no CI workflow. The branch is published as a draft pull request so that it can be reviewed.
 
 ## Commands and what they printed
+
+Run in `html-school-editor/`:
 
 ```bash
 node tools/build.mjs --check            # up to date: dist/school-editor.html  132525 bytes  sha256 ef9585a6…
 node --test tests/unit/*.test.mjs       # tests 13, pass 13, fail 0
 node tests/run.mjs                      # edge: 26 passed, 0 not passed · chrome: NOT MEASURED (not installed)
-node tools/check_publication.mjs --denylist <private list>   # 0 finding(s)
+python ../scripts/check_publication.py --denylist <private list>   # checked 326 files; deny-list terms: 47; findings: 0
 ```
 
 Environment of these runs: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headless, 2026-11-18. The browser suite needs about three minutes; T-11 and R-01 take most of it.

@@ -1,6 +1,6 @@
 # Rules for agents and contributors
 
-These rules are binding for every contributor and every agent working in this repository.
+These rules are binding for every contributor and every agent working in this folder. They add to the repository-wide [RULES.md](../RULES.md); where both speak, the stricter rule applies.
 
 ## Product boundaries
 
@@ -13,7 +13,7 @@ These rules are binding for every contributor and every agent working in this re
 
 ## Work
 
-* Work on a branch. No push, pull request, merge, release or new CI workflow without the owner's explicit approval.
+* Work on a branch and merge by pull request, as RULES.md requires. No merge, release or new CI workflow without the owner's explicit approval.
 * Change sources under `src/`, then run `node tools/build.mjs`. Never edit `dist/` by hand. `node tools/build.mjs --check` must pass before a commit.
 * Every behaviour change needs a test with a concrete expectation. Run the unit tests and the affected browser cases while working, the complete suite at milestones.
 * A new version number for every changed artefact that leaves the repository.
@@ -28,6 +28,6 @@ These rules are binding for every contributor and every agent working in this re
 
 ## Publication
 
-* Everything committed here may become public. Before every commit run `node tools/check_publication.mjs --denylist <private list>`; the list lives outside the repository.
+* Everything committed here may become public. Before every commit run the repository's publication check from the repository root (`python scripts/check_publication.py --denylist <private list>`); the list lives outside the repository.
 * No code, assets, file names, hashes or product names of the studied reference editor. No names of schools, sites or persons, no local paths, no credentials.
 * Analysis working files (case notes, inventories, original sources) never enter this repository. The `local/` folder is ignored and stays local.

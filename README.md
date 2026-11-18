@@ -6,12 +6,13 @@ Independently written Joomla extensions: modules, plugins, templates.
 | --- | --- | --- |
 | [`pdf-book/`](pdf-book/) | `mod_pdfbook`: PDF flipbook module for Joomla 6, built on PDF.js 6.5.438 | Alpha, not for production |
 | [`research/legacy-flipbook/`](research/legacy-flipbook/) | Sanitized behaviour analysis of a legacy commercial flipbook module that `mod_pdfbook` replaces | Findings, no original material |
+| [`html-school-editor/`](html-school-editor/) | Offline single-file HTML learning editor for classroom use (stand-alone, not a Joomla extension), with its task brief and acceptance contract | Alpha, not released; independent review pending |
 
 Binding rules for this repository, including the publication check: [RULES.md](RULES.md).
 
 ## Licences
 
-Each extension folder carries its own licence file, and that licence applies to the extension. `pdf-book/` is GPL-3.0-or-later (bundled PDF.js: Apache-2.0). The repository-wide [LICENSE](LICENSE) applies to files not covered by a folder licence.
+Each extension folder carries its own licence file, and that licence applies to the extension. `pdf-book/` is GPL-3.0-or-later (bundled PDF.js: Apache-2.0). `html-school-editor/` is MIT and has no bundled third-party code. The repository-wide [LICENSE](LICENSE) applies to files not covered by a folder licence.
 
 ## Releases
 
