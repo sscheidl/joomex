@@ -10,7 +10,7 @@ New repository, branch `feature/alpha-1`, two commits on top of an initial licen
 | --- | --- |
 | Product sources | `src/app.html`, `src/style.css`, `src/js/*.js` (11 modules, about 2,500 lines) |
 | Build and hygiene | `tools/build.mjs`, `tools/check_publication.mjs`, `package.json` |
-| Delivered file | `dist/school-editor.html` (132,438 bytes, SHA-256 `5453d49e…a0ca55`, full value in [STATUS.md](STATUS.md)) |
+| Delivered file | `dist/school-editor.html` (132,525 bytes, SHA-256 `ef9585a6…385079`, full value in [STATUS.md](STATUS.md)) |
 | Tests | `tests/unit/core.test.mjs`, `tests/browser/{functional,security,robustness}.mjs`, `tests/lib/{cdp,harness}.mjs`, `tests/fixtures/*`, `tests/results/*.json` |
 | Documents | `README.md`, `AGENTS.md`, `docs/*` |
 
@@ -19,7 +19,7 @@ Not done and not to be assumed: no push, no remote repository, no pull request, 
 ## Commands and what they printed
 
 ```bash
-node tools/build.mjs --check            # up to date: dist/school-editor.html  132438 bytes  sha256 5453d49e…
+node tools/build.mjs --check            # up to date: dist/school-editor.html  132525 bytes  sha256 ef9585a6…
 node --test tests/unit/*.test.mjs       # tests 13, pass 13, fail 0
 node tests/run.mjs                      # edge: 26 passed, 0 not passed · chrome: NOT MEASURED (not installed)
 node tools/check_publication.mjs --denylist <private list>   # 0 finding(s)

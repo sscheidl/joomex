@@ -17,8 +17,8 @@ There is no known failing check and no known rights problem in the delivered fil
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **132,438 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
-| SHA-256 | `5453d49ec893fb5ebb1e1d55391c3d51353df0b92126076d8945821e55a0ca55` |
+| Size | **132,525 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| SHA-256 | `ef9585a6c323bf9913f7dff2baf8d475eb5eb70b0c4700f5545ba6c120385079` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
 The size and hash are those of the run recorded in `tests/results/acceptance-edge.json`. If the sources change, rebuild and re-run; `--check` and the result file state the current values.

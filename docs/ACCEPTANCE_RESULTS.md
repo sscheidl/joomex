@@ -1,6 +1,6 @@
 # Acceptance results
 
-Artefact: `dist/school-editor.html`, 132,438 bytes, SHA-256 `5453d49ec893fb5ebb1e1d55391c3d51353df0b92126076d8945821e55a0ca55`.
+Artefact: `dist/school-editor.html`, 132,525 bytes, SHA-256 `ef9585a6c323bf9913f7dff2baf8d475eb5eb70b0c4700f5545ba6c120385079`.
 
 MEASURED 2026-11-18 on Windows 11 Pro (10.0.26300) with Microsoft Edge **157.0.4341.60**, new headless mode, fresh browser profile per run, artefact opened from `file://`. Chrome: **NOT MEASURED** (not installed). Evidence with every single check: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json); the Chrome file records the missing measurement.
 
@@ -17,7 +17,7 @@ Command for everything below: `node tests/run.mjs` (one case: `node tests/run.mj
 | P-03 | Full source left, editable page right, both visible | `src/app.html`, `src/js/app.js:101`, `:201` | T-02, T-03 | PASS |
 | P-04 | New, open, save/download, format, blocks, bold/italic, lists, links, images with alt, undo/redo, keyboard, umlauts | `src/js/app.js`, `src/js/commands.js` | T-01, T-04…T-08, T-10, T-13 | PASS |
 | P-05 | Plain tags, valid nesting, no spans/fonts/inline CSS; documented choice `<b>`/`<i>` | `src/js/serialize.js:179`, `src/js/commands.js:255` | T-04, T-05 | PASS |
-| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 132,438 bytes |
+| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 132,525 bytes |
 | P-07 | No mail tools, minify, templates with remote content, tracking, persistence | — | X-06, T-17 | PASS |
 
 ## Safety and data model
