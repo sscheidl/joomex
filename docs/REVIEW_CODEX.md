@@ -4,7 +4,7 @@ Implementer: Claude Code. Reviewer: Codex. This file says what exists, what the 
 
 ## Scope of this change
 
-New repository, branch `feature/alpha-1`, two commits on top of an initial licence commit. Everything is new:
+New repository, branch `feature/alpha-1` on top of an initial licence commit on `main` (`git log main..feature/alpha-1`). Everything is new:
 
 | Area | Files |
 | --- | --- |
