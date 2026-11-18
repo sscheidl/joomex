@@ -1,0 +1,45 @@
+artefact 132525 bytes sha256 ef9585a6c323bf9913f7dff2baf8d475eb5eb70b0c4700f5545ba6c120385079
+
+edge: Edg/157.0.4341.60
+PASS  T-01  fresh offline start from file://, both panes edit  (6 checks, 748 ms)
+PASS  T-02  source <-> preview on a full document keeps head, comments and attributes  (4 checks, 643 ms)
+PASS  T-03  selection in each pane maps to the right place, focus stays where the user works  (8 checks, 1087 ms)
+PASS  T-04  heading, paragraph, bold, italic produce plain tags and keep children/attributes  (13 checks, 1675 ms)
+PASS  T-05  lists: create, add items, switch kind, remove; valid nesting; reopen  (9 checks, 827 ms)
+PASS  T-06  links and local raster images; text inputs stay data  (21 checks, 2908 ms)
+PASS  T-07  explicit formatting changes white space only and is verified  (15 checks, 778 ms)
+        · malformed document: formatter accepted it after verification
+PASS  T-08  open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted  (19 checks, 1055 ms)
+PASS  T-09  open -> visual edit -> download keeps doctype, head, inactive content and untouched markup  (10 checks, 1542 ms)
+PASS  T-10  saving immediately after the last keystroke in the page contains that keystroke  (13 checks, 1863 ms)
+PASS  T-11  rapid alternating edits never lose the newer text  (3 checks, 24148 ms)
+PASS  T-12  long document: fast typing, caret, scroll, toolbar selection, composition  (11 checks, 3524 ms)
+        · document size: 146008 characters, 1500 paragraphs
+        · typing speed: 162 keystrokes sent in 1779 ms, panes in sync after 2042 ms
+PASS  T-13  one undo/redo history across source edits, page edits and toolbar commands  (13 checks, 3999 ms)
+PASS  T-14  malformed, incomplete, empty and oversized input  (15 checks, 11003 ms)
+PASS  T-15  new/open/drop while unsaved, failed open, outdated operations  (11 checks, 1902 ms)
+        · drop of an HTML file on the window: opened
+PASS  T-16  Save falls back to a real download when direct file access is missing  (3 checks, 388 ms)
+        · native open/save pickers and write-back to a real file handle: NOT MEASURED (cannot be driven by this harness); handle logic is covered with a labelled mock in T-10 and T-15
+PASS  T-17  no persistence between sessions  (2 checks, 817 ms)
+PASS  X-01  scripts and event handlers of an opened file never run and cannot reach the editor  (9 checks, 1998 ms)
+PASS  X-02  links, refresh, base, forms, frames and popups cannot navigate or submit  (16 checks, 4716 ms)
+        · editable page: request attempts seen by the browser: []
+        · read-only page: request attempts seen by the browser: []
+PASS  X-03  no external resource of an opened document is fetched  (5 checks, 3482 ms)
+        · request attempts reported by the browser: 11: ["/x03/css-import.css","/x03/css-import-2.css","/x03/svg-style-import.css","/x03/font.woff2","/x03/css-body-bg.png","/x03/cursor.cur","/x03/inline-style-bg.png","/x03/css-content.png","/x03/list-style.png","/x03/border-image.png","/x03/image-set.png"]
+        · policy blocks reported by the browser: 27: ["/x03/css-import.css","/x03/css-import-2.css","/x03/svg-style-import.css","/x03/font.woff2","/x03/css-body-bg.png","/x03/cursor.cur","/x03/inline-style-bg.png","/x03/css-content.png","/x03/list-style.png","/x03/border-image.png","/x03/image-set.png","/x03/track.vtt"]
+PASS  X-04  pasting rich content and markup-shaped text fields create no active content  (7 checks, 1156 ms)
+        · trusted clipboard paste: pasted as plain text
+PASS  X-07  element names that shadow DOM properties do not disturb the editor  (8 checks, 1080 ms)
+PASS  X-05  no message bridge exists  (1 checks, 2 ms)
+PASS  X-06  static scan of the delivered file  (11 checks, 4 ms)
+        · innerHTML assignments: 3 (escaped highlight lines in the editor chrome and the character-reference decoder in an inert document)
+        · size: 132525 bytes
+PASS  R-01  corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe  (3 checks, 30968 ms)
+        · corpus statistics: {"documents":44,"locked":2,"withReadOnlyParts":1,"edits":92,"exact":91,"whitespaceOnly":1,"formatted":42,"formatRefused":0}
+        · examples of white-space-only side effects in the edited text: korpus-32.html: "   " -> "Q"
+PASS  R-02  source modules: round-trip properties on generated documents (module-level test page, not the single file)  (6 checks, 836 ms)
+        · generated corpus: 3044 documents, 2128 editable after comparison with the browser parser, 984 single-character edits
+edge: 26 passed, 0 not passed
