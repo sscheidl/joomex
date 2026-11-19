@@ -34,6 +34,8 @@ function isClean(ctx, node) {
 }
 
 const mappedT = (ctx, node) => { const inf = ctx.info.get(node); return inf ? inf.t : null; };
+// True if source node `t` still sits in the element it was written in (`pt`: source node of its parent now).
+const inPlace = (t, pt) => !!pt && (t.parent === pt || (!!pt.virtual && t.parent === pt.parent));
 
 function mark(ctx, el, i, atEnd) {
   for (const p of ctx.points) if (p.out == null && p.node === el && (atEnd ? p.offset >= i : p.offset === i)) p.out = ctx.s.length;
@@ -51,7 +53,7 @@ function freshLine(ctx, indent) {
 function childIndent(ctx, el, t, parentIndent) {
   for (const c of Array.from(el.childNodes)) {
     const ct = mappedT(ctx, c);
-    if (ct && ct.type === 'el' && !ct.implied && !ct.synthetic) {
+    if (ct && ct.type === 'el' && !ct.implied && !ct.synthetic && inPlace(ct, t)) {
       const ind = lineIndentAt(ctx.src, ct.start);
       if (ind != null) return ind;
       break;
@@ -82,6 +84,9 @@ function emitKids(ctx, el, t, parentIndent) {
         continue;
       }
     }
+    // A block that was changed itself (a list that lost its first item) and now follows a new block starts on
+    // its own line. An untouched neighbour keeps the exact text around it.
+    if (newBlockLast && kids[i].nodeType === 1 && BLOCKS.has(kids[i].localName) && mappedT(ctx, kids[i]) && !isClean(ctx, kids[i])) freshLine(ctx, indent);
     newBlockLast = emitNode(ctx, kids[i], indent);
   }
   mark(ctx, el, kids.length, true);
@@ -180,6 +185,7 @@ function emitNew(ctx, c, indent) {
   if (c.hasAttribute('data-se-box')) return false;
   let name = c.localName;
   const known = c.namespaceURI === HTML_NS && NEW_OK.has(name);
+  const copy = !!(ctx.info.get(c) || {}).copy;       // second half of a divided list: attributes of the first
   let attrs = '';
   if (known) {
     for (const a of Array.from(c.attributes)) {
@@ -187,7 +193,7 @@ function emitNew(ctx, c, indent) {
       let outName = n;
       if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(a.value)) continue; outName = 'href'; }
       else if (n === 'src') { if (name !== 'img' || !isRasterDataUrl(a.value)) continue; }
-      else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'style' || n === 'id' || n === 'href' || n === 'contenteditable') continue;
+      else if (n.startsWith('on') || n.startsWith('data-se-') || (n === 'style' && !copy) || n === 'id' || n === 'href' || n === 'contenteditable') continue;
       else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
       attrs += ' ' + outName + '="' + escapeAttr(a.value) + '"';
     }
@@ -227,14 +233,18 @@ function emitNode(ctx, c, indent) {
   ctx.s += src.slice(t.lead, t.start);
   if (t.implied) { emitKids(ctx, c, t, indent); return false; }
   const name = inf.rename || t.name;
+  // A renamed element that was moved (paragraph into a new list, list item out of its list) starts on a line
+  // of its own, like a new block. Renamed in place, the white space around it stays as written.
+  const moved = !!inf.rename && BLOCKS.has(name) && !inPlace(t, mappedT(ctx, c.parentNode));
+  if (moved) freshLine(ctx, indent);
   ctx.s += t.synthetic ? '<' + name + '>' : inf.rename ? '<' + name + src.slice(t.nameEnd, t.tagEnd) : src.slice(t.start, t.tagEnd);
   if (VOID_TAGS.has(name)) return false;
-  const own = lineIndentAt(src, t.start);
+  const own = moved ? null : lineIndentAt(src, t.start);
   emitKids(ctx, c, t, own == null ? indent : own);
   if (inf.rename) ctx.s += '</' + name + '>';
   else if (t.explicitEnd) ctx.s += src.slice(t.closeStart, t.end);
   else if (t.synthetic || needsEndTag(ctx, c, t)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
-  return false;
+  return moved;
 }
 
 // Content without a visible counterpart (comments, scripts, style and similar elements) must not disappear from
@@ -242,27 +252,29 @@ function emitNode(ctx, c, indent) {
 // text. Such stand-ins are put back next to their surviving neighbours before the text is written.
 export function rescueHidden(view) {
   let moved = false;
-  const walk = (t, pvParent, cursor) => {
+  // `lost`: the element of `t` itself is gone, its content is looked at from the surviving parent.
+  const walk = (t, pvParent, cursor, lost) => {
     for (const k of t.mk || []) {
       const pv = k.pv;
       if (!pv) continue;
       if (k.hidden) {
         if (!pv.isConnected) {
+          if (k.dropped) continue;                                                 // removed on purpose by a command
           const next = cursor ? cursor.nextSibling : pvParent.firstChild;
           const blank = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
-          if (pv.nodeType === 3 && (blank(cursor) || blank(next))) continue;      // no runs of empty lines
+          if (pv.nodeType === 3 && (lost || blank(cursor) || blank(next))) continue;      // no runs of empty lines, no indentation of a removed element
           pvParent.insertBefore(pv, next);
           moved = true;
         }
         if (pv.parentNode === pvParent) cursor = pv;
       } else if (pv.isConnected) {
         if (pv.parentNode === pvParent) cursor = pv;
-        if (k.type === 'el' && k.ok) walk(k, pv, null);
-      } else if (k.type === 'el' && k.ok) cursor = walk(k, pvParent, cursor);
+        if (k.type === 'el' && k.ok) walk(k, pv, null, false);
+      } else if (k.type === 'el' && k.ok) cursor = walk(k, pvParent, cursor, true);
     }
     return cursor;
   };
-  if (view.ok) walk(view.body, view.body.pv, null);
+  if (view.ok) walk(view.body, view.body.pv, null, false);
   return moved;
 }
 

@@ -17,7 +17,9 @@ const LOCKED = words('svg math select textarea input button canvas style');
 const DROP_ATTRS = words('contenteditable autofocus srcdoc formaction action ping background poster data manifest http-equiv target sandbox integrity nonce srcset imagesrcset imagesizes sizes lowsrc dynsrc codebase archive classid code is');
 const LEADING_LF = words('pre textarea listing');
 const NAMED = words('img form embed object iframe');
-const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import/i;
+// SVG animation can assign an address to an attribute after the attributes were filtered, so it is not shown.
+const ANIM = words('set animate animatemotion animatetransform animatecolor discard');
+const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import|image-set\s*\(/i;
 
 const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
 
@@ -130,7 +132,7 @@ function matchKids(src, t, d, isTail) {
 // ---------------------------------------------------------------- inactive content report
 
 function newReport() {
-  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0 };
+  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0 };
 }
 
 export function reportText(r) {
@@ -138,9 +140,11 @@ export function reportText(r) {
   const add = (n, one, many) => { if (n) parts.push(n === 1 ? one : n + ' ' + many); };
   add(r.scripts + r.handlers, '1 Skript', 'Skripte');
   add(r.images, '1 Bild von außerhalb', 'Bilder von außerhalb');
-  add(r.sheets + r.css, '1 externe CSS-Datei', 'externe CSS-Dateien');
+  add(r.sheets, '1 externe CSS-Datei', 'externe CSS-Dateien');
+  add(r.css, '1 Adresse im CSS', 'Adressen im CSS');
   add(r.frames, '1 eingebetteter Inhalt', 'eingebettete Inhalte');
   add(r.forms, '1 Formular', 'Formulare');
+  add(r.anims, '1 Animation', 'Animationen');
   add(r.refresh + r.other, '1 weiterer Verweis', 'weitere Verweise');
   return parts.join(', ');
 }
@@ -166,6 +170,7 @@ function safeAttrs(d, name, html, rep) {
     } else if (ln === 'style') {
       if (CSS_FETCH.test(v)) rep.css++;
     } else if (ln === 'title') hasTitle = true;
+    else if (!html && CSS_FETCH.test(v)) rep.css++;            // SVG presentation attributes take CSS values
     out.push([n, v]);
   }
   if (blockedImage !== null) {
@@ -188,6 +193,7 @@ function describe(d, t, st) {
     else if (name === 'frame' || name === 'frameset') rep.frames++;
     return { k: 8, data: 'se:' + name };
   }
+  if (!html && ANIM.has(name.toLowerCase())) { rep.anims++; return { k: 8, data: 'se:' + name }; }
   if (html && BOX[name]) {
     rep.frames++;
     return { k: 1, name: 'span', ns: HTML_NS, attrs: [['contenteditable', 'false'], ['data-se-box', '']], fixed: BOX[name] + ' (im Editor ausgeschaltet)' };
@@ -197,7 +203,7 @@ function describe(d, t, st) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
     if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
   } else if (LOCKED.has(name)) attrs.push(['contenteditable', 'false']);
-  if (html && name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
+  if (name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
   if (html && name === 'form') {
     // A real form element would let its controls shadow DOM properties and could be submitted; a plain block
     // stands in for it. The source keeps the form unchanged.
@@ -429,4 +435,49 @@ export function canonDom(doc, blockNames, keepNames) {
   out += docMode(doc);
   for (const k of toks) out += k.text != null ? (k.text === '' ? '' : JSON.stringify(k.text)) : k.s;
   return out;
+}
+
+// What the style rules of a parsed document say about white space. `spaces`: some rule may make every space
+// count (anything but the collapsing values of white-space). `external`: rules come from a file the editor
+// does not read. Comments and escapes are resolved first, as the browser does before it reads a property name.
+export function cssFacts(dom) {
+  let css = '', external = false;
+  const walk = (node) => {
+    for (const c of childrenOf(node)) {
+      if (typeOf(c) !== 1) continue;
+      const name = nameOf(c);
+      if (name === 'style') css += textOf(c) + '\n';
+      else if (name === 'link' && /stylesheet/i.test(attrOf(c, 'rel') || '')) external = true;
+      const own = attrOf(c, 'style');
+      if (own) css += '{' + own + '}\n';
+      walk(c);
+    }
+  };
+  walk(dom);
+  css = css.replace(/\/\*[^]*?\*\//g, ' ').replace(/\\([0-9a-f]{1,6})[ \t\n\f\r]?|\\([^\n])/gi,
+    (m, hex, ch) => (hex ? String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff) || 0xfffd) : ch));
+  if (/@import/i.test(css)) external = true;
+  let spaces = false;
+  const decl = /(?:white-space(?:-collapse)?|text-space-collapse)\s*:([^;{}]*)/gi;
+  for (let m; (m = decl.exec(css));) {
+    if (!/^(?:\s*(?:normal|nowrap|collapse|wrap|balance|pretty|stable|initial|inherit|unset|revert|revert-layer|!\s*important))*\s*$/i.test(m[1])) spaces = true;
+  }
+  return { external, spaces };
+}
+
+// Where every element box and every rendered piece of text of a laid-out document lies, in quarter pixels.
+// Two versions of a page that differ only in white space look the same exactly if these lists are equal: white
+// space that is not rendered has no box, white space that is rendered moves something or has a box itself.
+export function layoutPrint(doc) {
+  const out = [];
+  const add = (r) => { out.push(Math.round(r.left * 4), Math.round(r.top * 4), Math.round(r.width * 4), Math.round(r.height * 4)); };
+  const range = doc.createRange();
+  const walker = doc.createTreeWalker(doc.documentElement, 5);
+  for (let n = walker.currentNode; n; n = walker.nextNode()) {
+    if (n.nodeType === 1) { add(n.getBoundingClientRect()); continue; }
+    range.selectNodeContents(n);
+    const r = range.getBoundingClientRect();
+    if (r.width || r.height || /[^ \t\n\f\r]/.test(n.data)) add(r);
+  }
+  return out.join(',');
 }

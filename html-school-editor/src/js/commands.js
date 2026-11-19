@@ -91,7 +91,8 @@ function wrapRun(doc, run, tag) {
 }
 
 // Replaces an element by one with another tag name. Children are moved, not copied. If the element came from
-// the source text, the mapping keeps pointing at it so its attributes are written back unchanged.
+// the source text, the mapping keeps pointing at it so its attributes are written back unchanged, also when
+// the renamed element is moved to another place afterwards.
 function rename(env, el, tag, keep) {
   const fresh = env.doc.createElement(tag);
   for (const a of Array.from(el.attributes)) { try { fresh.setAttribute(a.name, a.value); } catch (e) { /* skip */ } }
@@ -126,26 +127,57 @@ export function setBlock(env, tag) {
   return changed ? 'ok' : 'same';
 }
 
+// Removes a white-space text between blocks for good (rescueHidden() in serialize.js would put it back).
+function dropSpace(env, n) {
+  if (!n || n.nodeType !== 3 || /\S/.test(n.data)) return false;
+  const inf = env.info.get(n);
+  if (inf && inf.t) inf.t.dropped = true;
+  n.remove();
+  return true;
+}
+
+// True if the element carries attributes: in the page, or only in the source text (some are not shown).
+function hasAttrs(env, el) {
+  if (el.attributes.length) return true;
+  const inf = env.info.get(el), t = inf && inf.t;
+  return !!t && !t.synthetic && !t.implied && /[^ \t\n\f\r\/]/.test(env.src.slice(t.nameEnd, t.tagEnd - 1));
+}
+
+// List items back to paragraphs. Attributes are never dropped: an item is renamed (rename() keeps its start
+// tag as written), an item that holds blocks and has attributes becomes a div, and a list with attributes
+// that loses all its items stays as a div around the paragraphs. If items remain, the original list element
+// keeps them where possible: in front of the paragraphs, or behind them when the first item was taken out.
 function unlist(env, items, keep) {
   const doc = env.doc, list = items[0].parentNode, parent = list.parentNode;
-  const ref = list.nextSibling;
-  const rest = [];
-  for (let n = items[items.length - 1].nextSibling; n; n = n.nextSibling) rest.push(n);
+  const holdsBlocks = (li) => Array.from(li.children).some((k) => BLOCKS.has(k.localName));
+  const stay = Array.from(list.children).every((c) => items.includes(c)) && hasAttrs(env, list);
+  const head = !items[0].previousElementSibling;
+  const ref = head ? list : list.nextSibling;
   let second = null;
-  if (rest.some((n) => n.nodeType === 1)) { second = doc.createElement(list.localName); for (const n of rest) second.appendChild(n); }
-  else for (const n of rest) n.remove();
-  for (const li of items) {
-    if (Array.from(li.children).some((k) => BLOCKS.has(k.localName))) {
-      while (li.firstChild) parent.insertBefore(li.firstChild, ref);
-    } else {
-      const p = doc.createElement('p');
-      while (li.firstChild) p.appendChild(li.firstChild);
-      if (!p.firstChild) p.appendChild(doc.createElement('br'));
-      parent.insertBefore(p, ref);
-      if (keep) { if (keep.an === li) keep.an = p; if (keep.fn === li) keep.fn = p; }
-    }
-    li.remove();
+  if (!stay && !head) {
+    const rest = [];
+    for (let n = items[items.length - 1].nextSibling; n; n = n.nextSibling) rest.push(n);
+    if (rest.some((n) => n.nodeType === 1)) {
+      // The items behind the selection continue in a list of their own with the same attributes (an id exists once).
+      second = doc.createElement(list.localName);
+      for (const a of Array.from(list.attributes)) if (a.name !== 'id') { try { second.setAttribute(a.name, a.value); } catch (e) { /* skip */ } }
+      env.info.set(second, { t: null, copy: true });
+      for (const n of rest) second.appendChild(n);
+    } else for (const n of rest) n.remove();
   }
+  for (const li of items) {
+    const blocks = holdsBlocks(li);
+    if (head && !stay) dropSpace(env, li.previousSibling);      // its line break would double the next item's
+    if (blocks && !hasAttrs(env, li)) {
+      while (li.firstChild) (stay ? list : parent).insertBefore(li.firstChild, stay ? li : ref);
+      li.remove();
+      continue;
+    }
+    const el = rename(env, li, blocks ? 'div' : 'p', keep);
+    if (!el.firstChild) el.appendChild(doc.createElement('br'));
+    if (!stay) parent.insertBefore(el, ref);
+  }
+  if (stay) { rename(env, list, 'div', keep); return; }
   if (second) parent.insertBefore(second, ref);
   if (!list.children.length) list.remove();
 }
@@ -179,13 +211,9 @@ export function toggleList(env, type) {
   parent.insertBefore(list, targets[0]);
   let lastLi = null;
   for (const el of targets) {
-    for (let n = el.previousSibling; n && n !== list && n.nodeType === 3 && !/\S/.test(n.data) && lastLi; n = el.previousSibling) n.remove();
-    const li = doc.createElement('li');
-    while (el.firstChild) li.appendChild(el.firstChild);
-    list.appendChild(li);
-    el.remove();
-    if (keep) { if (keep.an === el) keep.an = li; if (keep.fn === el) keep.fn = li; }
-    lastLi = li;
+    while (lastLi && el.previousSibling !== list && dropSpace(env, el.previousSibling)) { /* line breaks between neighbouring items */ }
+    lastLi = rename(env, el, 'li', keep);       // the item keeps the paragraph's attributes as written
+    list.appendChild(lastLi);
   }
   if (placed && keep && !keep.an.isConnected) placeCaretIn(doc, lastLi); else restoreSel(doc, keep);
   return 'ok';

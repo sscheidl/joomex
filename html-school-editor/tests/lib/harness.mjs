@@ -68,6 +68,8 @@ export class Checks {
     return this.ok(pass, label, pass ? undefined : 'expected ' + JSON.stringify(expected).slice(0, 280) + ' got ' + JSON.stringify(actual).slice(0, 280));
   }
   note(label, detail) { this.items.push({ pass: true, note: true, label, detail: String(detail).slice(0, 900) }); }
+  // A part of the case that could not be carried out. It is reported as NOT MEASURED and never counts as passed.
+  skip(label, reason) { this.items.push({ pass: true, note: true, notMeasured: true, label, detail: 'NOT MEASURED: ' + String(reason).slice(0, 600) }); }
   get failed() { return this.items.filter((i) => !i.pass); }
 }
 
@@ -107,10 +109,32 @@ export class Editor {
       .map((e) => (e.params.exceptionDetails ? (e.params.exceptionDetails.exception && e.params.exceptionDetails.exception.description) || e.params.exceptionDetails.text : e.params.entry.text));
   }
 
-  // Loads a file through the real file input (FileReader path of the product).
+  // Loads a file through the real file input. Over unsaved work the product asks first; a test that simply
+  // moves on to its next document answers like a pupil who agrees. The question itself is the subject of T-15
+  // and RV-01, which pass `wait: false` and handle the dialog themselves.
   async openFile(file, { wait = true } = {}) {
     await this.page.setFiles('#fileIn', [file]);
-    if (wait) { await this.until('document.getElementById("docName").textContent === ' + JSON.stringify(path.basename(file)), 'file opened'); await this.synced(); }
+    if (!wait) return;
+    const opened = 'document.getElementById("docName").textContent === ' + JSON.stringify(path.basename(file));
+    await this.until(opened + ' || document.getElementById("dlgConfirm").open', 'file opened or question shown');
+    if (await this.dialogOpen('dlgConfirm')) await this.dialogButton('dlgConfirm', 'Änderungen verwerfen');
+    await this.until(opened, 'file opened');
+    await this.synced();
+  }
+  // Clicks "Code aufräumen" and waits for the outcome: 'applied', 'tidy' (nothing to do), 'aborted' or
+  // 'refused' (with the explanation shown to the pupil; the dialog is closed).
+  async format() {
+    await this.eval('document.getElementById("msg").textContent = ""');
+    await this.click('bFormat');
+    await this.until('document.getElementById("dlgInfo").open || /aufgeräumt|abgebrochen/.test(document.getElementById("msg").textContent)', 'formatting finished', 10000);
+    if (await this.dialogOpen('dlgInfo')) {
+      const text = await this.eval('document.getElementById("infoText").textContent');
+      await this.dialogButton('dlgInfo', 'OK');
+      return { outcome: 'refused', text };
+    }
+    const text = await this.status();
+    await this.synced();
+    return { outcome: text.includes('schon') ? 'tidy' : text.includes('abgebrochen') ? 'aborted' : 'applied', text };
   }
   async openText(name, text) { const file = tmpFile(name, text); await this.openFile(file); return file; }
 

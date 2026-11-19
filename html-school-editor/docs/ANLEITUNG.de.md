@@ -49,7 +49,7 @@ Mit **Herunterladen** bekommst du eine Kopie in den Ordner „Downloads“.
 * **Rückgängig** (Strg+Z) nimmt den letzten Schritt zurück. **Wiederholen** (Strg+Y) holt ihn wieder.
 * **Rechts lässt sich nichts mehr schreiben?** Dann ist im Code links etwas nicht richtig geschlossen, zum Beispiel fehlt ein `</p>`. Der Editor zeigt dann einen Hinweis. Korrigiere den Code links.
 * **Eine Stelle hat einen gestrichelten Rahmen?** Diese Stelle kannst du nur links im Code ändern.
-* **Code aufräumen** rückt den Code ordentlich ein. Am Inhalt ändert sich nichts.
+* **Code aufräumen** rückt den Code ordentlich ein. Am Inhalt ändert sich nichts. Würde deine Seite danach anders aussehen (das kann am CSS liegen), lässt der Editor den Code, wie er ist, und sagt dir warum.
 
 ## Was der Editor nicht anzeigt
 

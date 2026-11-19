@@ -2,7 +2,7 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.1 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 0.1.0-alpha.2 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 ## Use
 
@@ -13,7 +13,7 @@ What the editor does:
 * New page, open an HTML file, save, download a copy.
 * Edit in either pane; the other pane follows. The source text is always the complete document.
 * Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, links, images from the computer (embedded, with alternative text).
-* One undo/redo history for both panes. "Code aufräumen" indents the source without changing anything but white space.
+* One undo/redo history for both panes. "Code aufräumen" indents the source; it is applied only if the page looks exactly the same afterwards, otherwise the code stays as it is and the editor says why.
 * Scripts, forms, frames and anything from the network are switched off inside the editor and stay untouched in the source.
 
 What it deliberately does not do: no autosave or recovery after closing, no templates, no CSS tools, no multi-file projects, no preview window that runs scripts.
@@ -45,7 +45,8 @@ A locally branded copy (different product name in the title bar) can be built wi
 | [docs/SECURITY.md](docs/SECURITY.md) | Trust boundary, sandbox and policy, what is measured |
 | [docs/ACCEPTANCE_RESULTS.md](docs/ACCEPTANCE_RESULTS.md) | Requirement → code → test → measured result |
 | [docs/STATUS.md](docs/STATUS.md) | Current state, artefact size and hash, open points, licences |
-| [docs/REVIEW_CODEX.md](docs/REVIEW_CODEX.md) | Hand-over for the independent review |
+| [docs/REVIEW_CODEX.md](docs/REVIEW_CODEX.md) | Hand-over for the independent review of the current version |
+| [docs/reviews/](docs/reviews/) | Independent reviews of earlier versions, with the reviewer's probes |
 | [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md) | Guide for pupils (German) |
 | [docs/brief/](docs/brief/) | The task brief this product was built from, with the numbered acceptance contract and the sanitized findings about the reference editor |
 

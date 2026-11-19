@@ -54,6 +54,8 @@ section { display: flex; flex-direction: column; min-width: 0; min-height: 0; ba
 #fmt .b { font-weight: 700; min-width: 34px; } #fmt .i { font-style: italic; min-width: 34px; font-family: Georgia, serif; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }
+/* off-screen copy of the page pane, used to compare layouts before "tidy up" is applied */
+iframe.probe { position: fixed; left: -300vw; top: 0; border: 0; visibility: hidden; pointer-events: none; }
 .note { padding: 5px 12px; font-size: 13px; color: var(--soft); background: var(--panel); border-top: 1px solid var(--line); }
 .note.warn { color: var(--warn-ink); background: var(--warn-bg); border-top: 0; border-bottom: 1px solid #f0d58a; }
 

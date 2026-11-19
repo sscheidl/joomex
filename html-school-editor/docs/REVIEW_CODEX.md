@@ -1,124 +1,124 @@
-# Review request: HTML School Editor 0.1.0-alpha.1
+# Re-review request: HTML School Editor 0.1.0-alpha.2
 
 Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository.
 
-This is a quality review of the owner's own software: an offline learning editor that pupils open as a single local file. The review is about correctness, about not losing a pupil's work, and about confirming that the editor's protective design works as documented. Nothing here is a review result; the implementer's own tests are not a review.
+Version 0.1.0-alpha.1 was reviewed and failed: [reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04. This version contains the corrections. The request is to check whether each finding is really corrected, whether the corrections broke something else, and whether the new tests show what they claim. Nothing here is a review result; the implementer's own tests are not a review.
 
 ## What kind of review this is
 
-* **Own code, own machine, offline.** Everything under review is in this folder. The product talks to no server and has no accounts, no network features and no users other than the pupil in front of it. No third-party system is involved or tested.
-* **Checking safeguards that already exist.** The editor displays HTML documents that pupils open. Its design goal is that such a document is only displayed: its scripts do not run, its links are not followed, nothing is loaded from the network. The review asks whether this goal is met and whether the existing checks demonstrate it. The only material needed is ordinary HTML test documents for this editor.
-* **The test documents are inert samples.** `tests/browser/security.mjs` builds HTML pages containing script elements, event attributes and addresses that point to a counting server on `127.0.0.1` started by the test run itself. Their only purpose is to show that the editor leaves all of it passive; a passing run means that nothing ran and the local counter stayed at zero.
-* **Parts are independent.** The review has four parts (A–D below). If one part cannot be carried out for any reason, record it as `NOT REVIEWED` with the reason and complete the others. A partial review with clear limits is useful; a refused whole is not.
+* **Own code, own machine, offline.** This is a quality review of the owner's own software: an offline learning editor that pupils open as a single local file. Everything under review is in this folder. The product talks to no server and has no accounts and no network features. No third-party system is involved or tested.
+* **Checking safeguards that already exist.** The editor displays HTML documents that pupils open. Its design goal is that such a document is only displayed: its scripts do not run, its links are not followed, nothing is loaded from the network. The test documents are inert samples for this editor; addresses in them point to a counting server on `127.0.0.1` that the test run starts itself. A passing run means that nothing ran and the local counter stayed at zero.
+* **Parts are independent.** The request has one part per finding (RV-01 to RV-04) and a part about the tests. If a part cannot be carried out for any reason, record it as `NOT REVIEWED` with the reason and complete the others.
 
-## State of the repository (read this before starting)
+## State of the repository
 
-* **Location.** Folder `html-school-editor/` in this repository, branch `import/html-school-editor-0.1.0-alpha.1`, draft pull request 13, stacked on `release/pdf-book-1.0.0`. The product was developed in a stand-alone local repository on 2026-11-18 and imported with its commits; outside the folder only the root `README.md` changed (one row, one sentence).
-* **History was rewritten on 2026-11-18.** On the owner's instruction, four branches were rewritten to replace a private commit address and were force-pushed: `review/pdf-book-0.1.0-alpha.18`, `review/pdf-book-0.1.0-alpha.19`, `release/pdf-book-1.0.0` and `import/html-school-editor-0.1.0-alpha.1`. File contents, messages and dates are unchanged; **the commit hashes of these branches are new**. Eleven annotated tags (`pdf-book-v0.1.0-alpha.9` to `alpha.19`) were recreated with the same targets.
-* **Do not use anything created before that.** A clone, branch or worktree made earlier still has the old commits in its ancestry and must not be pushed. Start from a fresh fetch:
+* **Branch** `fix/html-school-editor-0.1.0-alpha.2`, created from the tip of `review/html-school-editor-0.1.0-alpha.1` (the review of alpha.1, pull request 14), which is stacked on `import/html-school-editor-0.1.0-alpha.1` (pull request 13). The review document, the reviewer's probe script and its result files are on this branch unchanged.
+* **Changed since alpha.1:** `src/js/app.js`, `commands.js`, `project.js`, `serialize.js`, `src/style.css`, `package.json`, `dist/school-editor.html`; tests: `tests/browser/review.mjs` (new), `functional.mjs`, `security.mjs`, `robustness.mjs`, `tests/lib/harness.mjs`, `tests/run.mjs`, `tests/results/acceptance-*.json`; documents in `docs/` and `README.md`. Not changed: `tokenizer.js`, `tree.js`, `format.js`, `highlight.js`, `history.js`, `images.js`, `util.js`, `src/app.html`, `tools/build.mjs`, the unit tests, the fixtures, `docs/brief/*`, `docs/reviews/*`.
+* **Start from a fresh fetch**, as for the first review (the history of four branches was rewritten on 2026-11-18; anything created before that must not be pushed):
 
   ```bash
   git fetch --prune origin
-  git fetch --tags --force origin
-  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.1 origin/import/html-school-editor-0.1.0-alpha.1
-  ```
-
-  Before the first commit, confirm the identity and the ancestry:
-
-  ```bash
+  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.2 origin/fix/html-school-editor-0.1.0-alpha.2
   git config user.email                                   # must be the GitHub noreply address
   git log --format='%ae %ce' origin/main..HEAD | sort -u  # must list noreply addresses only
   ```
 
-* **Not done and not to be assumed:** no merge, no release, no CI workflow. The pull request is a draft so that it can be reviewed.
-
-## What is under review
-
-| Area | Files |
-| --- | --- |
-| Product sources | `src/app.html`, `src/style.css`, `src/js/*.js` (11 modules, about 2,500 lines) |
-| Build | `tools/build.mjs`, `package.json` |
-| Delivered file | `dist/school-editor.html` (132,525 bytes, SHA-256 `ef9585a6…385079`, full value in [STATUS.md](STATUS.md)) |
-| Tests | `tests/unit/core.test.mjs`, `tests/browser/{functional,security,robustness}.mjs`, `tests/lib/{cdp,harness}.mjs`, `tests/fixtures/*`, `tests/results/*.json` |
-| Documents | `README.md`, `AGENTS.md`, `docs/*` |
-
-Not a subject of this review: `docs/brief/*`, the task brief and acceptance contract that Codex wrote before the implementation. It is the yardstick: requirement and test identifiers (P-, S-, T-, X-, RF-) are defined in [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md) and [brief/REFERENCE_FINDINGS.md](brief/REFERENCE_FINDINGS.md).
+* **Not done and not to be assumed:** no merge, no release, no CI workflow.
 
 ## Commands and what they printed for the implementer
 
 Run in `html-school-editor/`; the last one from the repository root:
 
 ```bash
-node tools/build.mjs --check            # up to date: dist/school-editor.html  132525 bytes  sha256 ef9585a6…
+node tools/build.mjs --check            # up to date: dist/school-editor.html  143858 bytes  sha256 091f5167…
 node --test tests/unit/*.test.mjs       # tests 13, pass 13, fail 0
-node tests/run.mjs                      # edge: 26 passed, 0 not passed · chrome: NOT MEASURED (not installed)
-python scripts/check_publication.py --denylist <private list>   # checked 326 files; deny-list terms: 47; findings: 0
+node tests/run.mjs --browser edge --no-write   # edge: 30 passed, 0 not passed, 341 checks, 2 part(s) NOT MEASURED
+node tests/run.mjs --browser edge --no-write --only RV-01,RV-02,RV-03,RV-04
+python scripts/check_publication.py --denylist <private list>   # findings: 0
 ```
 
-Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headless, 2026-11-18. The browser suite needs about three minutes; it starts its own browser with a throw-away profile and a counting server on a random local port and leaves no process behind. A full run rewrites `tests/results/acceptance-*.json`; use `--no-write` for your own runs, or `--only T-09,X-03` for single cases.
+Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headless, 2026-11-19. Chrome is not installed: NOT MEASURED. A full run without `--no-write` rewrites `tests/results/acceptance-*.json`.
 
-## Part A: code and data integrity
+**Your probe script** `docs/reviews/review-alpha1.mjs` is unchanged. Against this version it stops in its first probe with `timeout: read completed`: the probe waits until the document name is that of the late file, and the late file is no longer opened (schedule with New) or only after a question (schedule with typing). The script therefore never reaches its other probes. Your inputs for RV-02, RV-03 and RV-04 are the first samples of the cases with the same numbers in `tests/browser/review.mjs`. Running your script also overwrites `tests/results/review-alpha1-edge.json`, your evidence for alpha.1; the implementer restored that file after the run.
 
-Question: can a pupil lose or silently change work? Read the code against these stated properties and say for each whether it holds, with `file:line`.
+## RV-01: a file read that finishes late
 
-1. **Edits from both panes never overwrite each other.** `state.visualDirty` and `state.pvRev !== state.rev` must not both be true when an edit is applied. Places: `src/js/app.js:702–720` (frame focus, pointer-down, `beforeinput`), `:788` (source focus), `:707` and `:794` (blur), `:239` `commitVisual`, `:648` `onSourceInput`. Is there an ordinary way to change the page or the text field without passing one of these? Not tried by the implementer: spell-check replacement, dragging text inside the source field, speech or handwriting input, autofill.
-2. **Round trip.** Writing back a page that was not edited reproduces the text exactly. R-02 checks 2,128 generated documents with a small generator (`tests/browser/robustness.mjs`); other documents may behave differently.
-3. **Local change.** An edit in the page changes only that place in the source. Deliberate exceptions are listed in [SPECIFICATION.md](SPECIFICATION.md) ("What stays untouched"). `rescueHidden()` (`src/js/serialize.js:243`) and the white-space handling in `emitText()` (`:124`) are the newest and least exercised code.
-4. **Source positions are only used where the editor's own parse equals the browser's.** `matchKids()` (`src/js/project.js:98`) compares element names, order and text, not attributes and not comment text. Could two different parses agree on those and still yield a wrong source range? The tolerance for white space after `</body>` (`isTail`) is a hand-made rule.
-5. **Formatting changes white space only.** Checked on every use in `formatDoc()` (`src/js/app.js:470`) by comparing canonical forms (`canonDom`, `src/js/project.js:390`). The canonical form treats white space next to block elements and `<br>` as insignificant, which assumes default display types.
-6. **Saving.** A document counts as saved only after a completed write or a started download (`src/js/app.js:597–638`); an operation that finishes for a previous document must not mark the current one (`markSaved`, `:580`).
+**Correction.** `src/js/app.js:587–611`: `beginReplace()` hands out a ticket with a sequence number; `mayReplace(op)` is the only gate in front of `replaceDocument()`. It commits pending page edits, returns false if a newer ticket exists, returns true if document id and revision are the ones for which consent was recorded, and otherwise asks (if there is unsaved work) and records the consent for the state at that moment, then loops. `newDoc` (`:607`), `openDoc` (`:650`), `handleDroppedFile` (`:724`) and the change event of the file input (`:872`) all go through it; `loadFile` (`:613`) calls it as its last step, with nothing awaited before `replaceDocument` (`:558`). The ticket of an Open click is taken before the file chooser or the native picker opens.
 
-## Part B: function against the acceptance contract
+**Please check.**
 
-Run the suite and judge whether each case really shows what its title says: are the expectations independent of the implementation, are the inputs real, are there cases that would pass even if the product were wrong? The mapping requirement → code → test → result is in [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
+1. Is there a path to `replaceDocument()` that does not pass `mayReplace()`? The only other caller is the start-up (`start()`).
+2. Between the last `mayReplace()` and `replaceDocument()` in `loadFile` there is no `await`. Is that also true for every caller, and can the state change during the dialog inside `mayReplace` in a way the loop does not see?
+3. Decisions you may disagree with: a click on New cancels a pending read even if the pupil then declines the question of New. A read whose text was edited and restored by Undo meanwhile opens without a question (nothing is unsaved). A second question that arrives while a dialog is open counts as declined (`openDialog`, `:75`).
+4. `tests/browser/review.mjs`, case RV-01: six schedules. The seam holds `File.arrayBuffer()`; the second schedule goes through the Open button and the intercepted file chooser. The native picker (`showOpenFilePicker`, `getFile`) is NOT MEASURED.
 
-Tests that use a stand-in or work below the single file:
+## RV-02: formatting under author CSS
 
-| Test | What is not real |
-| --- | --- |
-| T-10 (third and fourth part), T-15 (last part) | file handle and save dialog are replaced by a recording object |
-| T-10 (second part), T-15, T-16 | the file access API is hidden before the page starts, to reach the download path |
-| X-04 (parts 2–4) | paste and drop events are constructed by the test; part 1 uses the real clipboard and a real key event |
-| R-02 | runs `src/js/project.js` and `src/js/serialize.js` in a test page served from localhost |
-| T-03, T-04 and others | caret and selection are often set through the DOM selection API before real keys are sent; real mouse clicks are used in T-01, T-03, T-11, T-14, X-01, X-02 |
+**Correction.** `formatDoc()` (`src/js/app.js:523`) applies the formatter's output only if all of these hold:
 
-## Part C: protective design
+1. `cssFacts()` (`src/js/project.js:443`): no declaration of `white-space`, `white-space-collapse` or `text-space-collapse` with a value outside a fixed list of collapsing and neutral keywords, anywhere in a style element or style attribute, after CSS comments and escapes were resolved; and no style sheet file (`link rel=stylesheet`, `@import`).
+2. Same characters apart from white space, and the same canonical form of both parsed documents (`canonDom()`, as before).
+3. `sameLayout()` (`src/js/app.js:484`): a hidden frame like the page pane (same shell, sandbox attribute, policy and width; animations and transitions switched off by an added rule) is filled with the old text and then with the new one through the ordinary projection, and `layoutPrint()` (`src/js/project.js:471`) must be equal: the box of every element and of every rendered text node in quarter pixels.
 
-Question: does the editor keep opened documents passive, as [SECURITY.md](SECURITY.md) describes, and do the checks X-01 to X-07 demonstrate that for the delivered file? This is a check of documented safeguards against the requirements S-01 to S-04 and S-09.
+The result is dropped if document id or revision changed while the check ran.
 
-Please assess:
+**Please check.**
 
-1. **Completeness of the display filter.** The editor builds the page view node by node and leaves out or neutralizes certain elements and attributes (`DROP`, `BOX`, `DROP_ATTRS` in `src/js/project.js:14–19`, `describe()` at `:178`, `safeAttrs()` at `:150`). It lists what to leave out rather than what to allow, so that unknown harmless elements still render. Is anything missing from the lists that the HTML standard would let load a resource or run code? Would an allow-list be the better design for a classroom tool?
-2. **The two browser safeguards.** The frame attribute `sandbox="allow-same-origin"` (`src/app.html`) and the two content security policies (`tools/build.mjs`, `src/js/app.js:30`). Are they stated correctly and do they cover what the filter does not? Only their combination was measured, not each alone.
-3. **What the editor writes into files.** New elements come from a fixed list and addresses are checked (`emitNew()`, `src/js/serialize.js:179`; `checkLinkUrl()`, `src/js/util.js:51`). Is text entered in the link and image dialogs always stored as plain text?
-4. **Evidence.** X-03 distinguishes between requests the browser reports as attempted, requests stopped by the policy, and requests that reach the local counter, and includes a control page. Is that reasoning sound? Does the static scan X-06 match the measured behaviour?
-5. **Robustness of reading parsed documents.** Form controls named like DOM properties are handled through original accessors (`src/js/project.js:26–42`, X-07), nesting depth is bounded (`src/js/tree.js:26`), and a failed analysis falls back to a read-only page (`src/js/app.js:201`).
+1. Can a document pass all three checks and still look different afterwards in the page pane or in an ordinary browser window of another width? Known and documented: check 3 sees one width, the page at rest and no pointer state. A rule that changes `display`, `content` or `all` only under a media or hover condition is not evaluated. Is that limit acceptable for S-05, or should such conditions be refused like `white-space` is?
+2. Is the keyword list in `cssFacts()` right, and is the scan complete? It reads `style` elements in any namespace and `style` attributes, not SVG presentation attributes (SVG content is not touched by the formatter).
+3. `layoutPrint()` skips text nodes that consist of white space and have no box. Is there white space that is rendered, moves nothing and has an empty range box?
+4. The hidden frame: it is a second frame for document content. Attribute and shell are those of the page pane, it is removed in a `finally`, never focused, and `visibility: hidden`. The static scan X-06 only inspects the frame in the template; the dynamic one is in `src/js/app.js:485–497`.
+5. Refusing every document with a style sheet file is strict. The alternative would be to format without being able to compare.
+6. Case RV-02 renders original and result as ordinary local pages with scripts off and compares boxes with measuring code of the test file. Is that an expectation independent of the product?
 
-Findings in this part should name the requirement that is not met and the place in the code. Example documents that show a gap are welcome as ordinary test fixtures for this editor.
+## RV-03: attributes in list commands
 
-## Part D: origin of the code
+**Correction.** `toggleList()` (`src/js/commands.js:186`) renames the paragraph or heading to `li` with `rename()` (`:96`), which keeps the mapping to the source element, and moves it into the new list. `unlist()` (`:150`) renames items back. The writer emits a renamed element with its original start tag text (`src/js/serialize.js:218–248`) and gives it a line of its own when it left its source parent (`inPlace`, `:38`; `moved`, `:238`). Policy for the cases where the element cannot keep its role, stated in [SPECIFICATION.md](SPECIFICATION.md) under "What stays untouched":
 
-The implementer read parts of a third-party reference editor (ranges in [SPECIFICATION.md](SPECIFICATION.md#3-origin)) and states that all code here was written new. The implementer cannot prove the absence of similarity. A reviewer with access to the owner's private analysis case can compare samples. In this repository the reference is named only by the aliases `[REFERENCE-APP]` and `[REFERENCE-NOTES]`; keep it that way in the review document.
+* an item that holds blocks and has attributes becomes a `div` with them;
+* a list with attributes whose items all become paragraphs stays as a `div` around them;
+* if items remain, the original list element keeps them; items behind a paragraph taken out of the middle continue in a second list that copies the attributes the page pane shows, except `id` (`copy` flag, `src/js/commands.js:162–165`, `src/js/serialize.js:188`). Attributes the page pane does not show (event handlers) are not copied to the second list. This is the one place where the policy is not "keep everything"; they stay on the first list.
+
+**Please check.**
+
+1. The policy itself, in particular the `div` results and the second list.
+2. `rescueHidden()` (`src/js/serialize.js:253`) got two rules: white space that only indented a removed element is not moved to the parent (`lost`), and a line break that a command removed on purpose is not put back (`dropped`, set in `dropSpace`, `src/js/commands.js:131`). Can either rule drop something other than white space? Both apply to text nodes only.
+3. One more rule in `emitKids()` (`src/js/serialize.js:87–89`): a block that was itself changed and follows a new block starts on its own line. An untouched neighbour keeps the text around it.
+4. Other commands still remove elements with their attributes when the element itself is what the command removes: bold/italic off, remove link. That is stated in the specification and not changed.
+
+## RV-04: announcing what is switched off
+
+**Correction.** (a) SVG animation elements are replaced by an invisible stand-in like scripts and are counted in the note (`src/js/project.js:21`, `:196`). (b) `style` elements in any namespace and SVG attributes that take CSS values are counted when they contain an address; `image-set()` counts as an address (`:22`, `:173`, `:206`). (c) A listener for the browser's policy-violation event in the frame (`src/js/app.js:824`) records the file name of each stopped address; if the editor's own list named nothing, the note says "Inhalte von außerhalb der Seite" while a recorded name occurs in the source text (`showInactive`, `:235`).
+
+**Please check.**
+
+1. (a) removes the reported case at its root: the address is no longer attempted. Are there other ways to assign an address after `safeAttrs()` has run? None is known to the implementer.
+2. (c) is the general answer to "not announced": it does not depend on the list being complete. It depends on the browser raising the event in a frame without script permission (measured in Edge 157 only), and on the address being attempted at all.
+3. The tie to the source text is a heuristic: the note stays as long as the last path segment of the stopped address, raw or percent-decoded, occurs in the text; segments shorter than three characters are ignored. An address spelled differently in the source would lose its note after the next render. Is that acceptable, or should the note simply stay until another document is opened?
+4. The review recommended an allow-list for the page pane. This version keeps the deny-list. The trade-off is stated in [SECURITY.md](SECURITY.md) under residual risks.
+
+## The tests
+
+1. **T-05** expected the list item without the attributes of the paragraph, so it passed with the defect. The expectation now contains the attributes (`tests/browser/functional.mjs`, T-05).
+2. **Explicit status of parts.** `Checks.skip()` (`tests/lib/harness.mjs`) records a part as `NOT MEASURED`; the runner prints and counts such parts per case. Used for the trusted paste in X-04, the file drop in T-15 (both were carried out in the recorded run) and the native pickers in T-16 and RV-01.
+3. **A harness decision to look at.** `Editor.openFile()` sets the file input directly. In alpha.1 that replaced unsaved work without a question, because the question belonged to the Open button. Now every replacement asks, so `openFile()` answers the question with "Änderungen verwerfen" when it appears, like a pupil who agrees. Cases about the question itself pass `wait: false` and handle the dialog (T-15, RV-01).
+4. `Editor.format()` waits for the outcome of "Code aufräumen" instead of a fixed pause, because formatting is asynchronous now.
 
 ## Where the implementer is least sure
 
-* **Measured in one browser only.** Frame and policy behaviour for a page opened from `file://`, `contenteditable` behaviour, the CSS Custom Highlight API and clipboard handling were observed in Edge 157 only.
-* **Native file dialogs.** `showOpenFilePicker`, `showSaveFilePicker` and `createWritable` were never executed for real. If the save dialog fails with anything other than a cancellation, the code downloads instead (`src/js/app.js:618–627`); whether that suits every real error is untested.
-* **A download counts as saved** (`downloadDoc`, `src/js/app.js:602`). The browser may still ask, block or fail later. The alternative, never to mark a download as saved, would warn pupils on every close.
-* **The browser produces the page structure while typing.** Enter, Backspace, deletion and joining paragraphs are native. The writer normalizes what was seen in exploratory runs. Other content, for example in tables or nested lists, may produce other structures.
-* **`same()` in `emitText`** treats "ordinary space became no-break space" as unchanged, because the browser does that on its own near the caret.
-* **History groups typing by time**, so selecting everything and typing right after other typing is one undo step.
-* **German texts and read-only notes** were written without trying them with pupils.
-* **Headless only.** No run with a visible window, a touch screen or a small display.
+* **The layout comparison is new and was tried on few documents:** the 44 snippets of R-01, the fixture of T-07, the samples of RV-02 and three exploratory documents (140,000 characters in about 0.6 s; a CSS animation; a grid). False refusals are possible where a page moves by itself in a way the added rule does not stop (`marquee`, an author rule with `!important` and higher specificity). A false refusal is the safe direction.
+* **Images in the hidden frame** are awaited with `decode()`. An image that never settles would hold the check; the browser settles `data:` images quickly, other sources are not loaded at all.
+* **The second list** after taking an item out of the middle is written by `emitNew()` from the attributes of the page pane, not from the source text, so the spelling of its attributes is normalized.
+* **Everything already listed for alpha.1 and not touched:** one browser only; native file dialogs never executed; a download counts as saved; the browser produces the structure while typing; history grouping by time; German texts never tried with pupils; headless only.
 
 ## Not measured
 
-Chrome; native open/save dialogs and write-back; visible-window runs; long sessions and memory growth; documents above about 150,000 characters in interactive use; screen readers and keyboard-only operation of the page pane; printing; other operating systems.
+Chrome; native open/save dialogs and write-back, also for the RV-01 schedules; visible-window runs; spell-check replacement, text drag in the source field, speech, handwriting, autofill; long sessions and memory growth; screen readers and keyboard-only operation of the page pane; printing; other operating systems.
 
 ## Delivery
 
-1. `docs/reviews/REVIEW_0.1.0-alpha.1.md` in this folder, in English, on the branch `review/html-school-editor-0.1.0-alpha.1`, as a pull request stacked on the import branch.
-2. Per part: verdict, findings with `file:line` and the requirement concerned, and what was not reviewed.
+1. `docs/reviews/REVIEW_0.1.0-alpha.2.md` in this folder, in English, on the branch `review/html-school-editor-0.1.0-alpha.2`, as a pull request stacked on the fix branch.
+2. Per finding: corrected or not, with `file:line`, and what was not reviewed. New findings with the requirement concerned.
 3. Overall verdict `PASS`, `HOLD` or `FAIL`. Findings about lost work and about the protective design come first.
-4. Do not change the product on the import branch. Corrections belong in the review document, or in a separate branch with a new version number.
+4. Do not change the product on the fix branch. Corrections belong in the review document, or in a separate branch with a new version number.
 5. Before pushing: the repository publication check with no findings, and the ancestry check from above.

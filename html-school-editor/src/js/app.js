@@ -11,7 +11,7 @@
 import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
-import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom } from './project.js';
+import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint } from './project.js';
 import { serializeBody, rescueHidden } from './serialize.js';
 import { formatSource, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
@@ -45,12 +45,13 @@ const now = () => performance.now();
 
 const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, composing: false, inCommand: false,
-  name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, loadSeq: 0,
+  name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '',
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false,
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
+const blocked = new Set();        // file names of addresses the browser's policy stopped in the page pane
 const els = {};
 let pvDoc = null, pvWin = null;
 let renderTimer = 0, commitTimer = 0, statusTimer = 0, markFrame = 0;
@@ -73,6 +74,7 @@ function setStatus(message, kind) {
 
 function openDialog(dialog) {
   return new Promise((resolve) => {
+    if (dialog.open) { resolve(''); return; }       // a second question while one is open counts as "cancel"
     dialog.returnValue = '';
     dialog.addEventListener('close', () => resolve(dialog.returnValue), { once: true });
     dialog.showModal();
@@ -216,9 +218,8 @@ function render(restore) {
   state.view = view;
   state.pvRev = state.rev;
   state.visualDirty = false;
-  const inactive = view.failed ? '' : reportText(res.report);
-  els.inactive.hidden = !inactive;
-  els.inactiveText.textContent = inactive ? 'Im Editor ausgeschaltet: ' + inactive + '.' : '';
+  state.report = view.failed ? '' : reportText(res.report);
+  showInactive();
   els.lockNote.hidden = view.ok;
   els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
   els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
@@ -226,6 +227,16 @@ function render(restore) {
   renderCost = now() - t0;
   updateChrome();
   scheduleMarks();
+}
+
+// The note above the page lists what the editor found and left out. Whatever the browser's content policy
+// had to stop in the page pane is announced as well, so that nothing is switched off without a note. Such an
+// entry counts as long as the stopped address still occurs in the text.
+function showInactive() {
+  let text = state.report;
+  if (!text) for (const name of blocked) if (state.text.includes(name)) { text = 'Inhalte von außerhalb der Seite'; break; }
+  els.inactive.hidden = !text;
+  els.inactiveText.textContent = text ? 'Im Editor ausgeschaltet: ' + text + '.' : '';
 }
 
 // ---------------------------------------------------------------- preview -> source
@@ -355,7 +366,7 @@ function focusPreview() {
   if (pvDoc.body.isContentEditable) pvDoc.body.focus({ preventScroll: true });
 }
 
-const env = { get doc() { return pvDoc; }, info };
+const env = { get doc() { return pvDoc; }, get src() { return state.view ? state.view.src : ''; }, info };
 
 // Makes sure the preview is current and has an editable selection.
 function readyToEdit() {
@@ -467,26 +478,74 @@ async function pickImage(file) {
 
 // ---------------------------------------------------------------- formatting the source
 
+// Lays out both texts in a hidden frame that is built exactly like the page pane (same width, same filter,
+// same policy) and compares where every element and every piece of text ends up. Animations are stopped so
+// that both measurements see the page at rest.
+async function sameLayout(a, b) {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('sandbox', 'allow-same-origin');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.className = 'probe';
+  frame.style.width = els.pv.clientWidth + 'px';
+  frame.style.height = els.pv.clientHeight + 'px';
+  const loaded = new Promise((resolve) => {
+    frame.addEventListener('load', () => { const d = frame.contentDocument; if (d && d.URL === 'about:srcdoc' && d.body) resolve(d); });
+    setTimeout(resolve, 4000, null);
+  });
+  frame.srcdoc = PREVIEW_SHELL.replace('</style>', '*,*::before,*::after{animation:none!important;transition:none!important}</style>');
+  document.body.appendChild(frame);
+  try {
+    const doc = await loaded;
+    if (!doc) return false;
+    const prints = [];
+    for (const text of [a, b]) {
+      renderView(analyze(text, tokenize(text)), doc, new WeakMap());
+      await Promise.all(Array.from(doc.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
+      prints.push(layoutPrint(doc));
+    }
+    return prints[0] === prints[1];
+  } finally { frame.remove(); }
+}
+
+const FORMAT_NO = {
+  spaces: 'Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt.',
+  external: 'Diese Seite verwendet eine externe CSS-Datei. Der Editor kann sie nicht lesen und deshalb nicht prüfen, ob die Seite nach dem Aufräumen noch gleich aussieht.',
+  parse: 'Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt.',
+  look: 'Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite.',
+};
+
+// "Tidy up" is applied only if three independent checks agree that nothing but insignificant white space
+// changes: the style rules do not make spaces count, both texts parse to the same tree, and both texts are
+// laid out identically in the page pane's own rendering.
+let formatting = false;
+
 async function formatDoc() {
+  if (formatting) return;
   commitVisual('vis-type');
-  const src = state.text;
-  if (/white-space\s*:\s*(pre|break-spaces)/i.test(src)) {
-    await infoBox('Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei zählt jedes Leerzeichen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert.');
-    return;
-  }
-  let out = null, verified = false;
+  const src = state.text, rev = state.rev, docId = state.docId;
+  let out = null, problem = '';
+  formatting = true;
   try {
     const before = new DOMParser().parseFromString(src, 'text/html');
-    out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
-    if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
-    const after = new DOMParser().parseFromString(out, 'text/html');
-    const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
-    verified = sameInk && canonDom(before, FMT_BLOCK, FMT_KEEP) === canonDom(after, FMT_BLOCK, FMT_KEEP);
-  } catch (e) { verified = false; }
-  if (!verified) {
-    await infoBox('Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt. Dein Code bleibt unverändert.');
+    const css = cssFacts(before);
+    if (css.spaces) problem = 'spaces';
+    else if (css.external) problem = 'external';
+    else {
+      out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
+      if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
+      const after = new DOMParser().parseFromString(out, 'text/html');
+      const sameInk = src.replace(/[ \t\n\f\r]+/g, '') === out.replace(/[ \t\n\f\r]+/g, '');
+      if (!sameInk || canonDom(before, FMT_BLOCK, FMT_KEEP) !== canonDom(after, FMT_BLOCK, FMT_KEEP)) problem = 'parse';
+      else if (!(await sameLayout(src, out))) problem = 'look';
+    }
+  } catch (e) { problem = 'parse'; } finally { formatting = false; }
+  commitVisual('vis-type');
+  if (state.rev !== rev || state.docId !== docId) {         // the check took a moment and the pupil went on writing
+    setStatus('Aufräumen abgebrochen, weil sich der Code inzwischen geändert hat.', 'warn');
     return;
   }
+  if (problem) { await infoBox(FORMAT_NO[problem] + ' Dein Code bleibt unverändert.'); return; }
   history.seal();
   applyText(out, 'cmd');
   history.seal();
@@ -509,6 +568,7 @@ function replaceDocument(text, meta) {
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
+  blocked.clear();
   history.reset(text);
   els.src.value = text;
   els.src.setSelectionRange(0, 0);
@@ -521,20 +581,36 @@ function replaceDocument(text, meta) {
   try { pvDoc.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
 }
 
-async function mayDiscard() {
-  commitVisual('vis-type');
-  if (!isDirty()) return true;
-  return confirmBox('Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.', 'Änderungen verwerfen');
+// New, Open and a dropped file replace the whole document and its history. Each such operation takes a
+// ticket. Only the newest ticket may complete, and only for the document state whose loss the pupil has
+// accepted: if the text changed while a file was being chosen or read, the question is asked again.
+function beginReplace() {
+  return { seq: ++state.opSeq, docId: -1, rev: -1 };
+}
+
+async function mayReplace(op, lateName) {
+  for (;;) {
+    commitVisual('vis-type');
+    if (op.seq !== state.opSeq) return false;
+    const docId = state.docId, rev = state.rev;
+    if (op.docId === docId && op.rev === rev) return true;
+    if (isDirty()) {
+      const question = op.docId < 0 ? 'Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.'
+        : 'Du hast deine Seite noch geändert, während „' + lateName + '“ geöffnet wurde. Wenn du fortfährst, gehen diese Änderungen verloren.';
+      if (!(await confirmBox(question, 'Änderungen verwerfen'))) return false;
+    }
+    op.docId = docId;
+    op.rev = rev;
+  }
 }
 
 async function newDoc() {
-  if (!(await mayDiscard())) return;
+  if (!(await mayReplace(beginReplace()))) return;
   replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
   setStatus('Neue Seite angelegt.');
 }
 
-async function loadFile(file, handle) {
-  const seq = ++state.loadSeq;
+async function loadFile(file, handle, op) {
   if (file.size > MAX_FILE_BYTES) {
     await infoBox('Die Datei „' + file.name + '“ ist zu groß. Der Editor öffnet Dateien bis 5 MB. Deine aktuelle Seite bleibt unverändert.');
     return false;
@@ -544,17 +620,22 @@ async function loadFile(file, handle) {
     await infoBox('Die Datei „' + file.name + '“ konnte nicht gelesen werden. Deine aktuelle Seite bleibt unverändert.');
     return false;
   }
-  if (seq !== state.loadSeq) return false;
   let decoded = decodeFileBytes(bytes, false);
   if (decoded.error === 'encoding') {
     const go = await confirmBox('Die Datei „' + file.name + '“ ist nicht als UTF-8 gespeichert. Der Editor kann sie umwandeln; prüfe danach die Umlaute und die Zeile mit „charset“. Die Datei auf dem Datenträger wird dabei nicht verändert.', 'Umwandeln und öffnen');
-    if (!go || seq !== state.loadSeq) return false;
+    if (!go) return false;
     decoded = decodeFileBytes(bytes, true);
   }
   if (decoded.error) {
     await infoBox(decoded.error === 'utf16'
       ? 'Die Datei „' + file.name + '“ ist als UTF-16 gespeichert. Das kann der Editor nicht öffnen. Deine aktuelle Seite bleibt unverändert.'
       : 'Die Datei „' + file.name + '“ ist keine Textdatei. Deine aktuelle Seite bleibt unverändert.');
+    return false;
+  }
+  // Last step before the document is replaced; nothing is awaited between this check and the replacement.
+  if (!(await mayReplace(op, file.name))) {
+    setStatus(op.seq !== state.opSeq ? '„' + file.name + '“ wurde nicht geöffnet, weil du inzwischen etwas anderes begonnen hast.'
+      : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
     return false;
   }
   replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy });
@@ -564,17 +645,20 @@ async function loadFile(file, handle) {
   return true;
 }
 
+let pickOp = null;     // ticket of the Open click that is waiting for the browser's file chooser
+
 async function openDoc() {
-  if (!(await mayDiscard())) return;
-  if (!window.showOpenFilePicker) { els.fileIn.click(); return; }
+  const op = beginReplace();
+  if (!(await mayReplace(op))) return;
+  if (!window.showOpenFilePicker) { pickOp = op; els.fileIn.click(); return; }
   let handle;
   try { [handle] = await window.showOpenFilePicker({ types: FILE_TYPES }); } catch (e) {
-    if (!e || e.name !== 'AbortError') els.fileIn.click();
+    if (!e || e.name !== 'AbortError') { pickOp = op; els.fileIn.click(); }
     return;
   }
   let file;
   try { file = await handle.getFile(); } catch (e) { await infoBox('Die Datei konnte nicht gelesen werden. Deine aktuelle Seite bleibt unverändert.'); return; }
-  await loadFile(file, handle);
+  await loadFile(file, handle, op);
 }
 
 function markSaved(snapshot) {
@@ -639,8 +723,9 @@ async function saveDoc() {
 
 async function handleDroppedFile(file) {
   if (/^image\//.test(file.type)) { imageFlow(file); return; }
-  if (!(await mayDiscard())) return;
-  loadFile(file, null);
+  const op = beginReplace();
+  if (!(await mayReplace(op))) return;
+  loadFile(file, null, op);
 }
 
 // ---------------------------------------------------------------- event wiring
@@ -736,6 +821,13 @@ function wirePreview() {
     }
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
+  pvDoc.addEventListener('securitypolicyviolation', (e) => {
+    const name = String(e.blockedURI || '').split(/[?#]/)[0].split('/').filter(Boolean).pop() || '';
+    if (name.length < 3 || blocked.size > 200 || blocked.has(name)) return;       // keywords like "inline" carry no address
+    blocked.add(name);
+    try { blocked.add(decodeURIComponent(name)); } catch (err) { /* keep the raw form */ }
+    showInactive();
+  });
 }
 
 function wireChrome() {
@@ -777,7 +869,12 @@ function wireChrome() {
     els.dlgImage.close('ok');
   });
   els.imgAlt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
-  els.fileIn.addEventListener('change', () => { const file = els.fileIn.files[0]; els.fileIn.value = ''; if (file) loadFile(file, null); });
+  els.fileIn.addEventListener('change', () => {
+    const file = els.fileIn.files[0], op = pickOp && pickOp.seq === state.opSeq ? pickOp : beginReplace();
+    els.fileIn.value = '';
+    pickOp = null;
+    if (file) loadFile(file, null, op);
+  });
 
   els.src.addEventListener('input', onSourceInput);
   els.src.addEventListener('keydown', onSourceKeydown);

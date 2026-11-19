@@ -194,9 +194,7 @@ export const security = [
         await ed.clickPv('d.querySelector("p")');
         await ed.type('x');
         await ed.settle();
-        await ed.click('bFormat');
-        await sleep(300);
-        if (await ed.dialogOpen('dlgInfo')) await ed.dialogButton('dlgInfo', 'OK');
+        await ed.format();
         await ed.click('bDownload');
         await sleep(1500);
         const delivered = sink.hits.slice(before);
@@ -228,7 +226,8 @@ export const security = [
           await ed.settle(150);
           trusted = (await ed.source()).includes('Text.fett link</p>') ? 'pasted as plain text' : 'paste did not arrive';
         } catch (e) { trusted = 'NOT MEASURED (' + e.message.slice(0, 120) + ')'; }
-        c.note('trusted clipboard paste', trusted);
+        if (trusted !== 'pasted as plain text') c.skip('trusted clipboard paste (real clipboard, real key event)', trusted);
+        else c.note('trusted clipboard paste', trusted);
         if (trusted === 'pasted as plain text') c.ok(!/<b|<img|<script|<a |<iframe/.test((/<p>Hier[^]*?<\/p>/.exec(await ed.source()) || [''])[0]), 'trusted paste of rich clipboard content inserts text only', (/<p>Hier[^]*?<\/p>/.exec(await ed.source()) || [''])[0]);
         // 2) paste event carrying HTML and text (covers the handler independently of the system clipboard)
         await ed.caret('Webseite', 'Webseite'.length);
@@ -274,9 +273,7 @@ export const security = [
         await ed.type('3');
         await ed.settle();
         c.eq(await ed.source(), text.replace('Absatz<', 'Absatz1<').replace('Im Formular<', 'Im Formular2<').replace('Ende<', 'Ende3<'), 'typing before, inside and after the form changes exactly those three places');
-        await ed.click('bFormat');
-        await sleep(200);
-        if (await ed.dialogOpen('dlgInfo')) await ed.dialogButton('dlgInfo', 'OK');
+        await ed.format();
         await ed.settle();
         const saved = await ed.download();
         c.eq(saved.text, await ed.source(), 'formatting and saving still work');

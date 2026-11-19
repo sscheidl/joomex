@@ -138,11 +138,9 @@ export const robustness = [
             if ((await ed.source()) !== original) problems.push(name + ' text ' + k + ': undo does not restore the original');
           }
           await ed.openText(name, original);
-          await ed.click('bFormat');
-          await sleep(60);
-          if (await ed.dialogOpen('dlgInfo')) { stats.formatRefused++; await ed.dialogButton('dlgInfo', 'OK'); if ((await ed.source()) !== original) problems.push(name + ': refused formatting changed the text'); }
+          const formatted = await ed.format();
+          if (formatted.outcome === 'refused') { stats.formatRefused++; if ((await ed.source()) !== original) problems.push(name + ': refused formatting changed the text'); }
           else {
-            await ed.settle();
             const out = await ed.source();
             if (out.replace(/\s+/g, '') !== original.replace(/\s+/g, '')) problems.push(name + ': formatting changed more than white space');
             const same = await ed.eval(`((a, b) => { const text = (s) => { const doc = new DOMParser().parseFromString(s, "text/html");

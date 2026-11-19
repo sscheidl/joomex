@@ -152,7 +152,7 @@ export const functional = [
         await ed.click('bUl');
         await ed.settle();
         let src = await ed.source();
-        c.ok(src.includes('  <ul>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n  </ul>\n  <p>Anfang'), 'three paragraphs become one list with three items, indented', src.split('\n').slice(13, 21).join('\n'));
+        c.ok(src.includes('  <ul>\n    <li class="wichtig" title=\'Ein "Titel"\'>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n  </ul>\n  <p>Anfang'), 'three paragraphs become one list with three items, indented; the first keeps its attributes as written', src.split('\n').slice(13, 21).join('\n'));
         c.eq(await ed.eval(PARSE('doc.querySelectorAll("p ul, p ol, ul > :not(li), ol > :not(li)").length')), 0, 'no list inside a paragraph, only li inside lists');
         await ed.caret('Hallo', 5);
         await ed.eval(`((d) => { const li = d.querySelectorAll("ul")[0].lastElementChild; d.getSelection().collapse(li.firstChild, 5); })(${PV})`);
@@ -164,7 +164,7 @@ export const functional = [
         await ed.click('bOl');
         await ed.settle();
         src = await ed.source();
-        c.ok(src.includes('  <ol>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Neu</li>\n  </ol>'), 'switching turns the whole list into a numbered list', src.split('\n').slice(13, 21).join('\n'));
+        c.ok(src.includes('  <ol>\n    <li class="wichtig" title=\'Ein "Titel"\'>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Neu</li>\n  </ol>'), 'switching turns the whole list into a numbered list', src.split('\n').slice(13, 21).join('\n'));
         const shape = () => ed.eval(PV + '.body.innerHTML.replace(/>\\s+</g, "><").replace(/<(\\w+)[^>]*>/g, "<$1>")');
         const before = await shape();
         const saved = await ed.download();
@@ -176,7 +176,7 @@ export const functional = [
         await ed.click('bOl');
         await ed.settle();
         src = await ed.source();
-        c.ok(src.includes('  <p>Hallo</p>\n  <p>Hallo</p>\n  <p>Hallo</p>\n  <p>Neu</p>\n  <p>Anfang') && !src.includes('<ol>'), 'removing the list gives back paragraphs', src.split('\n').slice(13, 21).join('\n'));
+        c.ok(src.includes('  <p class="wichtig" title=\'Ein "Titel"\'>Hallo</p>\n  <p>Hallo</p>\n  <p>Hallo</p>\n  <p>Neu</p>\n  <p>Anfang') && !src.includes('<ol>'), 'removing the list gives back paragraphs, the first with its attributes', src.split('\n').slice(13, 21).join('\n'));
         c.eq(await ed.eval(PARSE('doc.querySelectorAll("p ul, p ol, ul > :not(li), ol > :not(li), p:empty").length')), 0, 'still valid nesting');
         c.ok(src.includes('<ul>\n    <li>Punkt A</li>\n    <li>Punkt B</li>\n  </ul>'), 'the untouched second list is unchanged');
       });
@@ -269,8 +269,7 @@ export const functional = [
       await withEditor(browser, {}, async (ed) => {
         const original = readFixture('format-in.html');
         await ed.openFile(fixture('format-in.html'));
-        await ed.click('bFormat');
-        await ed.settle();
+        c.eq((await ed.format()).outcome, 'applied', 'formatting is applied');
         const out = await ed.source();
         c.eq(out, readFixture('format-expected.html'), 'formatted text equals the hand-written expectation');
         c.eq(out.replace(/\s+/g, ''), original.replace(/\s+/g, ''), 'only white space changed');
@@ -284,21 +283,16 @@ export const functional = [
         c.eq(await ed.source(), original, 'undo restores the unformatted text');
         const broken = readFixture('malformed.html');
         await ed.openFile(fixture('malformed.html'));
-        await ed.click('bFormat');
-        await sleep(150);
-        if (await ed.dialogOpen('dlgInfo')) {
-          c.ok((await ed.eval('document.getElementById("infoText").textContent')).includes('bleibt unverändert'), 'malformed document: formatting is refused with an explanation');
-          await ed.dialogButton('dlgInfo', 'OK');
+        const second = await ed.format();
+        if (second.outcome === 'refused') {
+          c.ok(second.text.includes('bleibt unverändert'), 'malformed document: formatting is refused with an explanation');
           c.eq(await ed.source(), broken, 'malformed source is not rewritten');
         } else {
           c.eq((await ed.source()).replace(/\s+/g, ''), broken.replace(/\s+/g, ''), 'malformed document: formatter changed white space only');
           c.note('malformed document', 'formatter accepted it after verification');
         }
         await ed.openText('t07-ws.html', doc('<p style="white-space: pre">a   b</p>'));
-        await ed.click('bFormat');
-        await sleep(150);
-        c.ok(await ed.dialogOpen('dlgInfo'), 'document with white-space: pre is not formatted');
-        await ed.dialogButton('dlgInfo', 'OK');
+        c.eq((await ed.format()).outcome, 'refused', 'document with white-space: pre is not formatted');
         c.eq(await ed.source(), doc('<p style="white-space: pre">a   b</p>'), 'and stays unchanged');
       });
     },
@@ -696,7 +690,8 @@ export const functional = [
           await ed.until('document.getElementById("docName").textContent === "legacy.html"', 'dropped file opened', 3000);
           dropped = 'opened';
         } catch (e) { dropped = 'NOT MEASURED (' + e.message + ')'; }
-        c.note('drop of an HTML file on the window', dropped);
+        if (dropped === 'opened') c.ok(true, 'a dropped HTML file is opened');
+        else c.skip('drop of an HTML file on the window (and the question it asks over unsaved work)', dropped);
         if (dropped === 'opened') {
           await ed.caret('Dritter Absatz.', 3);
           await ed.type('#');
@@ -713,7 +708,11 @@ export const functional = [
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.type(' alt');
         await ed.click('bSave');
-        await ed.openFile(fixture('basic.html'));
+        await ed.openFile(fixture('basic.html'), { wait: false });
+        await ed.until('document.getElementById("dlgConfirm").open', 'open while the slow save is pending asks first');
+        await ed.dialogButton('dlgConfirm', 'Änderungen verwerfen');
+        await ed.until('document.getElementById("docName").textContent === "basic.html"', 'file opened');
+        await ed.synced();
         await ed.caret('Punkt A', 7);
         await ed.type('+');
         await ed.settle();
@@ -736,7 +735,7 @@ export const functional = [
         c.eq(saved.name, 'basic.html', 'download uses the document name');
         c.eq(await ed.dirtyText(), 'gespeichert', 'state shows saved');
       });
-      c.note('native open/save pickers and write-back to a real file handle', 'NOT MEASURED (cannot be driven by this harness); handle logic is covered with a labelled mock in T-10 and T-15');
+      c.skip('native open/save pickers and write-back to a real file handle', 'cannot be driven by this harness; handle logic is covered with a labelled mock in T-10 and T-15');
     },
   },
   {
