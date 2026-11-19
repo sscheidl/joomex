@@ -4,6 +4,8 @@
 
 Reviewed by Codex on **2026-11-19** at `c3d377062b6aeac56215b27e33eb2c47d5cf372c`. This is one combined review of the changes introduced by alpha.2 (`9438803589a60cb1adedc65d64358692ad59d41c`) and alpha.3. Diffs were inspected separately: review alpha.1 → fix alpha.2, then fix alpha.2 → feature alpha.3. Runtime measurements below use the final alpha.3 artefact; the historical alpha.2 artefact was not separately executed. Product files and previous review evidence are unchanged by this PR.
 
+**Later measurement on the same day:** the owner's requested Firefox test is recorded in [the Firefox supplement](FIREFOX_0.1.0-alpha.3.md). Stock Firefox 160.0.1 runs the basic offline/file/download workflows, but source-preservation and formatting expectations prevent complete acceptance. The measurement gaps below describe the original Edge review; the supplement states the subsequent Firefox scope. Overall FAIL is unchanged.
+
 ## Disposition of the four previous findings
 
 | Finding | Disposition | Evidence and code in alpha.3 |

@@ -1,0 +1,62 @@
+Firefox/160.0.1 160302 bytes sha256 2c85f25d11fe0d1207f3e7655334dcbdd6f7b058dad66e0c6a9c9aeb09629244
+PASS FF-START (5 checks, 951 ms)
+PASS T-01 (6 checks, 894 ms)
+PASS T-02 (4 checks, 697 ms)
+FAIL T-03 (8 checks, 1195 ms)
+  FAIL double-click on nested emphasis marks exactly that text in the source: {"text":"<i>beides</i></b> ","line":18}
+PASS T-04 (13 checks, 1495 ms)
+PASS T-05 (9 checks, 829 ms)
+PASS T-06 (25 checks, 2864 ms)
+FAIL T-07 (16 checks, 529 ms)
+  FAIL formatting is applied: expected "applied" got "refused"
+  FAIL formatted text equals the hand-written expectation: expected "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Format   Test</title>\n  <style>\np   { margin: 0 }\n</style>\n  <script>if (a < b && c > d) { document.title = \"<p>x</p>\"; }</script>\n</head>\n<body>\n  <!-- Kommentar mit <b>Tags</b> und > Zei got "<!DOCTYPE html>\n<html lang=\"de\"><head><meta charset=\"UTF-8\"><title>Format   Test</title>\n<style>\np   { margin: 0 }\n</style>\n<script>if (a < b && c > d) { document.title = \"<p>x</p>\"; }</script>\n</head>\n<body>\n<!-- Kommentar mit <b>Tags</b> und > Zeichen -->\n<h1>Ti
+  NOTE malformed document: formatter accepted it after verification
+PASS T-08 (19 checks, 766 ms)
+PASS T-09 (10 checks, 1335 ms)
+PASS T-10 (13 checks, 1765 ms)
+PASS T-11 (3 checks, 26875 ms)
+PARTIAL T-12 (9 checks, 2068 ms)
+  NOTE document size: 146008 characters, 1500 paragraphs
+  NOTE typing speed: 162 keystrokes sent in 818 ms, panes in sync after 1065 ms
+  NOT MEASURED: Input.imeSetComposition has no implemented Firefox automation equivalent
+PASS T-13 (13 checks, 4099 ms)
+PASS T-14 (15 checks, 4659 ms)
+PARTIAL T-15 (7 checks, 745 ms)
+  NOT MEASURED: Page.setInterceptFileChooserDialog has no implemented Firefox automation equivalent
+PASS T-16 (3 checks, 323 ms)
+  NOTE native open/save pickers and write-back to a real file handle: NOT MEASURED: cannot be driven by this harness; handle logic is covered with a labelled mock in T-10 and T-15
+PASS T-17 (2 checks, 858 ms)
+PASS X-01 (9 checks, 2030 ms)
+PASS X-02 (16 checks, 4739 ms)
+  NOTE editable page: request attempts seen by the browser: []
+  NOTE read-only page: request attempts seen by the browser: []
+PASS X-03 (5 checks, 3354 ms)
+  NOTE request attempts reported by the browser: 0: []
+  NOTE policy blocks reported by the browser: 18: ["/x03/font.woff2","/x03/cursor.cur","/x03/css-body-bg.png","/x03/inline-style-bg.png","/x03/css-content.png","/x03/list-style.png","/x03/image-set.png","/x03/border-image.png"]
+NOT MEASURED X-04 (0 checks, 61 ms)
+  NOTE Firefox synthetic clipboard control: {"transfer":"synthetic-control","event":""}
+  NOT MEASURED: Firefox constructed ClipboardEvent discards supplied clipboardData; trusted system clipboard automation is not implemented
+PASS X-07 (8 checks, 891 ms)
+PASS X-05 (1 checks, 3 ms)
+PASS X-06 (11 checks, 5 ms)
+  NOTE innerHTML assignments: 3 (escaped highlight lines in the editor chrome and the character-reference decoder in an inert document)
+  NOTE size: 160302 bytes
+FAIL R-01 (3 checks, 27341 ms)
+  FAIL 44 snippets: edits are local, the page matches the source, undo restores, formatting is white-space only: expected "" got "korpus-11.html text 1: removed \" <!-- mitten im Satz --> \" added \"Q <!-- mitten im Satz -->\" ; korpus-30.html text 2: removed \"</unbekannt>\\n\" added \"Q</unbekannt>\""
+  NOTE corpus statistics: {"documents":44,"locked":2,"withReadOnlyParts":1,"edits":92,"exact":89,"whitespaceOnly":1,"formatted":39,"formatRefused":3}
+  NOTE examples of white-space-only side effects in the edited text: korpus-32.html: "   " -> "Q"
+FAIL R-02 (6 checks, 720 ms)
+  NOTE generated corpus: 3044 documents, 2128 editable after comparison with the browser parser, 984 single-character edits
+  FAIL writing back an unedited page reproduces the source text exactly: expected "[]" got "[\"<br/><!--<h1><a href='x'></i></body><h1><div class=a b></td>=\\\"\\n  </html><div class=a b></table><title></b></head><b></p></table><i>&=\\\"\",\"</td></html><b><html></<a href='x'><b></li></h1></b><!--><x</h1><html><table><head></i></textarea></ <title><x</p></b><pre><style
+  FAIL rendering the same text again changes nothing in the page: expected "[]" got "[\"</td></html><b><html></<a href='x'><b></li></h1></b><!--><x</h1><html><table><head></i></textarea></ <title><x</p></b><pre><style><style><img src=\\\"a.png\\\" alt=\\\"x>y\\\">\",\"<x<!-- c --></a><br></p></i>\\\"</head></html></td>ä&ouml; </pre><br/><title></><i>&</p><table>
+PARTIAL RV-01 (6 checks, 695 ms)
+  NOT MEASURED: Page.setInterceptFileChooserDialog has no implemented Firefox automation equivalent
+PARTIAL RV-02 (35 checks, 1192 ms)
+  NOT MEASURED: Emulation.setScriptExecutionDisabled has no implemented Firefox automation equivalent
+PASS RV-03 (10 checks, 1436 ms)
+PASS RV-04 (25 checks, 5381 ms)
+PASS F-01 (25 checks, 1789 ms)
+PASS F-02 (19 checks, 2181 ms)
+PASS F-03 (21 checks, 2234 ms)
+  NOTE alignment of the paragraph made by Enter: continues the alignment (browser behaviour)
+{"pass":25,"fail":4,"error":0,"partial":4,"notMeasured":1,"measuredAssertions":380,"failedAssertions":6}
