@@ -45,7 +45,7 @@ Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headle
 
 ## A3-01: alignment and other declarations
 
-**Correction.** `withAlign()` (`src/js/util.js:139`) no longer searches the style text. `styleDeclarations()` (`:192`) splits it the way CSS is read: `cssSkip()` (`:159`) steps over strings, comments and escaped characters, brackets are counted, and a semicolon is a border only outside all of them. The property name of each piece is compared after comments are removed and escapes resolved. Only pieces named `text-align` are removed. If a string, comment or bracket is left open, or a line break stands inside a string, the function returns null and `setAlign()` (`src/js/commands.js:450`) leaves that element alone and reports it.
+**Correction.** `withAlign()` (`src/js/util.js:139`) no longer searches the style text. `styleDeclarations()` (`:192`) splits it the way CSS is read: `cssSkip()` (`:159`) steps over strings, comments and escaped characters, brackets are counted, and a semicolon is a border only outside all of them. The property name of each piece is compared after comments are removed and escapes resolved. Only pieces named `text-align` are removed. If a string, comment or bracket is left open, or a line break stands inside a string, the function returns null and `setAlign()` (`src/js/commands.js:464`) leaves that element alone and reports it.
 
 **Please check.**
 
@@ -64,10 +64,10 @@ Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headle
 
 ## A3-03: formatting and rules that hold only sometimes
 
-**Correction.** Two additions to the checks in front of `formatDoc()` (`src/js/app.js:668`).
+**Correction.** Two additions to the checks in front of `formatDoc()` (`src/js/app.js:697`).
 
 1. `cssRisks()` (`src/js/util.js:227`) reads every style element and style attribute as CSS, with blocks, strings, comments and escapes, and reports `conditional` if a rule that holds only sometimes declares `display`, `content`, `all` or a custom property, or if one of the first three is declared anywhere with a `var()` or `if()` value. "Only sometimes" is: inside any at-rule except a fixed list of unconditional ones (`@font-face`, `@counter-style`, `@property`, `@namespace`, `@charset`, `@layer`, `@page`, `@font-feature-values`, `@font-palette-values`, `@color-profile`), which makes `@media`, `@supports`, `@container`, `@scope`, `@starting-style`, `@keyframes` and unknown at-rules conditional; or behind a selector that contains one of a list of state pseudo-classes or `[open` (`STATE`, `:216`). The same reader now also answers `spaces` and `external`, in place of the regular expressions of alpha.2, and reports `unclear` for a string or comment that is not closed. Each of the four stops the formatting with its own message.
-2. `hiddenLayoutRisk()` (`src/js/project.js:502`), called on the first rendering inside `sameLayout()` (`src/js/app.js:647`): a block element without a box, whose own computed `display` is not `none`, must not be displayed inline or as `contents` and must not have `::before` or `::after` content. This covers parts under a `hidden` attribute, in closed `details` or under an ancestor with `display: none`, which the box comparison cannot see.
+2. `hiddenLayoutRisk()` (`src/js/project.js:504`), called on the first rendering inside `sameLayout()` (`src/js/app.js:676`): a block element without a box, whose own computed `display` is not `none`, must not be displayed inline or as `contents` and must not have `::before` or `::after` content. This covers parts under a `hidden` attribute, in closed `details` or under an ancestor with `display: none`, which the box comparison cannot see.
 
 **Please check.**
 
@@ -79,13 +79,13 @@ Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headle
 
 ## A3-04: image checks that finish late
 
-**Correction.** `pickSeq` (`src/js/app.js:465`) is raised by every file choice and every opening and closing of the image dialog. `pickImage()` (`:543`) remembers the value before it waits for `readImage()` and drops the result, releasing its object URL, if the value has changed or the dialog is closed.
+**Correction.** `pickSeq` (`src/js/app.js:494`) is raised by every file choice and every opening and closing of the image dialog. `pickImage()` (`:572`) remembers the value before it waits for `readImage()` and drops the result, releasing its object URL, if the value has changed or the dialog is closed.
 
 **Please check.** Other asynchronous results that can arrive in a dialog they do not belong to. The link dialog has none. A dropped image file opens the dialog and then starts its check, so its number is the newest.
 
 ## A3-05: stops by the policy
 
-**Correction.** The listener (`src/js/app.js:993`) sets one flag for the document on every policy-violation event, without looking at the address. `showInactive()` (`:241`) shows the editor's own list if it has entries, otherwise the note about a stop by the browser. The flag is cleared only in `replaceDocument()`. The attempt of alpha.2 to follow the text is gone.
+**Correction.** The listener (`src/js/app.js:1067`) sets one flag for the document on every policy-violation event, without looking at the address. `showInactive()` (`:265`) shows the editor's own list if it has entries, otherwise the note about a stop by the browser. The flag is cleared only in `replaceDocument()`. The attempt of alpha.2 to follow the text is gone.
 
 **Please check.**
 
@@ -97,19 +97,19 @@ Environment: Windows 11 Pro 10.0.26300, Node v24.22.1, Edge 157.0.4341.60 headle
 
 Your Firefox runner and driver are on this branch unchanged. The driver is now also used by `tests/run.mjs --browser firefox`, which runs all 43 cases and writes `tests/results/acceptance-firefox.json`; your result files are not touched by it. A case that needs automation the driver does not have is recorded as PARTIAL with the part that is missing, as in your runner. The two helpers your runner overrides are reconciled in `tests/lib/harness.mjs`: `openFile()` waits for the "Geöffnet" message, `pickImage()` for the label with the dimensions.
 
-**FF-01, white space in a neighbouring text.** While typing, Firefox empties or removes text nodes that hold only white space next to the caret's text, and drops a space at the edge of a neighbouring text when another space is next to it (it keeps the one in the edited text as a no-break space). Correction in `src/js/serialize.js`: `engineTidied()` (`:138`) writes such a text as it stands in the source. Line breaks and indentation between elements (`t.hidden`) always; a space at an edge or a single space between elements only if `unseenEdge()` (`:123`) says it could not be seen, the white space of the parent collapses, and `ctx.typing` is set. `rescueHidden()` (`:313`) gives a text node the engine took out its text back, and under the same conditions puts back a single space between elements. `typing` comes from `state.onlyInserts` (`src/js/app.js:951`): true until an input event of another kind than an insertion arrives, reset by every render.
+**FF-01, white space in a neighbouring text.** While typing, Firefox empties or removes text nodes that hold only white space next to the caret's text, and drops a space at the edge of a neighbouring text when another space is next to it (it keeps the one in the edited text as a no-break space). Correction in `src/js/serialize.js`: `engineTidied()` (`:138`) writes such a text as it stands in the source. Line breaks and indentation between elements (`t.hidden`) always; a space at an edge or a single space between elements only if `unseenEdge()` (`:123`) says it could not be seen, the white space of the parent collapses, and `ctx.typing` is set. `rescueHidden()` (`:313`) gives a text node the engine took out its text back, and under the same conditions puts back a single space between elements. `typing` comes from `state.onlyInserts` (`src/js/app.js:1024`): true until an input event of another kind than an insertion arrives, reset by every render.
 
 Please check: can the rule keep a space the pupil wanted to delete? The intended answer is no, because any deletion switches it off until the next render. Can it keep white space in a text the pupil did edit? It applies only if the whole difference of the node is the missing white space. Is "could not be seen" judged correctly (comments are looked through; an inline element next to the text counts as visible content)?
 
-**FF-02, the browser's own line break.** Firefox keeps a `<br>` in an editable page without visible content. `syncKids()` reuses a `<br>` only if the projection created it (`src/js/project.js:273`), and the removal of a foreign one from the page does not count as a change of the projection (`:306`). The writer never writes a loose run directly in the page that consists of one `<br>` (`paddingBreak()`, `src/js/serialize.js:68`). Consequence in every browser: when a pupil deletes everything, the page is written empty instead of with `<p><br></p>`.
+**FF-02, the browser's own line break.** Firefox keeps a `<br>` in an editable page without visible content. `syncKids()` reuses a `<br>` only if the projection created it (`src/js/project.js:275`), and the removal of a foreign one from the page does not count as a change of the projection (`:308`). The writer never writes a loose run directly in the page that consists of one `<br>` (`paddingBreak()`, `src/js/serialize.js:68`). Consequence in every browser: when a pupil deletes everything, the page is written empty instead of with `<p><br></p>`.
 
-**FF-03, formatting refused.** Firefox gives white space between blocks a box with a height and no width. `layoutPrint()` (`src/js/project.js:522`) now counts a white-space-only text only if its box has a width. Is there rendered white space with no width that matters? In `pre`-like contexts the formatter does not run at all.
+**FF-03, formatting refused.** Firefox gives white space between blocks a box with a height and no width. `layoutPrint()` (`src/js/project.js:524`) now counts a white-space-only text only if its box has a width. Is there rendered white space with no width that matters? In `pre`-like contexts the formatter does not run at all.
 
 **T-03.** No product change. The expectation is now: the marked source without its tags equals the text selected in the page, and the selection is the word with or without the space behind it.
 
 ## The image dialog: a report of the owner
 
-The owner chose a picture again under the same file name from another folder and expected the address to change. The browser does not disclose the folder, so the address follows the folder field only; that was and is the specified behaviour. The dialog now says so and shows the address it will write, updating while the pupil types (`dialogAddress()`, `src/js/app.js:568`; `showAddress()`, `:585`; `src/app.html`). `validateImageDialog()` (`:608`) uses the same function, so what is shown is what is written. The folder suggested for the next picture now follows every accepted address, not only a newly chosen file. Case F-02 has the scenario.
+The owner chose a picture again under the same file name from another folder and expected the address to change. The browser does not disclose the folder, so the address follows the folder field only; that was and is the specified behaviour. The dialog now says so and shows the address it will write, updating while the pupil types (`dialogAddress()`, `src/js/app.js:597`; `showAddress()`, `:614`; `src/app.html`). `validateImageDialog()` (`:637`) uses the same function, so what is shown is what is written. The folder suggested for the next picture now follows every accepted address, not only a newly chosen file. Case F-02 has the scenario.
 
 ## Pictures from the folder of the editor: a decision of the owner
 
@@ -118,8 +118,8 @@ The owner chose a picture again under the same file name from another folder and
 What changed:
 
 * Both content policies say `img-src data: 'self'` instead of `img-src data: blob:` (`tools/build.mjs:59`, `src/js/app.js:29`). Object URLs for pictures are gone (`src/js/images.js`).
-* `localFileUrl()` (`src/js/util.js:115`) resolves only addresses that `fileOfSrc()` accepts, against the editor's own address, and returns a result only for `file:` with the editor's own host. The projection puts only that result on an image element (`src/js/project.js:192`); every other image gets a generated SVG `data:` picture that names the reason (`boxPicture()`, `:166`).
-* Missing files: `error` in the capture phase (`onImageError`, `src/js/app.js:474`), a set `missing`, a render after pending edits are committed (`showLost`, `:481`). Looking again only on return from another program, on a document change and after the image dialog (`retryLost`, `:489`; `cameBack`, `:1000`). A note above the page lists the missing addresses separately (`showInactive`, `:241`).
+* `localFileUrl()` (`src/js/util.js:115`) resolves only addresses that `fileOfSrc()` accepts, against the editor's own address, and returns a result only for `file:` with the editor's own host. The projection puts only that result on an image element (`src/js/project.js:194`); every other image gets a generated SVG `data:` picture that names the reason (`boxPicture()`, `:167`).
+* Missing files: `error` in the capture phase (`onImageError`, `src/js/app.js:503`), a set `missing`, a render after pending edits are committed (`showLost`, `:510`). Looking again only on return from another program, on a document change and after the image dialog (`retryLost`, `:518`; `cameBack`, `:1074`). A note above the page lists the missing addresses separately (`showInactive`, `:265`).
 * The image dialog probes the address it will write and says "Gefunden" or "Nicht gefunden" (`showAddress`, `:585`, with its own counter `foundSeq`).
 
 Residual risk accepted by the owner, to be checked and described, not to be removed: `'self'` also applies to pictures named in the **CSS** of an opened page, which the editor does not resolve. Such a page can load picture files of this computer outside the project folder, and in Edge a `file://computer/share/…` address is attempted (Firefox resolves it locally). Nothing from the network is loaded. Case X-08 records this; [SECURITY.md](SECURITY.md#pictures-from-the-folder-of-the-editor) describes it.

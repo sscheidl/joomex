@@ -6,7 +6,7 @@
 // elements are written fresh, with a small fixed vocabulary of plain tags.
 import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl, fileOfSrc, onlyAlign, patchAttrs } from './util.js';
 import { VOID_TAGS } from './tokenizer.js';
-import { HTML_NS, HREF_HOLDER, FILE_HOLDER, rawPos, srcOffsetOf } from './project.js';
+import { HTML_NS, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER, rawPos, srcOffsetOf } from './project.js';
 
 const NEW_OK = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd b i strong em u s sub sup code kbd mark small span a img br hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
 export const BLOCKS = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
@@ -240,6 +240,7 @@ function emitNew(ctx, c, indent) {
       const n = a.name.toLowerCase();
       let outName = n, value = a.value;
       if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(value)) continue; outName = 'href'; }
+      else if (n === TARGET_HOLDER) { if (name !== 'a' || !/^[A-Za-z0-9_-]{1,40}$/.test(value)) continue; outName = 'target'; }
       else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
       else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
       else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }

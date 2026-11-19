@@ -11,6 +11,7 @@ import { parseHtml, locateBody } from './tree.js';
 export const HTML_NS = 'http://www.w3.org/1999/xhtml';
 export const HREF_HOLDER = 'data-se-href';
 export const FILE_HOLDER = 'data-se-file';      // address of an image as written in the source
+export const TARGET_HOLDER = 'data-se-target';  // target of a link as written in the source (inert in the page pane)
 
 const DROP = words('script link meta base title template noframes noembed frameset frame param source track head html body');
 const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', object: 'Eingebettetes Objekt', embed: 'Eingebettetes Objekt', applet: 'Eingebettetes Objekt', audio: 'Audio', video: 'Video', portal: 'Eingebettete Seite', fencedframe: 'Eingebettete Seite' });
@@ -182,6 +183,7 @@ function safeAttrs(d, name, html, rep, local) {
     if (ln.startsWith('on')) { rep.handlers++; continue; }
     if (ln === 'name' && NAMED.has(name)) continue;          // would become a property of the preview document
     if (ln.startsWith('data-se-')) continue;
+    if (ln === 'target' && html && name === 'a') { out.push([TARGET_HOLDER, v]); continue; }
     if (DROP_ATTRS.has(ln)) { if (ln === 'srcset' || ln === 'background' || ln === 'poster') rep.images++; continue; }
     if (ln === 'href' || ln === 'xlink:href') {
       if (html && (name === 'a' || name === 'area')) { out.push([HREF_HOLDER, v]); continue; }

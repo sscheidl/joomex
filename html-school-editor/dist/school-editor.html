@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1g8kBjv3QKFgVvBiyZqRg/s7DPB8cIMJHdyHEqL3lzI='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ybgoYm9iiRUVg3CuOhcK0yTWz0lUkjB9JIZPyTFblMQ='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.4">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.5">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -30,11 +30,12 @@ button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); 
 .brand strong { font-size: 17px; color: var(--accent); white-space: nowrap; }
 .brand small { font-size: 11px; font-weight: 400; color: var(--soft); }
 .brand span { font-size: 12px; color: var(--soft); }
-.group { display: inline-flex; gap: 5px; }
+.group { display: inline-flex; gap: 3px; }
+#top > .group, #fmt > .group + .group { padding-left: 12px; border-left: 1px solid var(--line); }
 .doc { margin-left: auto; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
-#docState { font-size: 13px; color: #2b8a3e; white-space: nowrap; }
-#docState.dirty { color: #c92a2a; font-weight: 600; }
+#docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
+#docState.dirty { color: #d9480f; }
 
 #work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, var(--left, 50%)) 8px minmax(0, 1fr); }
 #work.dragging iframe, #work.dragging textarea { pointer-events: none; }
@@ -60,9 +61,13 @@ section { display: flex; flex-direction: column; min-width: 0; min-height: 0; ba
 .dt { color: #868e96; } .en { color: #9c36b5; } .rw { color: #495057; } .er { color: #c92a2a; text-decoration: underline wavy; }
 ::highlight(se-link) { background-color: #ffec99; }
 
-#fmt { display: flex; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+#fmt { display: flex; gap: 12px; row-gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 #fmt button { padding: 4px 9px; }
 #fmt .b { font-weight: 700; min-width: 34px; } #fmt .i { font-style: italic; min-width: 34px; font-family: Georgia, serif; }
+#fmt .u { text-decoration: underline; min-width: 34px; } #fmt .m { background: #fff3bf; }
+#pvTitle { flex: 1; min-width: 8em; max-width: 40em; font: inherit; font-size: 13px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 5px; }
+dialog label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+dialog h3, #infoText, #confirmText { cursor: move; user-select: none; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }
 /* off-screen copy of the page pane, used to compare layouts before "tidy up" is applied */
@@ -105,7 +110,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.4</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.5</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -118,6 +123,9 @@ dialog .found:empty { display: none; }
   </div>
   <div class="group">
     <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
+  </div>
+  <div class="group">
+    <button id="bBrowse" type="button" title="Die gespeicherte Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Im Browser öffnen</button>
   </div>
   <div class="doc"><span id="docName"></span><span id="docState"></span></div>
   <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
@@ -134,7 +142,7 @@ dialog .found:empty { display: none; }
   </section>
   <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
   <section id="pvPane" aria-label="Seite">
-    <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="pvTitle"></span></div>
+    <div class="paneHead"><h2>Deine Seite</h2><label class="hint" for="pvTitle">Titel:</label><input id="pvTitle" type="text" autocomplete="off" spellcheck="false" maxlength="200" title="Der Titel steht im Code im Tag &lt;title&gt; und oben im Tab des Browsers"></div>
     <div id="fmt" role="toolbar" aria-label="Text gestalten">
       <span class="group">
         <button id="bP" type="button" title="Absatz &lt;p&gt;">Absatz</button>
@@ -145,6 +153,10 @@ dialog .found:empty { display: none; }
       <span class="group">
         <button id="bBold" type="button" class="b" title="Fett &lt;b&gt; (Strg+B)">F</button>
         <button id="bItalic" type="button" class="i" title="Kursiv &lt;i&gt; (Strg+I)">K</button>
+        <button id="bUnderline" type="button" class="u" title="Unterstrichen &lt;u&gt; (Strg+U)">U</button>
+        <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
+        <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
+        <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
@@ -169,7 +181,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.4</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.5</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -182,6 +194,7 @@ dialog .found:empty { display: none; }
   <label for="linkUrl">Adresse (wohin führt der Link?)</label>
   <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
   <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
+  <label class="check"><input id="linkNew" type="checkbox"> In neuem Tab öffnen</label>
   <p id="linkErr" class="err" role="alert"></p>
   <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="linkOk">Einfügen</button></div>
 </dialog>
@@ -213,7 +226,8 @@ dialog .found:empty { display: none; }
     <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
-    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv</li>
+    <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
+    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>
   <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
 </dialog>
@@ -871,6 +885,7 @@ function locateBody(root, src) {
 const HTML_NS = 'http://www.w3.org/1999/xhtml';
 const HREF_HOLDER = 'data-se-href';
 const FILE_HOLDER = 'data-se-file';      // address of an image as written in the source
+const TARGET_HOLDER = 'data-se-target';  // target of a link as written in the source (inert in the page pane)
 
 const DROP = words('script link meta base title template noframes noembed frameset frame param source track head html body');
 const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', object: 'Eingebettetes Objekt', embed: 'Eingebettetes Objekt', applet: 'Eingebettetes Objekt', audio: 'Audio', video: 'Video', portal: 'Eingebettete Seite', fencedframe: 'Eingebettete Seite' });
@@ -1042,6 +1057,7 @@ function safeAttrs(d, name, html, rep, local) {
     if (ln.startsWith('on')) { rep.handlers++; continue; }
     if (ln === 'name' && NAMED.has(name)) continue;          // would become a property of the preview document
     if (ln.startsWith('data-se-')) continue;
+    if (ln === 'target' && html && name === 'a') { out.push([TARGET_HOLDER, v]); continue; }
     if (DROP_ATTRS.has(ln)) { if (ln === 'srcset' || ln === 'background' || ln === 'poster') rep.images++; continue; }
     if (ln === 'href' || ln === 'xlink:href') {
       if (html && (name === 'a' || name === 'area')) { out.push([HREF_HOLDER, v]); continue; }
@@ -1634,6 +1650,7 @@ function emitNew(ctx, c, indent) {
       const n = a.name.toLowerCase();
       let outName = n, value = a.value;
       if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(value)) continue; outName = 'href'; }
+      else if (n === TARGET_HOLDER) { if (name !== 'a' || !/^[A-Za-z0-9_-]{1,40}$/.test(value)) continue; outName = 'target'; }
       else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
       else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
       else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }
@@ -1837,6 +1854,43 @@ function formatSource(src, root) {
 
   kidsOf(root, 0);
   return out.length ? out.join('\n') + '\n' : '';
+}
+
+// The source text with the page title set to `value`: the text inside the first <title> outside SVG and
+// MathML is replaced; a page without a title gets one new line with a title element right after <head>
+// (else after <html>, else after the doctype, else at the start). Everything else stays byte for byte.
+// Returns null if the title element is not closed. The caller checks the result with the browser's parser.
+function withTitle(src, tokens, value) {
+  const text = String(value).replace(/[\t\n\f\r]+/g, ' ').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let foreign = 0, head = null, html = null, doctype = null;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type === 'doctype' && !doctype) doctype = t;
+    if (t.type !== 'start' && t.type !== 'end') continue;
+    if (t.name === 'svg' || t.name === 'math') {
+      if (t.type === 'start' && !t.selfClosing) foreign++; else if (t.type === 'end' && foreign) foreign--;
+      continue;
+    }
+    if (foreign || t.type !== 'start') continue;
+    if (t.name === 'title') {
+      const inner = tokens[i + 1] && tokens[i + 1].type === 'text' ? tokens[i + 1] : null, end = tokens[inner ? i + 2 : i + 1];
+      if (!end || end.type !== 'end' || end.name !== 'title') return null;
+      return src.slice(0, t.end) + text + src.slice(inner ? inner.end : t.end);
+    }
+    if (t.name === 'head' && !head) head = t;
+    else if (t.name === 'html' && !html) html = t;
+  }
+  const after = head || html || doctype;
+  const tag = '<title>' + text + '</title>';
+  if (!after) return tag + '\n' + src;
+  const indentOf = (at) => { const s = src.lastIndexOf('\n', at - 1) + 1; return /^[ \t]*/.exec(src.slice(s, at))[0]; };
+  const nextLine = src.indexOf('\n', after.end);
+  let indent = indentOf(after.start) + (after === head ? '  ' : '');
+  if (nextLine >= 0 && src.slice(after.end, nextLine).trim() === '') {
+    const following = /^[ \t]*/.exec(src.slice(nextLine + 1))[0];
+    if (!src.startsWith('</', nextLine + 1 + following.length)) indent = following;
+  }
+  return src.slice(0, after.end) + '\n' + indent + tag + src.slice(after.end);
 }
 
 // ---- highlight.js
@@ -2237,8 +2291,9 @@ function toggleList(env, type) {
   return 'ok';
 }
 
-const INLINE_ON = { bold: words('b strong'), italic: words('i em') };
-const INLINE_TAG = { bold: 'b', italic: 'i' };
+const INLINE_ON = { bold: words('b strong'), italic: words('i em'), underline: words('u'), sup: words('sup'), sub: words('sub'), mark: words('mark') };
+const INLINE_TAG = { bold: 'b', italic: 'i', underline: 'u', sup: 'sup', sub: 'sub', mark: 'mark' };
+const INLINE_NOT = { sup: 'sub', sub: 'sup' };      // superscript and subscript exclude each other
 const STRUCTURE = words('body ul ol dl table thead tbody tfoot tr div section article header footer main nav aside blockquote figure');
 const isEmptyInline = (el) => !el.textContent && !el.querySelector('img, br, input');
 
@@ -2296,8 +2351,10 @@ function liftOut(doc, node, fmt, names) {
   if (isEmptyInline(fmt)) fmt.remove();
 }
 
-// Bold / italic: wraps the selected text in <b> / <i>, or removes that formatting if all of it has it already.
-// Works on the document structure only, so the result does not depend on the page's style sheet.
+// Bold, italic, underline, superscript, subscript, highlight: wraps the selected text in <b>, <i>, <u>, <sup>,
+// <sub> or <mark>, or removes that formatting if all of it has it already. Superscript takes subscript away
+// from the text it is given to, and the other way round. Works on the document structure only, so the result
+// does not depend on the page's style sheet.
 function toggleInline(env, command) {
   const doc = env.doc, body = doc.body, names = INLINE_ON[command], tag = INLINE_TAG[command];
   const live = getRange(doc);
@@ -2312,6 +2369,10 @@ function toggleInline(env, command) {
   if (nodes.every(fmtOf)) {
     for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(doc, n, f, names);
   } else {
+    if (INLINE_NOT[command]) {
+      const other = INLINE_ON[INLINE_NOT[command]], otherOf = (n) => closestTag(n, body, other);
+      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(doc, n, f, other);
+    }
     let made = null;
     const created = [];
     for (const n of nodes) {
@@ -2352,10 +2413,11 @@ function linkProblem(doc, range) {
   return '';
 }
 
-function insertLink(env, range, url, text) {
+function insertLink(env, range, url, text, newTab) {
   const doc = env.doc;
   const a = doc.createElement('a');
   a.setAttribute(HREF_HOLDER, url);
+  if (newTab) a.setAttribute(TARGET_HOLDER, '_blank');
   if (range.collapsed) {
     a.textContent = text || url;
     range.insertNode(a);
@@ -2437,10 +2499,16 @@ function linkAround(doc, range) {
   return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
 }
 
-function changeLink(env, a, url) {
-  if (a.getAttribute(HREF_HOLDER) === url) return 'same';
-  a.setAttribute(HREF_HOLDER, url);
-  record(env, a, { href: url });
+// Changes the address of a link and whether it opens in a new tab. Only these two attributes are rewritten
+// in the source. Unticking "new tab" removes a target only if it is _blank; any other target stays.
+function changeLink(env, a, url, newTab) {
+  const set = {};
+  if (a.getAttribute(HREF_HOLDER) !== url) { set.href = url; a.setAttribute(HREF_HOLDER, url); }
+  const blank = a.getAttribute(TARGET_HOLDER) === '_blank';
+  if (newTab && !blank) { set.target = '_blank'; a.setAttribute(TARGET_HOLDER, '_blank'); }
+  else if (!newTab && blank) { set.target = null; a.removeAttribute(TARGET_HOLDER); }
+  if (!Object.keys(set).length) return 'same';
+  record(env, a, set);
   return 'ok';
 }
 
@@ -2509,7 +2577,8 @@ function insertPlainText(env, text) {
 // What the toolbar should show as active for the current caret position.
 function caretState(doc) {
   const range = getRange(doc);
-  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false, align: '', image: false };
+  const state = { block: '', list: '', link: false, editable: false, align: '', image: false };
+  for (const k of Object.keys(INLINE_ON)) state[k] = false;
   if (!range) return state;
   const body = doc.body;
   state.editable = isEditableAt(range.startContainer);
@@ -2518,8 +2587,7 @@ function caretState(doc) {
   const li = closestTag(range.startContainer, body, words('li'));
   if (li && li.parentNode) state.list = li.parentNode.localName;
   state.link = !!closestTag(range.startContainer, body, LINK);
-  state.bold = !!closestTag(range.startContainer, body, INLINE_ON.bold);
-  state.italic = !!closestTag(range.startContainer, body, INLINE_ON.italic);
+  for (const k of Object.keys(INLINE_ON)) state[k] = !!closestTag(range.startContainer, body, INLINE_ON[k]);
   const image = selectedImage(doc);
   state.image = !!image;
   state.align = alignOf(closestTag(image || range.startContainer, body, ALIGNABLE) || body);
@@ -2564,7 +2632,7 @@ const now = () => performance.now();
 const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
-  srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [],
+  srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
@@ -2612,6 +2680,29 @@ async function confirmBox(message, okLabel) {
   els.confirmText.textContent = message;
   els.confirmOk.textContent = okLabel;
   return (await openDialog(els.dlgConfirm)) === 'ok';
+}
+
+// Every dialog can be moved by its heading (or by its text, if it has none), never out of the window. The next
+// time it opens it is centred again.
+function wireDrag(dialog) {
+  dialog.addEventListener('pointerdown', (e) => {
+    const grip = e.target && e.target.closest ? e.target.closest('h3, #infoText, #confirmText') : null;
+    if (!grip || e.button !== 0 || !dialog.contains(grip)) return;
+    e.preventDefault();
+    const box = dialog.getBoundingClientRect(), dx = e.clientX - box.left, dy = e.clientY - box.top;
+    grip.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const s = dialog.style;
+      s.margin = '0'; s.right = s.bottom = 'auto';
+      s.left = clamp(ev.clientX - dx, 0, Math.max(0, innerWidth - box.width)) + 'px';
+      s.top = clamp(ev.clientY - dy, 0, Math.max(0, innerHeight - box.height)) + 'px';
+    };
+    const stop = () => { grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', stop); grip.removeEventListener('pointercancel', stop); };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', stop);
+    grip.addEventListener('pointercancel', stop);
+  });
+  dialog.addEventListener('close', () => { const s = dialog.style; s.margin = s.left = s.top = s.right = s.bottom = ''; });
 }
 
 // ---------------------------------------------------------------- source pane
@@ -2684,7 +2775,7 @@ const previewFocused = () => document.activeElement === els.pv;
 function updateChrome() {
   els.docName.textContent = state.name;
   els.docState.textContent = isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = isDirty() ? 'dirty' : '';
+  els.docState.className = isDirty() ? 'dirty' : 'saved';
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -2746,7 +2837,8 @@ function render(restore) {
   showInactive();
   els.lockNote.hidden = view.ok;
   els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
-  els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
+  state.title = res.title || '';
+  if (document.activeElement !== els.pvTitle) els.pvTitle.value = state.title;
   if (res.changed && restore && previewFocused()) setPreviewSelection(restore);
   renderCost = now() - t0;
   updateChrome();
@@ -2854,6 +2946,10 @@ function updateToolbar() {
   press(els.bH3, s.block === 'h3');
   press(els.bBold, s.bold);
   press(els.bItalic, s.italic);
+  press(els.bUnderline, s.underline);
+  press(els.bSup, s.sup);
+  press(els.bSub, s.sub);
+  press(els.bMark, s.mark);
   press(els.bUl, s.list === 'ul');
   press(els.bOl, s.list === 'ol');
   press(els.bAlignLeft, s.editable && s.align === 'left');
@@ -2948,6 +3044,7 @@ async function linkFlow() {
   els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
   els.linkTextRow.hidden = !!link || !range.collapsed;
+  els.linkNew.checked = !!link && link.getAttribute(TARGET_HOLDER) === '_blank';
   els.linkErr.textContent = '';
   const asked = openDialog(els.dlgLink);
   els.linkUrl.select();
@@ -2955,9 +3052,9 @@ async function linkFlow() {
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   if (answer !== 'ok') return;
-  const url = els.linkOk.dataset.url, text = els.linkText.value.trim();
-  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url)); return; }
-  runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text));
+  const url = els.linkOk.dataset.url, text = els.linkText.value.trim(), newTab = els.linkNew.checked;
+  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url, newTab)); return; }
+  runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text, newTab));
 }
 
 function validateLinkDialog() {
@@ -3231,6 +3328,7 @@ function replaceDocument(text, meta) {
   state.savedText = meta.unsaved ? null : text;
   state.name = meta.name || DEFAULT_NAME;
   state.handle = meta.handle || null;
+  state.onDisk = !!meta.onDisk;
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
@@ -3305,7 +3403,7 @@ async function loadFile(file, handle, op) {
       : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
     return false;
   }
-  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy });
+  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy });
   setStatus(decoded.legacy ? 'Geöffnet und in UTF-8 umgewandelt: ' + file.name + '. Bitte unter neuem Namen speichern.'
     : decoded.mixedEol ? 'Geöffnet: ' + file.name + '. Die Zeilenenden waren uneinheitlich und werden beim Speichern vereinheitlicht.'
     : 'Geöffnet: ' + file.name, decoded.legacy ? 'warn' : '');
@@ -3347,6 +3445,7 @@ async function writeToHandle(handle, blob) {
 
 function snapshotForSave() {
   commitVisual('vis-type');                 // the file must contain the very last keystroke of the preview
+  if (document.activeElement === els.pvTitle) commitTitle();
   return { text: state.text, docId: state.docId, name: state.name, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
 }
 
@@ -3362,6 +3461,7 @@ function downloadDoc(given) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   markSaved(snap);
+  if (snap.docId === state.docId) state.onDisk = false;      // the saved copy is in "Downloads", not where the page was
   setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
   return true;
 }
@@ -3382,10 +3482,50 @@ async function saveDoc() {
       : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
     return false;
   }
-  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; }
+  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; state.onDisk = true; }
   markSaved(snap);
   setStatus('Gespeichert: ' + (handle.name || snap.name), 'ok');
   return true;
+}
+
+// "Im Browser öffnen": the saved file in a new tab, as a real page with its scripts and links, so that pupils
+// can test their links. It is addressed by its name next to the editor; the tab has no connection back to the
+// editor (noopener). A page that does not lie in the folder of the editor gives "file not found" there.
+async function browseDoc() {
+  commitVisual('vis-type');
+  if (document.activeElement === els.pvTitle) commitTitle();
+  if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
+  if (!state.onDisk || isDirty()) {
+    const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
+      : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
+    if (!(await confirmBox(question, 'Speichern'))) return;
+    if (!(await saveDoc()) || isDirty()) return;
+    if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
+  }
+  window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
+  setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
+}
+
+// The title field above the page pane changes the content of <title> in the source, or adds a title at the
+// start of the head. It is the one edit of the head. The result is checked with the browser's parser: the new
+// title must be the page's title and the body must be exactly what it was; otherwise nothing changes.
+function commitTitle() {
+  const value = els.pvTitle.value.replace(/\s+/g, ' ').trim();
+  if (value === state.title) { els.pvTitle.value = state.title; return; }
+  commitVisual('vis-type');
+  const src = state.text, out = withTitle(src, tokensFor(src), value);
+  const parse = (text) => new DOMParser().parseFromString(text, 'text/html');
+  const before = parse(src), after = out === null ? null : parse(out);
+  if (!after || after.title !== value || after.body.innerHTML !== before.body.innerHTML || after.compatMode !== before.compatMode) {
+    els.pvTitle.value = state.title;
+    setStatus('Den Titel kann der Editor hier nicht sicher ändern. Ändere ihn links im Code im Tag <title>.', 'warn');
+    return;
+  }
+  history.seal();
+  applyText(out, 'cmd');
+  history.seal();
+  render(null);
+  setStatus('Der Titel der Seite ist jetzt: ' + (value || '(leer)'));
 }
 
 async function handleDroppedFile(file) {
@@ -3465,6 +3605,7 @@ function wirePreview() {
     else if (type === 'historyRedo') { e.preventDefault(); redo(); }
     else if (type === 'formatBold') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
     else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+    else if (type === 'formatUnderline') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
   });
   pvDoc.addEventListener('input', (e) => {
@@ -3503,6 +3644,7 @@ function wirePreview() {
       const key = e.key.toLowerCase();
       if (key === 'b') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
       else if (key === 'i') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+      else if (key === 'u') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     }
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
@@ -3537,6 +3679,11 @@ function wireChrome() {
   const noText = 'Markiere zuerst den Text, den du ändern möchtest.';
   tool(els.bBold, () => runCommand(() => toggleInline(env, 'bold'), noText));
   tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
+  tool(els.bUnderline, () => runCommand(() => toggleInline(env, 'underline'), noText));
+  tool(els.bSup, () => runCommand(() => toggleInline(env, 'sup'), noText));
+  tool(els.bSub, () => runCommand(() => toggleInline(env, 'sub'), noText));
+  tool(els.bMark, () => runCommand(() => toggleInline(env, 'mark'), noText));
+  tool(els.bBrowse, browseDoc);
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
   const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code.';
@@ -3550,7 +3697,10 @@ function wireChrome() {
 
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('click', (e) => { const v = e.target && e.target.dataset ? e.target.dataset.close : undefined; if (v !== undefined) dialog.close(v); });
+    wireDrag(dialog);
   }
+  els.pvTitle.addEventListener('change', commitTitle);
+  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; focusPreview(); } });
   els.linkOk.addEventListener('click', () => { if (validateLinkDialog()) els.dlgLink.close('ok'); });
   els.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });

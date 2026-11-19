@@ -1,11 +1,11 @@
 {
  "artefact": "dist/school-editor.html",
- "bytes": 182038,
- "sha256": "72715e6199f19dd92163d3f399e9180b1ed8d0e192b50970b1676ffad54e5af6",
+ "bytes": 192728,
+ "sha256": "58d483f052f55b6f759e663b94fae8e3731cb30c62c65f3bbb9d56e4f6d8fddc",
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-19T11:22:19.016Z",
+ "date": "2026-11-19T12:11:22.297Z",
  "browser": "edge",
  "results": [
   {
@@ -13,7 +13,7 @@
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 981,
+   "ms": 788,
    "error": null,
    "checks": [
     {
@@ -48,7 +48,7 @@
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1039,
+   "ms": 635,
    "error": null,
    "checks": [
     {
@@ -74,7 +74,7 @@
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1380,
+   "ms": 1089,
    "error": null,
    "checks": [
     {
@@ -125,7 +125,7 @@
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3541,
+   "ms": 1635,
    "error": null,
    "checks": [
     {
@@ -191,7 +191,7 @@
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3158,
+   "ms": 806,
    "error": null,
    "checks": [
     {
@@ -241,7 +241,7 @@
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 6371,
+   "ms": 2420,
    "error": null,
    "checks": [
     {
@@ -369,7 +369,7 @@
    "title": "explicit formatting changes white space only and is verified",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1227,
+   "ms": 576,
    "error": null,
    "checks": [
     {
@@ -449,7 +449,7 @@
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3652,
+   "ms": 1216,
    "error": null,
    "checks": [
     {
@@ -539,7 +539,7 @@
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1825,
+   "ms": 1330,
    "error": null,
    "checks": [
     {
@@ -593,7 +593,7 @@
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2819,
+   "ms": 1725,
    "error": null,
    "checks": [
     {
@@ -658,7 +658,7 @@
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 30745,
+   "ms": 25261,
    "error": null,
    "checks": [
     {
@@ -680,7 +680,7 @@
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 6824,
+   "ms": 3839,
    "error": null,
    "checks": [
     {
@@ -698,7 +698,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 3875 ms, panes in sync after 4236 ms"
+     "detail": "162 keystrokes sent in 2031 ms, panes in sync after 2289 ms"
     },
     {
      "pass": true,
@@ -749,7 +749,7 @@
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5309,
+   "ms": 3955,
    "error": null,
    "checks": [
     {
@@ -811,7 +811,7 @@
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 13386,
+   "ms": 11066,
    "error": null,
    "checks": [
     {
@@ -883,7 +883,7 @@
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1942,
+   "ms": 1852,
    "error": null,
    "checks": [
     {
@@ -942,7 +942,7 @@
    "title": "Save falls back to a real download when direct file access is missing",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 393,
+   "ms": 354,
    "error": null,
    "checks": [
     {
@@ -971,7 +971,7 @@
    "title": "no persistence between sessions",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 827,
+   "ms": 826,
    "error": null,
    "checks": [
     {
@@ -989,7 +989,7 @@
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2023,
+   "ms": 1977,
    "error": null,
    "checks": [
     {
@@ -1035,7 +1035,7 @@
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4713,
+   "ms": 4705,
    "error": null,
    "checks": [
     {
@@ -1121,7 +1121,7 @@
    "title": "no external resource of an opened document is fetched",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3260,
+   "ms": 3208,
    "error": null,
    "checks": [
     {
@@ -1165,7 +1165,7 @@
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1205,
+   "ms": 1134,
    "error": null,
    "checks": [
     {
@@ -1211,7 +1211,7 @@
    "title": "element names that shadow DOM properties do not disturb the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 931,
+   "ms": 871,
    "error": null,
    "checks": [
     {
@@ -1253,7 +1253,7 @@
    "title": "residual risk accepted by the owner: the CSS of an opened page can load picture files of this computer, never from the network",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 991,
+   "ms": 954,
    "error": null,
    "checks": [
     {
@@ -1296,7 +1296,7 @@
    "title": "no message bridge exists",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2,
+   "ms": 1,
    "error": null,
    "checks": [
     {
@@ -1310,7 +1310,7 @@
    "title": "static scan of the delivered file",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 6,
+   "ms": 7,
    "error": null,
    "checks": [
     {
@@ -1353,7 +1353,7 @@
     {
      "pass": true,
      "label": "page policy allows only the one hashed script, inline styles, data: images and picture files of its own origin",
-     "detail": "default-src 'none'; script-src 'sha256-1g8kBjv3QKFgVvBiyZqRg/s7DPB8cIMJHdyHEqL3lzI='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'"
+     "detail": "default-src 'none'; script-src 'sha256-ybgoYm9iiRUVg3CuOhcK0yTWz0lUkjB9JIZPyTFblMQ='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'"
     },
     {
      "pass": true,
@@ -1373,7 +1373,7 @@
      "pass": true,
      "note": true,
      "label": "size",
-     "detail": "182038 bytes"
+     "detail": "192728 bytes"
     }
    ]
   },
@@ -1382,7 +1382,7 @@
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 30086,
+   "ms": 28735,
    "error": null,
    "checks": [
     {
@@ -1417,7 +1417,7 @@
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 791,
+   "ms": 755,
    "error": null,
    "checks": [
     {
@@ -1458,7 +1458,7 @@
    "title": "review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 2455,
+   "ms": 2289,
    "error": null,
    "checks": [
     {
@@ -1559,7 +1559,7 @@
    "title": "review finding: \"tidy up\" never changes how the page looks (S-05, T-07)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2993,
+   "ms": 3019,
    "error": null,
    "checks": [
     {
@@ -1755,7 +1755,7 @@
    "title": "review finding: list commands keep attributes (S-05, T-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1586,
+   "ms": 1337,
    "error": null,
    "checks": [
     {
@@ -1806,7 +1806,7 @@
    "title": "review finding: whatever is switched off in the page pane is announced (S-04, X-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5385,
+   "ms": 5291,
    "error": null,
    "checks": [
     {
@@ -1926,7 +1926,7 @@
    "title": "images are addressed relative to the page and shown from the folder of the editor; missing files are named; other computers and the network are never asked",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1946,
+   "ms": 1802,
    "error": null,
    "checks": [
     {
@@ -2109,7 +2109,7 @@
    "title": "existing images and links are changed through the dialogs; only the changed attribute is rewritten",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2819,
+   "ms": 2706,
    "error": null,
    "checks": [
     {
@@ -2214,7 +2214,7 @@
    "title": "alignment left, centre, right, justified for text and pictures; the only style the editor writes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2405,
+   "ms": 2184,
    "error": null,
    "checks": [
     {
@@ -2322,7 +2322,7 @@
    "checks": [
     {
      "pass": true,
-     "label": "the name is followed by the version 0.1.0-alpha.4"
+     "label": "the name is followed by the version 0.1.0-alpha.5"
     },
     {
      "pass": true,
@@ -2348,7 +2348,7 @@
    "title": "review finding: alignment reads the style attribute as CSS and never touches other declarations (S-05, F-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1590,
+   "ms": 1270,
    "error": null,
    "checks": [
     {
@@ -2413,7 +2413,7 @@
    "title": "review finding: changing attributes of badly written tags keeps the intended meaning (S-05, F-02)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1120,
+   "ms": 1100,
    "error": null,
    "checks": [
     {
@@ -2455,7 +2455,7 @@
    "title": "review finding: \"tidy up\" refuses pages whose rules hold only sometimes, or in parts that are hidden (S-05, T-07)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3482,
+   "ms": 3460,
    "error": null,
    "checks": [
     {
@@ -2648,7 +2648,7 @@
    "title": "review finding: only the latest choice of the open image dialog counts (S-06, F-01)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1780,
+   "ms": 1697,
    "error": null,
    "checks": [
     {
@@ -2694,7 +2694,7 @@
    "title": "review finding: every stop by the content policy is announced, whatever the address looks like (S-04)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2687,
+   "ms": 2632,
    "error": null,
    "checks": [
     {
@@ -2756,7 +2756,7 @@
    "title": "review finding about the test helper: opening a file waits for that file, also when the name is the same",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 538,
+   "ms": 499,
    "error": null,
    "checks": [
     {
@@ -2778,7 +2778,7 @@
    "title": "Firefox measurement: typing never changes white space in a neighbouring text (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1338,
+   "ms": 1259,
    "error": null,
    "checks": [
     {
@@ -2809,7 +2809,7 @@
    "title": "Firefox measurement: a line break the browser keeps in an empty page is never written into the document (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1172,
+   "ms": 1149,
    "error": null,
    "checks": [
     {
@@ -2831,6 +2831,337 @@
      "detail": "<body>\n  <p>Hallo</p>\n</body>"
     }
    ]
+  },
+  {
+   "id": "F-05",
+   "title": "underline, superscript, subscript and highlight are written as u, sup, sub and mark; superscript and subscript exclude each other",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1452,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "subscript wraps the selected digit in <sub>"
+    },
+    {
+     "pass": true,
+     "label": "the button shows the subscript at the caret"
+    },
+    {
+     "pass": true,
+     "label": "superscript on a subscript digit takes the subscript away: only <sup> is left"
+    },
+    {
+     "pass": true,
+     "label": "and the buttons show superscript, not subscript"
+    },
+    {
+     "pass": true,
+     "label": "superscript again removes it: the original text is back"
+    },
+    {
+     "pass": true,
+     "label": "underline by button and by Ctrl+U, highlight and superscript are plain tags"
+    },
+    {
+     "pass": true,
+     "label": "no style attribute, span or font in the page"
+    },
+    {
+     "pass": true,
+     "label": "the caret in the highlighted word lights up \"Marker\" only"
+    },
+    {
+     "pass": true,
+     "label": "highlight again removes the <mark>"
+    },
+    {
+     "pass": true,
+     "label": "each command is one undo step"
+    },
+    {
+     "pass": true,
+     "label": "the saved file holds exactly that"
+    }
+   ]
+  },
+  {
+   "id": "F-06",
+   "title": "the link dialog writes target=\"_blank\" for \"In neuem Tab öffnen\"; changing it rewrites only that attribute",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1287,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "a new link starts without \"new tab\""
+    },
+    {
+     "pass": true,
+     "label": "the new link has href and target=\"_blank\", no rel"
+    },
+    {
+     "pass": true,
+     "label": "in the page pane no link has an address or a target"
+    },
+    {
+     "pass": true,
+     "label": "an existing link with TARGET=_blank shows the box ticked (read from the source)"
+    },
+    {
+     "pass": true,
+     "label": "unticking removes only the target attribute; spelling and quotes of the rest stay"
+    },
+    {
+     "pass": true,
+     "label": "target=\"_top\" is not \"new tab\": the box is not ticked"
+    },
+    {
+     "pass": true,
+     "label": "accepting unchanged keeps target=\"_top\""
+    },
+    {
+     "pass": true,
+     "label": "ticking it writes target=\"_blank\" in place of the other target"
+    },
+    {
+     "pass": true,
+     "label": "typing next to the new link keeps its target"
+    },
+    {
+     "pass": true,
+     "label": "undo leads back to the original text"
+    }
+   ]
+  },
+  {
+   "id": "F-07",
+   "title": "a link on a picture: made, its address changed, the picture inside it changed, the link removed",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 601,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "with a clicked picture, \"Link\" makes a link around it and asks for no text"
+    },
+    {
+     "pass": true,
+     "label": "the picture stands inside the new link, unchanged"
+    },
+    {
+     "pass": true,
+     "label": "a click on the linked picture and \"Link\" changes that link"
+    },
+    {
+     "pass": true,
+     "label": "only the address changes"
+    },
+    {
+     "pass": true,
+     "label": "the picture inside the link is changed through its own dialog; the link stays"
+    },
+    {
+     "pass": true,
+     "label": "\"Link entfernen\" with the picture clicked removes the link and keeps the picture"
+    },
+    {
+     "pass": true,
+     "label": "the picture is still shown from the folder"
+    }
+   ]
+  },
+  {
+   "id": "F-08",
+   "title": "dialogs are moved by their heading, never out of the window, and open centred again",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 965,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "dragging the heading moves the help dialog by the same distance"
+    },
+    {
+     "pass": true,
+     "label": "and keeps its size"
+    },
+    {
+     "pass": true,
+     "label": "dragged far out it stops at the edge of the window"
+    },
+    {
+     "pass": true,
+     "label": "and on the other side too",
+     "detail": "[{\"left\":854,\"top\":204,\"width\":520,\"height\":603},[1374,807]]"
+    },
+    {
+     "pass": true,
+     "label": "opened again, it is centred as before"
+    },
+    {
+     "pass": true,
+     "label": "dragging on its text does not move a dialog with a heading"
+    },
+    {
+     "pass": true,
+     "label": "the question is moved by its text"
+    },
+    {
+     "pass": true,
+     "label": "cancelling keeps the page with the typed letter"
+    },
+    {
+     "pass": true,
+     "label": "dialog dlgLink has a grip"
+    },
+    {
+     "pass": true,
+     "label": "dialog dlgImage has a grip"
+    },
+    {
+     "pass": true,
+     "label": "dialog dlgInfo has a grip"
+    }
+   ]
+  },
+  {
+   "id": "F-09",
+   "title": "\"Im Browser öffnen\" opens the saved file next to the editor in a new tab without connection; unsaved pages are saved first",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 822,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "a page that was never saved is not opened: the pupil is asked to save first"
+    },
+    {
+     "pass": true,
+     "label": "cancelled: nothing is opened"
+    },
+    {
+     "pass": true,
+     "label": "an opened, unchanged page: its file next to the editor in a new tab, with noopener"
+    },
+    {
+     "pass": true,
+     "label": "the status line says what \"file not found\" would mean",
+     "detail": "„meine seite #1.html“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors."
+    },
+    {
+     "pass": true,
+     "label": "with unsaved changes the pupil is asked \"Erst speichern?\""
+    },
+    {
+     "pass": true,
+     "label": "saving is a download in a browser without file access, with the typed letter"
+    },
+    {
+     "pass": true,
+     "label": "then nothing is opened: the saved copy is in \"Downloads\", not next to the editor"
+    },
+    {
+     "pass": true,
+     "label": "and the status line says where it is",
+     "detail": "Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick."
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "mock",
+     "detail": "window.open is replaced by a recorder (init script); the tab itself is not opened by the test. Opening a neighbouring file with noopener was observed by hand in Edge 157 before this version"
+    }
+   ]
+  },
+  {
+   "id": "F-10",
+   "title": "the title field changes <title> in the head and nothing else; a page without a title gets one",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1059,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the field shows the title of the new page"
+    },
+    {
+     "pass": true,
+     "label": "the title is written with & and < escaped, nothing else changes"
+    },
+    {
+     "pass": true,
+     "label": "the parsed page has this title"
+    },
+    {
+     "pass": true,
+     "label": "undo restores the title, also in the field"
+    },
+    {
+     "pass": true,
+     "label": "a page without title shows an empty field"
+    },
+    {
+     "pass": true,
+     "label": "a missing title is added as the first line of the head, indented like the next line"
+    },
+    {
+     "pass": true,
+     "label": "the title of an SVG drawing is not the page title: a page title is added after <html>"
+    },
+    {
+     "pass": true,
+     "label": "a page without head, html and doctype gets the title in front"
+    },
+    {
+     "pass": true,
+     "label": "a title element that is not closed is left alone"
+    },
+    {
+     "pass": true,
+     "label": "and the pupil is told to change it in the code",
+     "detail": "Den Titel kann der Editor hier nicht sicher ändern. Ändere ihn links im Code im Tag <title>."
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+S while typing in the field saves the new title"
+    },
+    {
+     "pass": true,
+     "label": "a page whose body cannot be edited still gets its new title; the body stays as written"
+    }
+   ]
+  },
+  {
+   "id": "F-11",
+   "title": "the top bar: save state bold and coloured, groups of buttons separated",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 333,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "\"gespeichert\" is bold",
+     "detail": "[\"gespeichert\",\"700\",\"rgb(43, 138, 62)\"]"
+    },
+    {
+     "pass": true,
+     "label": "\"nicht gespeichert\" is bold in another colour",
+     "detail": "[\"● nicht gespeichert\",\"700\",\"rgb(217, 72, 15)\"]"
+    },
+    {
+     "pass": true,
+     "label": "groups are separated by a line; buttons inside a group stand close together",
+     "detail": "[[\"1px\",3],[\"1px\",3],[\"1px\",3],[\"1px\",3],[\"0px\",3],[\"1px\",3],[\"1px\",3],[\"1px\",3],[\"1px\",3]]"
+    }
+   ]
   }
  ],
  "version": "Edg/157.0.4341.60",
@@ -2838,11 +3169,11 @@
  "mode": "headless (new)",
  "status": "PASS",
  "summary": {
-  "pass": 43,
+  "pass": 50,
   "fail": 0,
   "partial": 0,
   "notMeasured": 0,
-  "checks": 536,
+  "checks": 598,
   "partsNotMeasured": 2
  }
 }

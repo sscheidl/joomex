@@ -2,7 +2,7 @@
 // are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
 // italic use the browser's own editing command. Every command works on the current selection of the preview.
 import { words, withAlign } from './util.js';
-import { HREF_HOLDER, FILE_HOLDER } from './project.js';
+import { HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
 import { BLOCKS } from './serialize.js';
 
 const PARA = words('p h1 h2 h3 h4 h5 h6');
@@ -227,8 +227,9 @@ export function toggleList(env, type) {
   return 'ok';
 }
 
-const INLINE_ON = { bold: words('b strong'), italic: words('i em') };
-const INLINE_TAG = { bold: 'b', italic: 'i' };
+const INLINE_ON = { bold: words('b strong'), italic: words('i em'), underline: words('u'), sup: words('sup'), sub: words('sub'), mark: words('mark') };
+const INLINE_TAG = { bold: 'b', italic: 'i', underline: 'u', sup: 'sup', sub: 'sub', mark: 'mark' };
+const INLINE_NOT = { sup: 'sub', sub: 'sup' };      // superscript and subscript exclude each other
 const STRUCTURE = words('body ul ol dl table thead tbody tfoot tr div section article header footer main nav aside blockquote figure');
 const isEmptyInline = (el) => !el.textContent && !el.querySelector('img, br, input');
 
@@ -286,8 +287,10 @@ function liftOut(doc, node, fmt, names) {
   if (isEmptyInline(fmt)) fmt.remove();
 }
 
-// Bold / italic: wraps the selected text in <b> / <i>, or removes that formatting if all of it has it already.
-// Works on the document structure only, so the result does not depend on the page's style sheet.
+// Bold, italic, underline, superscript, subscript, highlight: wraps the selected text in <b>, <i>, <u>, <sup>,
+// <sub> or <mark>, or removes that formatting if all of it has it already. Superscript takes subscript away
+// from the text it is given to, and the other way round. Works on the document structure only, so the result
+// does not depend on the page's style sheet.
 export function toggleInline(env, command) {
   const doc = env.doc, body = doc.body, names = INLINE_ON[command], tag = INLINE_TAG[command];
   const live = getRange(doc);
@@ -302,6 +305,10 @@ export function toggleInline(env, command) {
   if (nodes.every(fmtOf)) {
     for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(doc, n, f, names);
   } else {
+    if (INLINE_NOT[command]) {
+      const other = INLINE_ON[INLINE_NOT[command]], otherOf = (n) => closestTag(n, body, other);
+      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(doc, n, f, other);
+    }
     let made = null;
     const created = [];
     for (const n of nodes) {
@@ -342,10 +349,11 @@ export function linkProblem(doc, range) {
   return '';
 }
 
-export function insertLink(env, range, url, text) {
+export function insertLink(env, range, url, text, newTab) {
   const doc = env.doc;
   const a = doc.createElement('a');
   a.setAttribute(HREF_HOLDER, url);
+  if (newTab) a.setAttribute(TARGET_HOLDER, '_blank');
   if (range.collapsed) {
     a.textContent = text || url;
     range.insertNode(a);
@@ -427,10 +435,16 @@ export function linkAround(doc, range) {
   return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
 }
 
-export function changeLink(env, a, url) {
-  if (a.getAttribute(HREF_HOLDER) === url) return 'same';
-  a.setAttribute(HREF_HOLDER, url);
-  record(env, a, { href: url });
+// Changes the address of a link and whether it opens in a new tab. Only these two attributes are rewritten
+// in the source. Unticking "new tab" removes a target only if it is _blank; any other target stays.
+export function changeLink(env, a, url, newTab) {
+  const set = {};
+  if (a.getAttribute(HREF_HOLDER) !== url) { set.href = url; a.setAttribute(HREF_HOLDER, url); }
+  const blank = a.getAttribute(TARGET_HOLDER) === '_blank';
+  if (newTab && !blank) { set.target = '_blank'; a.setAttribute(TARGET_HOLDER, '_blank'); }
+  else if (!newTab && blank) { set.target = null; a.removeAttribute(TARGET_HOLDER); }
+  if (!Object.keys(set).length) return 'same';
+  record(env, a, set);
   return 'ok';
 }
 
@@ -499,7 +513,8 @@ export function insertPlainText(env, text) {
 // What the toolbar should show as active for the current caret position.
 export function caretState(doc) {
   const range = getRange(doc);
-  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false, align: '', image: false };
+  const state = { block: '', list: '', link: false, editable: false, align: '', image: false };
+  for (const k of Object.keys(INLINE_ON)) state[k] = false;
   if (!range) return state;
   const body = doc.body;
   state.editable = isEditableAt(range.startContainer);
@@ -508,8 +523,7 @@ export function caretState(doc) {
   const li = closestTag(range.startContainer, body, words('li'));
   if (li && li.parentNode) state.list = li.parentNode.localName;
   state.link = !!closestTag(range.startContainer, body, LINK);
-  state.bold = !!closestTag(range.startContainer, body, INLINE_ON.bold);
-  state.italic = !!closestTag(range.startContainer, body, INLINE_ON.italic);
+  for (const k of Object.keys(INLINE_ON)) state[k] = !!closestTag(range.startContainer, body, INLINE_ON[k]);
   const image = selectedImage(doc);
   state.image = !!image;
   state.align = alignOf(closestTag(image || range.startContainer, body, ALIGNABLE) || body);

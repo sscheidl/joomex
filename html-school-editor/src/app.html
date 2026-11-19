@@ -27,6 +27,9 @@ __CSS__
   <div class="group">
     <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
   </div>
+  <div class="group">
+    <button id="bBrowse" type="button" title="Die gespeicherte Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Im Browser öffnen</button>
+  </div>
   <div class="doc"><span id="docName"></span><span id="docState"></span></div>
   <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
 </header>
@@ -42,7 +45,7 @@ __CSS__
   </section>
   <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
   <section id="pvPane" aria-label="Seite">
-    <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="pvTitle"></span></div>
+    <div class="paneHead"><h2>Deine Seite</h2><label class="hint" for="pvTitle">Titel:</label><input id="pvTitle" type="text" autocomplete="off" spellcheck="false" maxlength="200" title="Der Titel steht im Code im Tag &lt;title&gt; und oben im Tab des Browsers"></div>
     <div id="fmt" role="toolbar" aria-label="Text gestalten">
       <span class="group">
         <button id="bP" type="button" title="Absatz &lt;p&gt;">Absatz</button>
@@ -53,6 +56,10 @@ __CSS__
       <span class="group">
         <button id="bBold" type="button" class="b" title="Fett &lt;b&gt; (Strg+B)">F</button>
         <button id="bItalic" type="button" class="i" title="Kursiv &lt;i&gt; (Strg+I)">K</button>
+        <button id="bUnderline" type="button" class="u" title="Unterstrichen &lt;u&gt; (Strg+U)">U</button>
+        <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
+        <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
+        <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
@@ -90,6 +97,7 @@ __CSS__
   <label for="linkUrl">Adresse (wohin führt der Link?)</label>
   <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
   <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
+  <label class="check"><input id="linkNew" type="checkbox"> In neuem Tab öffnen</label>
   <p id="linkErr" class="err" role="alert"></p>
   <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="linkOk">Einfügen</button></div>
 </dialog>
@@ -121,7 +129,8 @@ __CSS__
     <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
-    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv</li>
+    <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
+    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>
   <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
 </dialog>

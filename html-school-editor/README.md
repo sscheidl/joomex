@@ -2,7 +2,7 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.4 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 0.1.0-alpha.5 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 ## Use
 
@@ -12,7 +12,8 @@ What the editor does:
 
 * New page, open an HTML file, save, download a copy.
 * Edit in either pane; the other pane follows. The source text is always the complete document.
-* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself lies in the project folder, and the editor shows it from there. A missing file is shown as a box that names it. Existing links and images are changed through the same dialogs.
+* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), underline (`<u>`), superscript (`<sup>`), subscript (`<sub>`), highlight (`<mark>`), bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself lies in the project folder, and the editor shows it from there. A missing file is shown as a box that names it. Existing links and images are changed through the same dialogs; a link can open in a new tab. The page title is edited in a field above the page.
+* "Im Browser öffnen" shows the saved page in a new tab, where its links and scripts work, so that pupils can test their links.
 * One undo/redo history for both panes. "Code aufräumen" indents the source; it is applied only if the page looks exactly the same afterwards, otherwise the code stays as it is and the editor says why.
 * Scripts, forms, frames and anything from the network are switched off inside the editor and stay untouched in the source. Picture files of the computer are the one exception: they are shown (see [docs/SECURITY.md](docs/SECURITY.md)).
 

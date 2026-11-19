@@ -20,11 +20,12 @@ button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); 
 .brand strong { font-size: 17px; color: var(--accent); white-space: nowrap; }
 .brand small { font-size: 11px; font-weight: 400; color: var(--soft); }
 .brand span { font-size: 12px; color: var(--soft); }
-.group { display: inline-flex; gap: 5px; }
+.group { display: inline-flex; gap: 3px; }
+#top > .group, #fmt > .group + .group { padding-left: 12px; border-left: 1px solid var(--line); }
 .doc { margin-left: auto; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
-#docState { font-size: 13px; color: #2b8a3e; white-space: nowrap; }
-#docState.dirty { color: #c92a2a; font-weight: 600; }
+#docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
+#docState.dirty { color: #d9480f; }
 
 #work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, var(--left, 50%)) 8px minmax(0, 1fr); }
 #work.dragging iframe, #work.dragging textarea { pointer-events: none; }
@@ -50,9 +51,13 @@ section { display: flex; flex-direction: column; min-width: 0; min-height: 0; ba
 .dt { color: #868e96; } .en { color: #9c36b5; } .rw { color: #495057; } .er { color: #c92a2a; text-decoration: underline wavy; }
 ::highlight(se-link) { background-color: #ffec99; }
 
-#fmt { display: flex; gap: 12px; padding: 6px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+#fmt { display: flex; gap: 12px; row-gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 #fmt button { padding: 4px 9px; }
 #fmt .b { font-weight: 700; min-width: 34px; } #fmt .i { font-style: italic; min-width: 34px; font-family: Georgia, serif; }
+#fmt .u { text-decoration: underline; min-width: 34px; } #fmt .m { background: #fff3bf; }
+#pvTitle { flex: 1; min-width: 8em; max-width: 40em; font: inherit; font-size: 13px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 5px; }
+dialog label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+dialog h3, #infoText, #confirmText { cursor: move; user-select: none; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }
 /* off-screen copy of the page pane, used to compare layouts before "tidy up" is applied */

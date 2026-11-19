@@ -4,6 +4,23 @@ import assert from 'node:assert/strict';
 import { tokenize } from '../../src/js/tokenizer.js';
 import { parseHtml } from '../../src/js/tree.js';
 import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl } from '../../src/js/util.js';
+import { withTitle } from '../../src/js/format.js';
+
+test('page title: only the text of <title> changes; a missing title is added at the start of the head', () => {
+  const set = (src, value) => withTitle(src, tokenize(src), value);
+  assert.equal(set('<html><head>\n  <TITLE id=t>Alt</TITLE>\n</head></html>', 'Neu & <b>'), '<html><head>\n  <TITLE id=t>Neu &amp; &lt;b></TITLE>\n</head></html>');
+  assert.equal(set('<title></title>', 'Leer war'), '<title>Leer war</title>');
+  assert.equal(set('<title>A</title>', ''), '<title></title>');
+  assert.equal(set('<title>A\nB</title>', 'Zeile\neins'), '<title>Zeile eins</title>');
+  assert.equal(set('<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="utf-8">\n</head>', 'T'), '<!DOCTYPE html>\n<html>\n<head>\n    <title>T</title>\n    <meta charset="utf-8">\n</head>');
+  assert.equal(set('<html>\n  <head>\n  </head>', 'T'), '<html>\n  <head>\n    <title>T</title>\n  </head>');
+  assert.equal(set('<!DOCTYPE html>\n<p>x</p>', 'T'), '<!DOCTYPE html>\n<title>T</title>\n<p>x</p>');
+  assert.equal(set('<p>x</p>', 'T'), '<title>T</title>\n<p>x</p>');
+  // the title of an SVG drawing is not the page title
+  assert.equal(set('<html><body><svg><title>Kreis</title></svg>', 'T'), '<html>\n<title>T</title><body><svg><title>Kreis</title></svg>');
+  // a title that is not closed is not changed
+  assert.equal(set('<title>Hallo\n<p>x</p>', 'T'), null);
+});
 
 // Applies `changes` to the first tag of `tag` the way the writer does.
 function patched(tag, changes) {

@@ -81,3 +81,40 @@ export function formatSource(src, root) {
   kidsOf(root, 0);
   return out.length ? out.join('\n') + '\n' : '';
 }
+
+// The source text with the page title set to `value`: the text inside the first <title> outside SVG and
+// MathML is replaced; a page without a title gets one new line with a title element right after <head>
+// (else after <html>, else after the doctype, else at the start). Everything else stays byte for byte.
+// Returns null if the title element is not closed. The caller checks the result with the browser's parser.
+export function withTitle(src, tokens, value) {
+  const text = String(value).replace(/[\t\n\f\r]+/g, ' ').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  let foreign = 0, head = null, html = null, doctype = null;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type === 'doctype' && !doctype) doctype = t;
+    if (t.type !== 'start' && t.type !== 'end') continue;
+    if (t.name === 'svg' || t.name === 'math') {
+      if (t.type === 'start' && !t.selfClosing) foreign++; else if (t.type === 'end' && foreign) foreign--;
+      continue;
+    }
+    if (foreign || t.type !== 'start') continue;
+    if (t.name === 'title') {
+      const inner = tokens[i + 1] && tokens[i + 1].type === 'text' ? tokens[i + 1] : null, end = tokens[inner ? i + 2 : i + 1];
+      if (!end || end.type !== 'end' || end.name !== 'title') return null;
+      return src.slice(0, t.end) + text + src.slice(inner ? inner.end : t.end);
+    }
+    if (t.name === 'head' && !head) head = t;
+    else if (t.name === 'html' && !html) html = t;
+  }
+  const after = head || html || doctype;
+  const tag = '<title>' + text + '</title>';
+  if (!after) return tag + '\n' + src;
+  const indentOf = (at) => { const s = src.lastIndexOf('\n', at - 1) + 1; return /^[ \t]*/.exec(src.slice(s, at))[0]; };
+  const nextLine = src.indexOf('\n', after.end);
+  let indent = indentOf(after.start) + (after === head ? '  ' : '');
+  if (nextLine >= 0 && src.slice(after.end, nextLine).trim() === '') {
+    const following = /^[ \t]*/.exec(src.slice(nextLine + 1))[0];
+    if (!src.startsWith('</', nextLine + 1 + following.length)) indent = following;
+  }
+  return src.slice(0, after.end) + '\n' + indent + tag + src.slice(after.end);
+}

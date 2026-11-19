@@ -11,9 +11,9 @@
 import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
-import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER } from './project.js';
+import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
 import { serializeBody, rescueHidden } from './serialize.js';
-import { formatSource, FMT_BLOCK, FMT_KEEP } from './format.js';
+import { formatSource, withTitle, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
 import { createHistory } from './history.js';
 import { readImage } from './images.js';
@@ -45,7 +45,7 @@ const now = () => performance.now();
 const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
-  srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [],
+  srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
@@ -93,6 +93,29 @@ async function confirmBox(message, okLabel) {
   els.confirmText.textContent = message;
   els.confirmOk.textContent = okLabel;
   return (await openDialog(els.dlgConfirm)) === 'ok';
+}
+
+// Every dialog can be moved by its heading (or by its text, if it has none), never out of the window. The next
+// time it opens it is centred again.
+function wireDrag(dialog) {
+  dialog.addEventListener('pointerdown', (e) => {
+    const grip = e.target && e.target.closest ? e.target.closest('h3, #infoText, #confirmText') : null;
+    if (!grip || e.button !== 0 || !dialog.contains(grip)) return;
+    e.preventDefault();
+    const box = dialog.getBoundingClientRect(), dx = e.clientX - box.left, dy = e.clientY - box.top;
+    grip.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      const s = dialog.style;
+      s.margin = '0'; s.right = s.bottom = 'auto';
+      s.left = clamp(ev.clientX - dx, 0, Math.max(0, innerWidth - box.width)) + 'px';
+      s.top = clamp(ev.clientY - dy, 0, Math.max(0, innerHeight - box.height)) + 'px';
+    };
+    const stop = () => { grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', stop); grip.removeEventListener('pointercancel', stop); };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', stop);
+    grip.addEventListener('pointercancel', stop);
+  });
+  dialog.addEventListener('close', () => { const s = dialog.style; s.margin = s.left = s.top = s.right = s.bottom = ''; });
 }
 
 // ---------------------------------------------------------------- source pane
@@ -165,7 +188,7 @@ const previewFocused = () => document.activeElement === els.pv;
 function updateChrome() {
   els.docName.textContent = state.name;
   els.docState.textContent = isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = isDirty() ? 'dirty' : '';
+  els.docState.className = isDirty() ? 'dirty' : 'saved';
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -227,7 +250,8 @@ function render(restore) {
   showInactive();
   els.lockNote.hidden = view.ok;
   els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
-  els.pvTitle.textContent = res.title ? 'Titel: ' + res.title : '';
+  state.title = res.title || '';
+  if (document.activeElement !== els.pvTitle) els.pvTitle.value = state.title;
   if (res.changed && restore && previewFocused()) setPreviewSelection(restore);
   renderCost = now() - t0;
   updateChrome();
@@ -335,6 +359,10 @@ function updateToolbar() {
   press(els.bH3, s.block === 'h3');
   press(els.bBold, s.bold);
   press(els.bItalic, s.italic);
+  press(els.bUnderline, s.underline);
+  press(els.bSup, s.sup);
+  press(els.bSub, s.sub);
+  press(els.bMark, s.mark);
   press(els.bUl, s.list === 'ul');
   press(els.bOl, s.list === 'ol');
   press(els.bAlignLeft, s.editable && s.align === 'left');
@@ -429,6 +457,7 @@ async function linkFlow() {
   els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
   els.linkTextRow.hidden = !!link || !range.collapsed;
+  els.linkNew.checked = !!link && link.getAttribute(TARGET_HOLDER) === '_blank';
   els.linkErr.textContent = '';
   const asked = openDialog(els.dlgLink);
   els.linkUrl.select();
@@ -436,9 +465,9 @@ async function linkFlow() {
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   if (answer !== 'ok') return;
-  const url = els.linkOk.dataset.url, text = els.linkText.value.trim();
-  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url)); return; }
-  runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text));
+  const url = els.linkOk.dataset.url, text = els.linkText.value.trim(), newTab = els.linkNew.checked;
+  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url, newTab)); return; }
+  runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text, newTab));
 }
 
 function validateLinkDialog() {
@@ -712,6 +741,7 @@ function replaceDocument(text, meta) {
   state.savedText = meta.unsaved ? null : text;
   state.name = meta.name || DEFAULT_NAME;
   state.handle = meta.handle || null;
+  state.onDisk = !!meta.onDisk;
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
@@ -786,7 +816,7 @@ async function loadFile(file, handle, op) {
       : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
     return false;
   }
-  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy });
+  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy });
   setStatus(decoded.legacy ? 'Geöffnet und in UTF-8 umgewandelt: ' + file.name + '. Bitte unter neuem Namen speichern.'
     : decoded.mixedEol ? 'Geöffnet: ' + file.name + '. Die Zeilenenden waren uneinheitlich und werden beim Speichern vereinheitlicht.'
     : 'Geöffnet: ' + file.name, decoded.legacy ? 'warn' : '');
@@ -828,6 +858,7 @@ async function writeToHandle(handle, blob) {
 
 function snapshotForSave() {
   commitVisual('vis-type');                 // the file must contain the very last keystroke of the preview
+  if (document.activeElement === els.pvTitle) commitTitle();
   return { text: state.text, docId: state.docId, name: state.name, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
 }
 
@@ -843,6 +874,7 @@ function downloadDoc(given) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   markSaved(snap);
+  if (snap.docId === state.docId) state.onDisk = false;      // the saved copy is in "Downloads", not where the page was
   setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
   return true;
 }
@@ -863,10 +895,50 @@ async function saveDoc() {
       : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
     return false;
   }
-  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; }
+  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; state.onDisk = true; }
   markSaved(snap);
   setStatus('Gespeichert: ' + (handle.name || snap.name), 'ok');
   return true;
+}
+
+// "Im Browser öffnen": the saved file in a new tab, as a real page with its scripts and links, so that pupils
+// can test their links. It is addressed by its name next to the editor; the tab has no connection back to the
+// editor (noopener). A page that does not lie in the folder of the editor gives "file not found" there.
+async function browseDoc() {
+  commitVisual('vis-type');
+  if (document.activeElement === els.pvTitle) commitTitle();
+  if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
+  if (!state.onDisk || isDirty()) {
+    const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
+      : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
+    if (!(await confirmBox(question, 'Speichern'))) return;
+    if (!(await saveDoc()) || isDirty()) return;
+    if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
+  }
+  window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
+  setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
+}
+
+// The title field above the page pane changes the content of <title> in the source, or adds a title at the
+// start of the head. It is the one edit of the head. The result is checked with the browser's parser: the new
+// title must be the page's title and the body must be exactly what it was; otherwise nothing changes.
+function commitTitle() {
+  const value = els.pvTitle.value.replace(/\s+/g, ' ').trim();
+  if (value === state.title) { els.pvTitle.value = state.title; return; }
+  commitVisual('vis-type');
+  const src = state.text, out = withTitle(src, tokensFor(src), value);
+  const parse = (text) => new DOMParser().parseFromString(text, 'text/html');
+  const before = parse(src), after = out === null ? null : parse(out);
+  if (!after || after.title !== value || after.body.innerHTML !== before.body.innerHTML || after.compatMode !== before.compatMode) {
+    els.pvTitle.value = state.title;
+    setStatus('Den Titel kann der Editor hier nicht sicher ändern. Ändere ihn links im Code im Tag <title>.', 'warn');
+    return;
+  }
+  history.seal();
+  applyText(out, 'cmd');
+  history.seal();
+  render(null);
+  setStatus('Der Titel der Seite ist jetzt: ' + (value || '(leer)'));
 }
 
 async function handleDroppedFile(file) {
@@ -946,6 +1018,7 @@ function wirePreview() {
     else if (type === 'historyRedo') { e.preventDefault(); redo(); }
     else if (type === 'formatBold') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
     else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+    else if (type === 'formatUnderline') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
   });
   pvDoc.addEventListener('input', (e) => {
@@ -984,6 +1057,7 @@ function wirePreview() {
       const key = e.key.toLowerCase();
       if (key === 'b') { e.preventDefault(); runCommand(() => toggleInline(env, 'bold')); }
       else if (key === 'i') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
+      else if (key === 'u') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     }
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
@@ -1018,6 +1092,11 @@ function wireChrome() {
   const noText = 'Markiere zuerst den Text, den du ändern möchtest.';
   tool(els.bBold, () => runCommand(() => toggleInline(env, 'bold'), noText));
   tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
+  tool(els.bUnderline, () => runCommand(() => toggleInline(env, 'underline'), noText));
+  tool(els.bSup, () => runCommand(() => toggleInline(env, 'sup'), noText));
+  tool(els.bSub, () => runCommand(() => toggleInline(env, 'sub'), noText));
+  tool(els.bMark, () => runCommand(() => toggleInline(env, 'mark'), noText));
+  tool(els.bBrowse, browseDoc);
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
   const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code.';
@@ -1031,7 +1110,10 @@ function wireChrome() {
 
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('click', (e) => { const v = e.target && e.target.dataset ? e.target.dataset.close : undefined; if (v !== undefined) dialog.close(v); });
+    wireDrag(dialog);
   }
+  els.pvTitle.addEventListener('change', commitTitle);
+  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; focusPreview(); } });
   els.linkOk.addEventListener('click', () => { if (validateLinkDialog()) els.dlgLink.close('ok'); });
   els.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
