@@ -2,7 +2,7 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.2 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 0.1.0-alpha.3 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 ## Use
 
@@ -12,7 +12,7 @@ What the editor does:
 
 * New page, open an HTML file, save, download a copy.
 * Edit in either pane; the other pane follows. The source text is always the complete document.
-* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, links, images from the computer (embedded, with alternative text).
+* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself has to lie next to the page. Existing links and images are changed through the same dialogs.
 * One undo/redo history for both panes. "Code aufräumen" indents the source; it is applied only if the page looks exactly the same afterwards, otherwise the code stays as it is and the editor says why.
 * Scripts, forms, frames and anything from the network are switched off inside the editor and stay untouched in the source.
 

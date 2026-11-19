@@ -59,7 +59,7 @@ export function parseHtml(src, quirks, tokens) {
     }
   }
   function element(name, tok) {
-    return { type: 'el', name, start: tok.start, nameEnd: tok.nameEnd, tagEnd: tok.end, closeStart: tok.end, end: tok.end, children: [] };
+    return { type: 'el', name, start: tok.start, nameEnd: tok.nameEnd, tagEnd: tok.end, attrs: tok.attrs, closeStart: tok.end, end: tok.end, children: [] };
   }
 
   function onStart(tok) {

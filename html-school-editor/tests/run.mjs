@@ -11,12 +11,13 @@ import { functional } from './browser/functional.mjs';
 import { security } from './browser/security.mjs';
 import { robustness } from './browser/robustness.mjs';
 import { review } from './browser/review.mjs';
+import { features } from './browser/features.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const only = opt('--only') ? opt('--only').split(',') : null;
 const browsers = opt('--browser') ? [opt('--browser')] : ['edge', 'chrome'];
-const cases = [...functional, ...security, ...robustness, ...review].filter((t) => !only || only.includes(t.id));
+const cases = [...functional, ...security, ...robustness, ...review, ...features].filter((t) => !only || only.includes(t.id));
 
 const artefact = fs.readFileSync(ARTEFACT);
 const meta = {

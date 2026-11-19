@@ -77,12 +77,13 @@ export class Editor {
   constructor(browser, page) { this.browser = browser; this.page = page; }
 
   // `noFsa` hides the File System Access pickers before the page starts, like a browser without that API.
-  static async open(browser, { noFsa = false, init = '', offline = false } = {}) {
+  // `artefact`: another copy of the delivered file (a test that needs files next to the editor copies it).
+  static async open(browser, { noFsa = false, init = '', offline = false, artefact = ARTEFACT } = {}) {
     const page = await browser.newPage();
     if (offline) await page.setOffline(true);
     if (noFsa) await page.send('Page.addScriptToEvaluateOnNewDocument', { source: NO_FSA });
     if (init) await page.send('Page.addScriptToEvaluateOnNewDocument', { source: init });
-    await page.goto(pathToFileURL(ARTEFACT).href);
+    await page.goto(pathToFileURL(artefact).href);
     const ed = new Editor(browser, page);
     await ed.until('document.documentElement.dataset.ready === "yes"', 'editor ready');
     return ed;
@@ -167,6 +168,17 @@ export class Editor {
     await sleep(30);
   }
   type(text, delay = 0) { return this.page.type(text, delay); }
+  // Replaces the content of a text field of a dialog with real key events.
+  async field(id, text) {
+    await this.eval(`(() => { const f = document.getElementById(${JSON.stringify(id)}); f.focus(); f.select(); })()`);
+    if (text) await this.type(text); else await this.key('Delete');
+  }
+  // Chooses a file in the open image dialog through its real file input and waits until it was checked.
+  async pickImage(file) {
+    await this.page.setFiles('#imgIn', [file]);
+    await this.until('document.getElementById("imgName").textContent.includes(' + JSON.stringify(path.basename(file)) + ')', 'image accepted', 30000);
+  }
+  inactiveNote() { return this.eval('document.getElementById("inactive").hidden ? "" : document.getElementById("inactiveText").textContent'); }
   key(name, mods) { return this.page.key(name, mods); }
 
   // Clicks a button that triggers a real browser download and returns the downloaded bytes.

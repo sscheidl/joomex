@@ -226,20 +226,18 @@ export const functional = [
         c.ok(await ed.dialogOpen('dlgImage'), 'image dialog opens');
         await ed.dialogButton('dlgImage', 'Einfügen');
         c.ok(await ed.dialogOpen('dlgImage') && (await ed.eval('document.getElementById("imgErr").textContent')).includes('Wähle'), 'no image chosen: dialog explains');
-        await ed.page.setFiles('#imgIn', [png]);
-        await ed.until('!document.getElementById("imgPrev").hidden', 'image accepted');
-        await ed.dialogButton('dlgImage', 'Einfügen');
-        c.ok((await ed.eval('document.getElementById("imgErr").textContent')).includes('Beschreibe'), 'missing alternative text is asked for');
+        await ed.pickImage(png);
         const alt = 'Katze "auf" dem <script>alert(1)</script> Sofa & mehr';
-        await ed.eval('document.getElementById("imgAlt").focus()');
-        await ed.type(alt);
+        await ed.field('imgAlt', alt);
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
         const src = await ed.source();
-        const b64 = makePng(24, 16, false).toString('base64');
-        c.ok(src.includes('<h1 id="titel">Erste Zeile<img src="data:image/png;base64,' + b64 + '" alt="Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr"></h1>'), 'img element with the exact file bytes and escaped alt text', src.split('\n')[12].slice(0, 80) + ' … ' + src.split('\n')[12].slice(-120));
-        c.eq(await ed.eval(PARSE('doc.querySelector("img").alt + "|" + doc.querySelectorAll("script").length')), alt + '|0', 'alt text is plain text in the parsed file, no script element');
+        c.ok(src.includes('<h1 id="titel">Erste Zeile<img src="t06-klein.png" alt="Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr"></h1>'), 'img element with the file name as address and the escaped description', src.split('\n')[12]);
+        c.ok(!/data:|blob:/.test(src), 'the source holds no embedded image data and no internal address');
+        c.eq(await ed.eval(PARSE('doc.querySelector("img").alt + "|" + doc.querySelectorAll("script").length')), alt + '|0', 'the description is plain text in the parsed file, no script element');
         c.eq(await ed.eval(PV + '.querySelectorAll("script").length'), 0, 'no script element in the page either');
+        c.eq(await ed.eval(`((d) => { const i = d.querySelector("img"); return i.naturalWidth + "x" + i.naturalHeight; })(${PV})`), '24x16', 'the page pane shows the chosen picture');
+        c.ok((await ed.status()).includes('t06-klein.png') && (await ed.status()).includes('Ordner'), 'the pupil is told where the file has to be', await ed.status());
         for (const [name, bytes] of [['t06-text.png', Buffer.from('<svg onload=alert(1)>kein Bild')], ['t06-vektor.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')]]) {
           await ed.caret('Punkt A', 2);
           await ed.click('bImage');
@@ -252,14 +250,13 @@ export const functional = [
         const bigFile = tmpFile('t06-gross.png', makePng(1600, 1200, true));
         await ed.caret('Punkt A', 2);
         await ed.click('bImage');
-        await ed.page.setFiles('#imgIn', [bigFile]);
-        await ed.until('!document.getElementById("imgPrev").hidden', 'large image prepared', 30000);
-        await ed.eval('document.getElementById("imgAlt").focus()');
-        await ed.type('Rauschen');
+        await ed.pickImage(bigFile);
+        c.ok((await ed.eval('document.getElementById("imgName").textContent')).includes('1600 × 1200') && (await ed.eval('document.getElementById("imgName").textContent')).includes('sehr große Datei'), 'size of a large picture is shown', await ed.eval('document.getElementById("imgName").textContent'));
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
-        const big = /<img src="data:image\/jpeg;base64,([A-Za-z0-9+\/=]+)" alt="Rauschen">/.exec(await ed.source());
-        c.ok(big && big[1].length < 620000, 'a ' + fs.statSync(bigFile).size + '-byte image is scaled down before embedding', big ? big[1].length + ' base64 characters' : 'not found');
+        const after = await ed.source();
+        c.ok(after.includes('Punkt A<img src="t06-gross.png" alt=""></li>') || after.includes('Pu<img src="t06-gross.png" alt="">nkt A</li>'), 'a ' + fs.statSync(bigFile).size + '-byte picture adds only its file name to the source; an empty description gives alt=""', after.split('\n')[19]);
+        c.ok(after.length - src.length < 60, 'the source grew by ' + (after.length - src.length) + ' characters');
       });
     },
   },

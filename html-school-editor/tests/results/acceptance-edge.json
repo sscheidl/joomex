@@ -1,11 +1,11 @@
 {
  "artefact": "dist/school-editor.html",
- "bytes": 143858,
- "sha256": "091f5167cc0a24432c6246cbb62af9ff3defd6c5ac08d31673ee51f78ed5ac49",
+ "bytes": 160302,
+ "sha256": "2c85f25d11fe0d1207f3e7655334dcbdd6f7b058dad66e0c6a9c9aeb09629244",
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-19T05:52:05.323Z",
+ "date": "2026-11-19T07:20:00.845Z",
  "browser": "edge",
  "results": [
   {
@@ -13,7 +13,7 @@
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 865,
+   "ms": 772,
    "error": null,
    "checks": [
     {
@@ -48,7 +48,7 @@
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 641,
+   "ms": 645,
    "error": null,
    "checks": [
     {
@@ -74,7 +74,7 @@
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1053,
+   "ms": 1092,
    "error": null,
    "checks": [
     {
@@ -120,7 +120,7 @@
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1643,
+   "ms": 1788,
    "error": null,
    "checks": [
     {
@@ -186,7 +186,7 @@
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 775,
+   "ms": 862,
    "error": null,
    "checks": [
     {
@@ -236,7 +236,7 @@
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2670,
+   "ms": 2652,
    "error": null,
    "checks": [
     {
@@ -299,20 +299,29 @@
     },
     {
      "pass": true,
-     "label": "missing alternative text is asked for"
+     "label": "img element with the file name as address and the escaped description",
+     "detail": "  <h1 id=\"titel\">Erste Zeile<img src=\"t06-klein.png\" alt=\"Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr\"></h1>"
     },
     {
      "pass": true,
-     "label": "img element with the exact file bytes and escaped alt text",
-     "detail": "  <h1 id=\"titel\">Erste Zeile<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE … AuBwAl8dCn4WP7oQAAAAASUVORK5CYII=\" alt=\"Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr\"></h1>"
+     "label": "the source holds no embedded image data and no internal address"
     },
     {
      "pass": true,
-     "label": "alt text is plain text in the parsed file, no script element"
+     "label": "the description is plain text in the parsed file, no script element"
     },
     {
      "pass": true,
      "label": "no script element in the page either"
+    },
+    {
+     "pass": true,
+     "label": "the page pane shows the chosen picture"
+    },
+    {
+     "pass": true,
+     "label": "the pupil is told where the file has to be",
+     "detail": "Lege die Datei „t06-klein.png“ in denselben Ordner wie deine Seite. Sonst fehlt das Bild später im Browser."
     },
     {
      "pass": true,
@@ -328,8 +337,17 @@
     },
     {
      "pass": true,
-     "label": "a 5763023-byte image is scaled down before embedding",
-     "detail": "422208 base64 characters"
+     "label": "size of a large picture is shown",
+     "detail": "t06-gross.png (1600 × 1200 Pixel, eine sehr große Datei)"
+    },
+    {
+     "pass": true,
+     "label": "a 5763023-byte picture adds only its file name to the source; an empty description gives alt=\"\"",
+     "detail": "    <li>Pu<img src=\"t06-gross.png\" alt=\"\">nkt A</li>"
+    },
+    {
+     "pass": true,
+     "label": "the source grew by 32 characters"
     }
    ]
   },
@@ -338,7 +356,7 @@
    "title": "explicit formatting changes white space only and is verified",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 551,
+   "ms": 559,
    "error": null,
    "checks": [
     {
@@ -418,7 +436,7 @@
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1168,
+   "ms": 1271,
    "error": null,
    "checks": [
     {
@@ -508,7 +526,7 @@
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1317,
+   "ms": 1327,
    "error": null,
    "checks": [
     {
@@ -562,7 +580,7 @@
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1668,
+   "ms": 1739,
    "error": null,
    "checks": [
     {
@@ -627,7 +645,7 @@
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 25053,
+   "ms": 26129,
    "error": null,
    "checks": [
     {
@@ -649,7 +667,7 @@
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3444,
+   "ms": 3584,
    "error": null,
    "checks": [
     {
@@ -667,7 +685,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 1783 ms, panes in sync after 2044 ms"
+     "detail": "162 keystrokes sent in 1841 ms, panes in sync after 2110 ms"
     },
     {
      "pass": true,
@@ -718,7 +736,7 @@
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3906,
+   "ms": 4054,
    "error": null,
    "checks": [
     {
@@ -780,7 +798,7 @@
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 10938,
+   "ms": 11254,
    "error": null,
    "checks": [
     {
@@ -852,7 +870,7 @@
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1783,
+   "ms": 1911,
    "error": null,
    "checks": [
     {
@@ -911,7 +929,7 @@
    "title": "Save falls back to a real download when direct file access is missing",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 338,
+   "ms": 361,
    "error": null,
    "checks": [
     {
@@ -940,7 +958,7 @@
    "title": "no persistence between sessions",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 808,
+   "ms": 814,
    "error": null,
    "checks": [
     {
@@ -958,7 +976,7 @@
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1967,
+   "ms": 1997,
    "error": null,
    "checks": [
     {
@@ -1004,7 +1022,7 @@
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4785,
+   "ms": 4718,
    "error": null,
    "checks": [
     {
@@ -1090,7 +1108,7 @@
    "title": "no external resource of an opened document is fetched",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3271,
+   "ms": 3256,
    "error": null,
    "checks": [
     {
@@ -1134,7 +1152,7 @@
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1117,
+   "ms": 1163,
    "error": null,
    "checks": [
     {
@@ -1180,7 +1198,7 @@
    "title": "element names that shadow DOM properties do not disturb the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 901,
+   "ms": 926,
    "error": null,
    "checks": [
     {
@@ -1222,7 +1240,7 @@
    "title": "no message bridge exists",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1,
+   "ms": 2,
    "error": null,
    "checks": [
     {
@@ -1236,7 +1254,7 @@
    "title": "static scan of the delivered file",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5,
+   "ms": 6,
    "error": null,
    "checks": [
     {
@@ -1279,11 +1297,11 @@
     {
      "pass": true,
      "label": "page policy allows only the one hashed script, inline styles and data: images",
-     "detail": "default-src 'none'; script-src 'sha256-WgAw9EfRoqqs3kx9hiDnMpFNsru/bYHVRgYeA9homuk='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'"
+     "detail": "default-src 'none'; script-src 'sha256-goznDxMphOl776F13W5XwHp89EcylkfqO+Voq9k9XG0='; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'"
     },
     {
      "pass": true,
-     "label": "preview frame carries its own policy without any script source"
+     "label": "preview frame carries its own policy without any script source; images only from the document text or from files chosen in this session"
     },
     {
      "pass": true,
@@ -1295,7 +1313,7 @@
      "pass": true,
      "note": true,
      "label": "size",
-     "detail": "143858 bytes"
+     "detail": "160302 bytes"
     }
    ]
   },
@@ -1304,7 +1322,7 @@
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 27311,
+   "ms": 28956,
    "error": null,
    "checks": [
     {
@@ -1339,7 +1357,7 @@
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 716,
+   "ms": 737,
    "error": null,
    "checks": [
     {
@@ -1380,7 +1398,7 @@
    "title": "review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 2257,
+   "ms": 2442,
    "error": null,
    "checks": [
     {
@@ -1481,7 +1499,7 @@
    "title": "review finding: \"tidy up\" never changes how the page looks (S-05, T-07)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2804,
+   "ms": 2842,
    "error": null,
    "checks": [
     {
@@ -1677,7 +1695,7 @@
    "title": "review finding: list commands keep attributes (S-05, T-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1335,
+   "ms": 1542,
    "error": null,
    "checks": [
     {
@@ -1728,7 +1746,7 @@
    "title": "review finding: whatever is switched off in the page pane is announced (S-04, X-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5278,
+   "ms": 5435,
    "error": null,
    "checks": [
     {
@@ -1841,6 +1859,320 @@
      "label": "a new page shows no note"
     }
    ]
+  },
+  {
+   "id": "F-01",
+   "title": "images are addressed by file name: folder, width, optional description; files next to the editor are never read",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1945,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "a folder name with a colon is refused with an explanation",
+     "detail": "Der Name des Unterordners darf keine Zeichen wie : ? # \" < > enthalten."
+    },
+    {
+     "pass": true,
+     "label": "width \"abc\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "width \"0\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "width \"12.5\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "folder, file name, empty description and width are written as plain attributes",
+     "detail": "  <p>Hier steht mein Text.<img src=\"bilder/fotos/f01-katze.png\" alt=\"\" width=\"60\"></p>"
+    },
+    {
+     "pass": true,
+     "label": "the page pane shows the chosen file in the given width",
+     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":60,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "a picture the editor knows is not reported as switched off"
+    },
+    {
+     "pass": true,
+     "label": "the hint names the folder",
+     "detail": "Lege die Datei „f01-katze.png“ in den Ordner „bilder/fotos“ neben deiner Seite. Sonst fehlt das Bild später im Browser."
+    },
+    {
+     "pass": true,
+     "label": "the folder of the last picture is suggested again"
+    },
+    {
+     "pass": true,
+     "label": "the characters # and % of a file name are written so that the address still means this file",
+     "detail": "  <h1><img src=\"f01 mein bild %231 100%25.png\" alt=\"\">Meine erste Webseite</h1>"
+    },
+    {
+     "pass": true,
+     "label": "and the page pane shows it",
+     "detail": "{\"kind\":\"blob\",\"natural\":10,\"shown\":10,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "the saved file holds file names only, no image data and no internal address"
+    },
+    {
+     "pass": true,
+     "label": "a picture chosen earlier in this session is shown in another page that names the same file",
+     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "pictures that lie next to the editor are not read: both are shown as a box",
+     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"\",\"natural\":0,\"shown\":663,\"box\":true}]"
+    },
+    {
+     "pass": true,
+     "label": "no image element of the page pane has an address that could be loaded"
+    },
+    {
+     "pass": true,
+     "label": "the browser reports no request for any of the pictures"
+    },
+    {
+     "pass": true,
+     "label": "nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "a picture from the network is a box, a picture embedded in the code is shown as before",
+     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"data\",\"natural\":16,\"shown\":16,\"box\":false}]"
+    },
+    {
+     "pass": true,
+     "label": "the note tells both kinds apart",
+     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb, 2 Bilder aus Dateien."
+    },
+    {
+     "pass": true,
+     "label": "the box explains what to do"
+    },
+    {
+     "pass": true,
+     "label": "a click on the box and \"Bild\" opens the dialog for this picture"
+    },
+    {
+     "pass": true,
+     "label": "choosing the file again does not change the code"
+    },
+    {
+     "pass": true,
+     "label": "both places that name this file now show it",
+     "detail": "[{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false},{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}]"
+    },
+    {
+     "pass": true,
+     "label": "the note no longer lists them",
+     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb."
+    },
+    {
+     "pass": true,
+     "label": "still nothing reached the local counter"
+    }
+   ]
+  },
+  {
+   "id": "F-02",
+   "title": "existing images and links are changed through the dialogs; only the changed attribute is rewritten",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2203,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "page pane focused"
+    },
+    {
+     "pass": true,
+     "label": "the dialog shows folder, description and width of the clicked picture"
+    },
+    {
+     "pass": true,
+     "label": "accepting the dialog without a change leaves the code as it is"
+    },
+    {
+     "pass": true,
+     "label": "and adds no undo step"
+    },
+    {
+     "pass": true,
+     "label": "new width: the width attribute is rewritten, the height attribute goes, everything else stays as written"
+    },
+    {
+     "pass": true,
+     "label": "new description: written inside the single quotes the pupil used"
+    },
+    {
+     "pass": true,
+     "label": "new folder: only the folder part of the address changes"
+    },
+    {
+     "pass": true,
+     "label": "empty width removes the attribute"
+    },
+    {
+     "pass": true,
+     "label": "four undo steps restore the original text"
+    },
+    {
+     "pass": true,
+     "label": "embedded picture: width added, the embedded data stays",
+     "detail": "<p>E<img alt=\"klein\" src=\"data:image/png;base64,iVBORw0KGgoA"
+    },
+    {
+     "pass": true,
+     "label": "picture from the network: description added, address untouched"
+    },
+    {
+     "pass": true,
+     "label": "choosing a file for it replaces the address by the file name"
+    },
+    {
+     "pass": true,
+     "label": "with the caret in a link, \"Link\" opens the dialog with its address"
+    },
+    {
+     "pass": true,
+     "label": "an address that is not allowed is refused here as well"
+    },
+    {
+     "pass": true,
+     "label": "new address: only the value of the attribute changes, inside its quotes",
+     "detail": "<p><a HREF='neu.html' title=\"t\" onclick=\"x()\">Zum <b>Ziel</b></a> und <a name=\"anker\">Anker</a></p>"
+    },
+    {
+     "pass": true,
+     "label": "links in the page pane stay inert"
+    },
+    {
+     "pass": true,
+     "label": "a selection inside the link changes the same link"
+    },
+    {
+     "pass": true,
+     "label": "an anchor without address gets one as a new attribute"
+    },
+    {
+     "pass": true,
+     "label": "a selection that reaches beyond a link is explained instead",
+     "detail": "Die Markierung reicht über einen Link hinaus. Setze den Cursor in den Link, um ihn zu ändern."
+    }
+   ]
+  },
+  {
+   "id": "F-03",
+   "title": "alignment left, centre, right, justified for text and pictures; the only style the editor writes",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2420,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "an ordinary paragraph shows \"Links\" as active"
+    },
+    {
+     "pass": true,
+     "label": "centre: one style attribute on the paragraph, nothing else changes"
+    },
+    {
+     "pass": true,
+     "label": "the button shows the alignment"
+    },
+    {
+     "pass": true,
+     "label": "justified replaces the value"
+    },
+    {
+     "pass": true,
+     "label": "right replaces the value"
+    },
+    {
+     "pass": true,
+     "label": "left removes the attribute: the original text is back"
+    },
+    {
+     "pass": true,
+     "label": "a selection over three blocks aligns all three"
+    },
+    {
+     "pass": true,
+     "label": "and left restores them"
+    },
+    {
+     "pass": true,
+     "label": "an existing style attribute keeps its own declaration, its spelling and its quotes"
+    },
+    {
+     "pass": true,
+     "label": "and gets it back unchanged"
+    },
+    {
+     "pass": true,
+     "label": "list item and table cell"
+    },
+    {
+     "pass": true,
+     "label": "each alignment is one undo step"
+    },
+    {
+     "pass": true,
+     "label": "a clicked picture is aligned through the paragraph it stands in"
+    },
+    {
+     "pass": true,
+     "label": "a picture that stands directly in the page gets a paragraph of its own for the alignment",
+     "detail": "  <p style=\"text-align: right\"><img alt=\"lose\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABZ0lEQVR42mNgYOcTlVHWMrSwd/MNiU7KLCiva+2ZPGvhivXb9h45fenmg+fvvv5h5hKUkFfTNbF28mRAYgeEx6XmFFc1dvRPm7tk9aadB46fu3rn8auPP/6z8YpIK2kamNu5+jAgsYOjEjPyy2pbuifNXLB83dY9h09dvHH/2dsvv5k4BcTlVHWMrRw9/BmQ2GGxKdlFlQ3tfVPnLF61ccf+Y2ev3H708sP3f6w8wlKKGvpmti7eQQxI7MiE9LzSmuauiTPmL1u7Zfehkxeu33v65vMvRg5+MVkVbSNLB3e/UAYkdkxyVmFFfVvvlNmLVm7Yvu/omcu3Hr54/+0vC7eQpIK6nqmNs1dgBAMSOz4tt6S6qXPC9HlL12zedfDE+Wt3n7z+9BM1HBlICtOA8DgGksI0OCqRgaQwDYtNYSApTCMT0hlICtOY5CwGksI0Pi2XgaQwTcosYCApTFNzihlICtOM/D"
+    },
+    {
+     "pass": true,
+     "label": "and it stands at the right edge of the page pane"
+    },
+    {
+     "pass": true,
+     "label": "the saved file has the three style attributes the pupil asked for or wrote (two alignments, one colour) and no other"
+    },
+    {
+     "pass": true,
+     "label": "\"Code aufräumen\" accepts the aligned page",
+     "detail": "applied Der Code wurde aufgeräumt."
+    },
+    {
+     "pass": true,
+     "label": "the buttons show the alignment that the page rule gives"
+    },
+    {
+     "pass": true,
+     "label": "left is written out when a rule of the page would align differently"
+    },
+    {
+     "pass": true,
+     "label": "and can be changed again"
+    },
+    {
+     "pass": true,
+     "label": "Enter after an aligned paragraph gives a paragraph with at most this alignment as style",
+     "detail": "  <p style=\"text-align: center\">Erste</p>\n  <p style=\"text-align: center\">Zweite</p>\n</body>"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "alignment of the paragraph made by Enter",
+     "detail": "continues the alignment (browser behaviour)"
+    }
+   ]
   }
  ],
  "version": "Edg/157.0.4341.60",
@@ -1848,9 +2180,9 @@
  "mode": "headless (new)",
  "status": "PASS",
  "summary": {
-  "pass": 30,
+  "pass": 33,
   "fail": 0,
-  "checks": 341,
+  "checks": 410,
   "partsNotMeasured": 2
  }
 }

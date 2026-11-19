@@ -8,16 +8,16 @@
 //   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
 //                      new text revision, at the latest before the text is used for anything else.
 // Timers only decide how early these steps happen while the user pauses, never what is kept.
-import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES } from './util.js';
+import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
-import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint } from './project.js';
+import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, HREF_HOLDER, FILE_HOLDER } from './project.js';
 import { serializeBody, rescueHidden } from './serialize.js';
 import { formatSource, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
 import { createHistory } from './history.js';
-import { prepareImage } from './images.js';
-import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState } from './commands.js';
+import { readImage } from './images.js';
+import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink } from './commands.js';
 
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
@@ -28,7 +28,7 @@ const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(input,select,textarea,button){pointer-events:none}' +
   '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
 const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">' +
+  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: blob:">' +
   '<style id="se-base">' + PREVIEW_CSS + '</style></head><body></body></html>';
 
 const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
@@ -51,6 +51,7 @@ const state = {
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
+const files = new Map();          // images chosen in this session, by file name: { name, url, width, height }
 const blocked = new Set();        // file names of addresses the browser's policy stopped in the page pane
 const els = {};
 let pvDoc = null, pvWin = null;
@@ -206,7 +207,7 @@ function render(restore) {
   let view, res;
   try {
     view = analyze(state.text, tokensFor(state.text));
-    res = renderView(view, pvDoc, info);
+    res = renderView(view, pvDoc, info, files);
   } catch (e) {
     // Last line of defence: show nothing editable rather than a page that does not match the text.
     view = { ok: false, failed: true };
@@ -329,6 +330,10 @@ function updateToolbar() {
   press(els.bItalic, s.italic);
   press(els.bUl, s.list === 'ul');
   press(els.bOl, s.list === 'ol');
+  press(els.bAlignLeft, s.editable && s.align === 'left');
+  press(els.bAlignCenter, s.editable && s.align === 'center');
+  press(els.bAlignRight, s.editable && s.align === 'right');
+  press(els.bAlignJustify, s.editable && s.align === 'justify');
   els.bUnlink.disabled = !s.link && !(pvDoc.getSelection() && !pvDoc.getSelection().isCollapsed);
 }
 
@@ -399,23 +404,32 @@ function restoreRange(range) {
   try { const sel = pvDoc.getSelection(); sel.removeAllRanges(); sel.addRange(range); } catch (e) { /* ignore */ }
 }
 
+// "Link": with the caret or the selection inside one link, its address is changed; otherwise a link is made.
 async function linkFlow() {
   const live = readyToEdit();
   if (!live) return;
   const range = live.cloneRange();
-  const problem = linkProblem(pvDoc, range);
-  if (problem === 'inlink') { setStatus('Hier ist schon ein Link. Entferne ihn zuerst mit „Link entfernen“.', 'warn'); return; }
-  if (problem === 'multi') { setStatus('Markiere für einen Link nur Text innerhalb eines Absatzes.', 'warn'); return; }
+  const link = linkAround(pvDoc, range);
+  if (!link) {
+    const problem = linkProblem(pvDoc, range);
+    if (problem === 'inlink') { setStatus('Die Markierung reicht über einen Link hinaus. Setze den Cursor in den Link, um ihn zu ändern.', 'warn'); return; }
+    if (problem === 'multi') { setStatus('Markiere für einen Link nur Text innerhalb eines Absatzes.', 'warn'); return; }
+  }
   const rev = state.rev, docId = state.docId;
-  els.linkUrl.value = '';
+  els.linkTitle.textContent = link ? 'Link ändern' : 'Link einfügen';
+  els.linkOk.textContent = link ? 'Übernehmen' : 'Einfügen';
+  els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
-  els.linkTextRow.hidden = !range.collapsed;
+  els.linkTextRow.hidden = !!link || !range.collapsed;
   els.linkErr.textContent = '';
-  const answer = await openDialog(els.dlgLink);
+  const asked = openDialog(els.dlgLink);
+  els.linkUrl.select();
+  const answer = await asked;
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   if (answer !== 'ok') return;
   const url = els.linkOk.dataset.url, text = els.linkText.value.trim();
+  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url)); return; }
   runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text));
 }
 
@@ -431,49 +445,108 @@ function validateLinkDialog() {
   return true;
 }
 
-let pickedImage = null;
+// ---------------------------------------------------------------- images
+//
+// The source names an image by its file name (with an optional folder). The file itself is never copied into
+// the document. `files` remembers what the pupil has chosen, so that the page pane can show it.
 
+let picked = null;          // file chosen in the open dialog, not yet accepted
+let imageEdit = null;       // image that the open dialog changes, or null when it inserts
+let imageResult = null;     // what the dialog decided: { src, url, alt, width }
+let lastFolder = '';
+
+function dropPicked() {
+  if (picked && files.get(picked.name) !== picked) URL.revokeObjectURL(picked.url);
+  picked = null;
+}
+
+// "Bild": with an image selected (a click selects it) the image is changed, otherwise one is inserted.
 async function imageFlow(dropped) {
   const live = readyToEdit();
   if (!live) return;
   const range = live.cloneRange();
+  const img = dropped ? null : selectedImage(pvDoc);
   const rev = state.rev, docId = state.docId;
-  pickedImage = null;
-  els.imgAlt.value = '';
+  const address = img ? img.getAttribute(FILE_HOLDER) : null;
+  dropPicked();
+  imageEdit = img;
+  imageResult = null;
+  els.imgTitle.textContent = img ? 'Bild ändern' : 'Bild einfügen';
+  els.imgOk.textContent = img ? 'Übernehmen' : 'Einfügen';
   els.imgErr.textContent = '';
-  els.imgName.textContent = 'Noch kein Bild ausgewählt.';
-  els.imgPrev.hidden = true;
+  els.imgAlt.value = img ? img.getAttribute('alt') || '' : '';
+  els.imgWidth.value = img ? img.getAttribute('width') || '' : '';
+  els.imgDir.value = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
+  els.imgName.textContent = !img ? 'Noch kein Bild ausgewählt.'
+    : address ? 'Jetzt: ' + (address.length > 60 ? address.slice(0, 57) + '…' : address)
+    : 'Jetzt: Das Bild steckt im Code der Seite.';
+  const shown = img && !img.hasAttribute('data-se-src') ? img.getAttribute('src') : null;
+  els.imgPrev.hidden = !shown;
+  if (shown) els.imgPrev.src = shown; else els.imgPrev.removeAttribute('src');
   if (dropped) pickImage(dropped);
   const answer = await openDialog(els.dlgImage);
-  const picked = pickedImage;
-  pickedImage = null;
+  const result = imageResult, chosen = picked;
+  imageEdit = imageResult = null;
   els.imgPrev.removeAttribute('src');
-  if (state.rev !== rev || state.docId !== docId) return;
+  if (state.rev !== rev || state.docId !== docId) { dropPicked(); return; }
   restoreRange(range);
-  if (answer !== 'ok' || !picked) return;
-  const alt = els.imgAlt.value.trim();
-  runCommand(() => insertImage(env, getRange(pvDoc) || range, picked.dataUrl, alt));
-  if (picked.scaled) setStatus('Das Bild wurde verkleinert, damit deine Seite nicht zu groß wird.');
+  if (answer !== 'ok' || !result) { dropPicked(); return; }
+  picked = null;
+  if (chosen) {
+    const old = files.get(chosen.name);
+    if (old && old !== chosen) URL.revokeObjectURL(old.url);
+    files.set(chosen.name, chosen);
+    lastFolder = folderOfSrc(result.src || '');
+  }
+  if (img) { if (img.isConnected) runCommand(() => changeImage(env, img, result)); }
+  else runCommand(() => insertImage(env, getRange(pvDoc) || range, result));
+  if (chosen) {
+    const folder = folderOfSrc(result.src);
+    setStatus('Lege die Datei „' + chosen.name + '“ ' + (folder ? 'in den Ordner „' + folder + '“ neben deiner Seite.' : 'in denselben Ordner wie deine Seite.') + ' Sonst fehlt das Bild später im Browser.', 'ok');
+  }
 }
 
 async function pickImage(file) {
   els.imgErr.textContent = '';
   els.imgName.textContent = 'Bild wird geprüft …';
-  const result = await prepareImage(file);
+  const result = await readImage(file);
+  if (!els.dlgImage.open) { if (result.url) URL.revokeObjectURL(result.url); return; }
   if (result.error) {
-    pickedImage = null;
-    els.imgPrev.hidden = true;
-    els.imgName.textContent = 'Noch kein Bild ausgewählt.';
+    els.imgName.textContent = picked ? picked.name : imageEdit ? 'Das bisherige Bild bleibt.' : 'Noch kein Bild ausgewählt.';
     els.imgErr.textContent = result.error === 'type' ? 'Diese Datei ist kein unterstütztes Bild. Erlaubt sind PNG, JPG, GIF und WebP.'
-      : result.error === 'gif' ? 'Dieses GIF ist zu groß (höchstens 200 KB).'
-      : result.error === 'big' ? 'Dieses Bild ist zu groß und konnte nicht genug verkleinert werden.'
       : 'Das Bild konnte nicht gelesen werden. Vielleicht ist die Datei beschädigt.';
     return;
   }
-  pickedImage = result;
-  els.imgName.textContent = file.name + (result.scaled ? ' (wird verkleinert eingefügt)' : '');
-  els.imgPrev.src = result.dataUrl;
+  dropPicked();
+  picked = result;
+  els.imgName.textContent = result.name + ' (' + result.width + ' × ' + result.height + ' Pixel' + (result.large ? ', eine sehr große Datei' : '') + ')';
+  els.imgPrev.src = result.url;
   els.imgPrev.hidden = false;
+}
+
+// Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
+function validateImageDialog() {
+  const fail = (message) => { els.imgErr.textContent = message; return false; };
+  if (!imageEdit && !picked) return fail('Wähle zuerst ein Bild aus.');
+  const width = els.imgWidth.value.trim();
+  if (width && !/^[1-9][0-9]{0,3}$/.test(width)) return fail('Die Breite ist eine Zahl in Pixeln, zum Beispiel 300.');
+  const result = { alt: els.imgAlt.value.trim(), width };
+  const address = imageEdit ? imageEdit.getAttribute(FILE_HOLDER) : null;
+  const folder = els.imgDir.value;
+  if (picked) {
+    const made = imagePath(folder, picked.name);
+    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+    // the same file in the same folder keeps the address exactly as it is written in the code
+    result.src = address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
+    result.url = picked.url;
+  } else if (address && fileOfSrc(address)) {
+    // same file, perhaps another folder: the file name stays exactly as it is written in the code
+    const made = imagePath(folder, 'x');
+    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+    result.src = made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop();
+  }
+  imageResult = result;
+  return true;
 }
 
 // ---------------------------------------------------------------- formatting the source
@@ -500,7 +573,7 @@ async function sameLayout(a, b) {
     if (!doc) return false;
     const prints = [];
     for (const text of [a, b]) {
-      renderView(analyze(text, tokenize(text)), doc, new WeakMap());
+      renderView(analyze(text, tokenize(text)), doc, new WeakMap(), files);
       await Promise.all(Array.from(doc.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
       prints.push(layoutPrint(doc));
     }
@@ -811,7 +884,19 @@ function wirePreview() {
   });
   pvDoc.addEventListener('dragstart', (e) => e.preventDefault());
   wireDrop(pvDoc, true);
-  pvDoc.addEventListener('click', (e) => { const a = e.target && e.target.closest ? e.target.closest('a') : null; if (a) e.preventDefault(); });
+  pvDoc.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!target || !target.closest) return;
+    if (target.closest('a')) e.preventDefault();
+    // A click on an image selects it, so that "Bild" and the alignment buttons know which one is meant.
+    if (target.localName === 'img' && target.parentNode && target.parentNode.isContentEditable) {
+      const range = pvDoc.createRange();
+      range.selectNode(target);
+      const sel = pvDoc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
   pvDoc.addEventListener('keydown', (e) => {
     if (onShortcut(e)) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
@@ -851,6 +936,10 @@ function wireChrome() {
   tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
+  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock));
+  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock));
+  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock));
+  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock));
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));
@@ -863,12 +952,8 @@ function wireChrome() {
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.imgPick.addEventListener('click', () => els.imgIn.click());
   els.imgIn.addEventListener('change', () => { const file = els.imgIn.files[0]; els.imgIn.value = ''; if (file) pickImage(file); });
-  els.imgOk.addEventListener('click', () => {
-    if (!pickedImage) { els.imgErr.textContent = 'Wähle zuerst ein Bild aus.'; return; }
-    if (!els.imgAlt.value.trim()) { els.imgErr.textContent = 'Beschreibe das Bild kurz – diesen Text hören Menschen, die das Bild nicht sehen können.'; return; }
-    els.dlgImage.close('ok');
-  });
-  els.imgAlt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
+  els.imgOk.addEventListener('click', () => { if (validateImageDialog()) els.dlgImage.close('ok'); });
+  for (const field of [els.imgAlt, els.imgDir, els.imgWidth]) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
   els.fileIn.addEventListener('change', () => {
     const file = els.fileIn.files[0], op = pickOp && pickOp.seq === state.opSeq ? pickOp : beginReplace();
     els.fileIn.value = '';

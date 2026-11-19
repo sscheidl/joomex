@@ -24,17 +24,24 @@ Du kannst auf beiden Seiten schreiben. Die andere Seite ändert sich mit.
 | *K* | kursiv | `<i>` |
 | • Liste | Liste mit Punkten | `<ul>` und `<li>` |
 | 1. Liste | Liste mit Nummern | `<ol>` und `<li>` |
-| Link | macht aus dem markierten Text einen Link | `<a href="…">` |
+| Links, Mitte, Rechts, Block | richtet den Absatz aus (oder das angeklickte Bild): linksbündig, zentriert, rechtsbündig, Blocksatz | `style="text-align: …"` |
+| Link | macht aus dem markierten Text einen Link. Steht der Cursor in einem Link, änderst du seine Adresse. | `<a href="…">` |
 | Link entfernen | macht aus dem Link wieder normalen Text | |
-| Bild | fügt ein Bild von deinem Computer ein | `<img>` |
+| Bild | fügt ein Bild von deinem Computer ein. Ist ein Bild angeklickt, änderst du es. | `<img src="…">` |
 
 Tipp: Klicke rechts in einen Text. Links wird der passende Code gelb markiert. So siehst du, welches Tag was bewirkt.
 
 ## Bilder
 
-Drücke **Bild**, wähle eine Bilddatei aus und beschreibe das Bild in einem kurzen Satz. Diese Beschreibung hören Menschen, die das Bild nicht sehen können. Große Fotos verkleinert der Editor von selbst.
+Drücke **Bild** und wähle eine Bilddatei aus. Im Code steht dann nur der Name der Datei, zum Beispiel `<img src="katze.jpg" alt="">`.
 
-Das Bild wird in deine Seite hineinkopiert. Deshalb steht im Code eine sehr lange Zeile mit vielen Buchstaben. Das ist richtig so.
+**Wichtig:** Lege die Bilddatei in denselben Ordner wie deine Seite. Liegt sie in einem Unterordner, schreibst du dessen Namen in das Feld „Unterordner“, zum Beispiel `bilder`. Im Code steht dann `bilder/katze.jpg`. Fehlt die Datei dort, zeigt der Browser später kein Bild.
+
+Im selben Fenster kannst du das Bild beschreiben (diese Beschreibung hören Menschen, die das Bild nicht sehen können) und eine Breite in Pixeln angeben. Beides ist freiwillig.
+
+Zum Ändern klickst du das Bild rechts an und drückst wieder **Bild**. Mit der Taste Entf löschst du ein angeklicktes Bild. Mit **Links**, **Mitte** und **Rechts** stellst du ein, wo das Bild in seiner Zeile steht.
+
+Wenn du deine Seite später wieder öffnest, zeigt der Editor deine Bilder zuerst als Kasten, denn er darf deine Ordner nicht selbst lesen. Klicke einen Kasten an, drücke **Bild** und wähle die Datei noch einmal aus. Dann siehst du das Bild wieder; am Code ändert sich dabei nichts.
 
 ## Speichern
 
@@ -53,7 +60,7 @@ Mit **Herunterladen** bekommst du eine Kopie in den Ordner „Downloads“.
 
 ## Was der Editor nicht anzeigt
 
-Skripte, Formulare, Videos und Bilder aus dem Internet sind im Editor ausgeschaltet. Bilder, die nur mit Dateinamen eingebunden sind (zum Beispiel `<img src="katze.jpg">`), zeigt der Editor als Kasten. In deinem Code bleibt alles erhalten. Wenn du die gespeicherte Datei im Browser öffnest, funktioniert es dort.
+Skripte, Formulare, Videos und Bilder aus dem Internet sind im Editor ausgeschaltet. Bilder aus Dateien zeigt der Editor erst, wenn du sie mit **Bild** ausgewählt hast (siehe oben). In deinem Code bleibt alles erhalten. Wenn du die gespeicherte Datei im Browser öffnest, funktioniert es dort.
 
 ## Tasten
 

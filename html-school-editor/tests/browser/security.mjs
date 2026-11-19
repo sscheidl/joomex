@@ -309,8 +309,8 @@ export const security = [
       const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html);
       const script = /<script>([^]*?)<\/script>/.exec(html);
       const hash = crypto.createHash('sha256').update(script[1], 'utf8').digest('base64');
-      c.ok(csp && csp[1] === `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'`, 'page policy allows only the one hashed script, inline styles and data: images', csp && csp[1]);
-      c.ok(html.includes(`default-src \\'none\\'; style-src \\'unsafe-inline\\'; img-src data:`), 'preview frame carries its own policy without any script source');
+      c.ok(csp && csp[1] === `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'`, 'page policy allows only the one hashed script, inline styles and data: images', csp && csp[1]);
+      c.ok(html.includes(`default-src \\'none\\'; style-src \\'unsafe-inline\\'; img-src data: blob:">`), 'preview frame carries its own policy without any script source; images only from the document text or from files chosen in this session');
       c.note('innerHTML assignments', count(/\.innerHTML\s*=/g) + ' (escaped highlight lines in the editor chrome and the character-reference decoder in an inert document)');
       c.note('size', Buffer.byteLength(html, 'utf8') + ' bytes');
     },

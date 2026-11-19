@@ -4,9 +4,9 @@
 // body, every node that still looks exactly as it was rendered is copied verbatim from the source text
 // (including inactive scripts, attributes, comments and character references). Only edited text and new
 // elements are written fresh, with a small fixed vocabulary of plain tags.
-import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl } from './util.js';
+import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl, fileOfSrc, onlyAlign, patchAttrs } from './util.js';
 import { VOID_TAGS } from './tokenizer.js';
-import { HTML_NS, HREF_HOLDER, rawPos, srcOffsetOf } from './project.js';
+import { HTML_NS, HREF_HOLDER, FILE_HOLDER, rawPos, srcOffsetOf } from './project.js';
 
 const NEW_OK = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd b i strong em u s sub sup code kbd mark small span a img br hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
 export const BLOCKS = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
@@ -22,7 +22,7 @@ function isClean(ctx, node) {
   const memo = ctx.memo.get(node);
   if (memo !== undefined) return memo;
   const inf = ctx.info.get(node);
-  let ok = !!inf;
+  let ok = !!inf && !inf.attrs;                    // a command changed attributes of this element
   if (ok && node.nodeType !== 1) ok = node.data === inf.data;
   else if (ok) {
     const want = inf.kids, have = node.childNodes;
@@ -190,12 +190,14 @@ function emitNew(ctx, c, indent) {
   if (known) {
     for (const a of Array.from(c.attributes)) {
       const n = a.name.toLowerCase();
-      let outName = n;
-      if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(a.value)) continue; outName = 'href'; }
-      else if (n === 'src') { if (name !== 'img' || !isRasterDataUrl(a.value)) continue; }
-      else if (n.startsWith('on') || n.startsWith('data-se-') || (n === 'style' && !copy) || n === 'id' || n === 'href' || n === 'contenteditable') continue;
+      let outName = n, value = a.value;
+      if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(value)) continue; outName = 'href'; }
+      else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
+      else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
+      else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }
+      else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'id' || n === 'href' || n === 'contenteditable') continue;
       else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
-      attrs += ' ' + outName + '="' + escapeAttr(a.value) + '"';
+      attrs += ' ' + outName + '="' + escapeAttr(value) + '"';
     }
   }
   if (!known || (name === 'span' && !attrs)) { emitInner(ctx, c, indent); return false; }
@@ -219,7 +221,7 @@ function emitNode(ctx, c, indent) {
   const src = ctx.src;
   const inf = ctx.info.get(c), t = inf && inf.t;
   const standIn = c.nodeType === 1 && c.hasAttribute('data-se-box');       // label text of a stand-in is never written
-  if (t && !inf.rename && (standIn || isClean(ctx, c))) {
+  if (t && !inf.rename && !inf.attrs && (standIn || isClean(ctx, c))) {
     const at = ctx.s.length;
     ctx.s += src.slice(t.lead, t.end);
     for (const p of ctx.points) if (p.out == null && (p.node === c || c.contains(p.node))) p.out = at + srcOffsetOf(ctx.view, ctx.info, p.node, p.offset) - t.lead;
@@ -237,7 +239,14 @@ function emitNode(ctx, c, indent) {
   // of its own, like a new block. Renamed in place, the white space around it stays as written.
   const moved = !!inf.rename && BLOCKS.has(name) && !inPlace(t, mappedT(ctx, c.parentNode));
   if (moved) freshLine(ctx, indent);
-  ctx.s += t.synthetic ? '<' + name + '>' : inf.rename ? '<' + name + src.slice(t.nameEnd, t.tagEnd) : src.slice(t.start, t.tagEnd);
+  // The start tag stays as written; a renamed element gets the new name, changed attributes are patched in.
+  if (t.synthetic) {
+    ctx.s += '<' + name;
+    for (const key of Object.keys(inf.attrs || {})) if (inf.attrs[key] !== null) ctx.s += ' ' + key + '="' + escapeAttr(inf.attrs[key]) + '"';
+    ctx.s += '>';
+  } else {
+    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs) : src.slice(t.nameEnd, t.tagEnd));
+  }
   if (VOID_TAGS.has(name)) return false;
   const own = moved ? null : lineIndentAt(src, t.start);
   emitKids(ctx, c, t, own == null ? indent : own);

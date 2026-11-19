@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WgAw9EfRoqqs3kx9hiDnMpFNsru/bYHVRgYeA9homuk='; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-goznDxMphOl776F13W5XwHp89EcylkfqO+Voq9k9XG0='; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.2">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.3">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -142,10 +142,16 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
         <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
       </span>
+      <span class="group" role="group" aria-label="Ausrichtung">
+        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links)">Links</button>
+        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte)">Mitte</button>
+        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts)">Rechts</button>
+        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile)">Block</button>
+      </span>
       <span class="group">
-        <button id="bLink" type="button" title="Link einfügen &lt;a&gt;">Link</button>
+        <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
         <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
-        <button id="bImage" type="button" title="Bild von diesem Computer einfügen &lt;img&gt;">Bild</button>
+        <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
       </span>
     </div>
     <div id="lockNote" class="note warn" hidden></div>
@@ -154,7 +160,7 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.2</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.3</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -163,7 +169,7 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
 <dialog id="dlgConfirm"><p id="confirmText"></p><div class="row"><button type="button" class="primary" data-close="cancel">Abbrechen</button><button type="button" id="confirmOk" data-close="ok"></button></div></dialog>
 
 <dialog id="dlgLink">
-  <h3>Link einfügen</h3>
+  <h3 id="linkTitle">Link einfügen</h3>
   <label for="linkUrl">Adresse (wohin führt der Link?)</label>
   <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
   <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
@@ -172,12 +178,16 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
 </dialog>
 
 <dialog id="dlgImage">
-  <h3>Bild einfügen</h3>
-  <p>Das Bild wird in deine Seite hineinkopiert. Erlaubt sind PNG, JPG, GIF und WebP.</p>
+  <h3 id="imgTitle">Bild einfügen</h3>
+  <p>Im Code steht nur der Name der Bilddatei. Lege das Bild in denselben Ordner wie deine Seite, sonst fehlt es später im Browser. Erlaubt sind PNG, JPG, GIF und WebP.</p>
   <div class="pick"><button type="button" id="imgPick">Bild auswählen …</button><span id="imgName"></span></div>
   <img id="imgPrev" alt="" hidden>
-  <label for="imgAlt">Beschreibung des Bildes (Alternativtext)</label>
+  <label for="imgDir">Unterordner (nur wenn das Bild in einem Unterordner liegt)</label>
+  <input id="imgDir" type="text" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Zum Beispiel: bilder">
+  <label for="imgAlt">Beschreibung des Bildes (freiwillig)</label>
   <input id="imgAlt" type="text" autocomplete="off" maxlength="200" placeholder="Zum Beispiel: Unsere Katze schläft auf dem Sofa">
+  <label for="imgWidth">Breite in Pixeln (leer lassen für die Originalgröße)</label>
+  <input id="imgWidth" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="Zum Beispiel: 300">
   <p id="imgErr" class="err" role="alert"></p>
   <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
 </dialog>
@@ -189,6 +199,7 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
     <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
     <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
     <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li>Bilder: Im Code steht der Dateiname. Lege das Bild in den Ordner deiner Seite. Zum Ändern klickst du das Bild an und drückst „Bild“.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten.</li>
     <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv</li>
   </ul>
@@ -280,6 +291,98 @@ function isSafeHref(value) {
 
 function isRasterDataUrl(value) {
   return /^\s*data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=\s]*$/i.test(value);
+}
+
+// ---------------------------------------------------------------- images by file name
+
+// File name that an image address points to, if the address is a plain relative one ('' for addresses with a
+// scheme, a host or a drive letter). "bilder/Meine%20Katze.jpg?x#y" gives "Meine Katze.jpg".
+function fileOfSrc(value) {
+  const v = String(value).trim();
+  if (!v || v.length > 600 || /^[a-z][a-z0-9+.\-]*:|^[\/\\]{2}/i.test(v) || /[\x00-\x1f]/.test(v)) return '';
+  let name = v.split(/[?#]/)[0].split(/[\/\\]/).pop();
+  try { name = decodeURIComponent(name); } catch (e) { /* keep the raw form */ }
+  return name;
+}
+
+// Address written into the source for a chosen image file: optional folder plus file name.
+// Returns { ok: true, src } or { ok: false }.
+function imagePath(folder, fileName) {
+  const dir = String(folder).trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '');
+  if (dir.length > 200 || /[:?#"<>|*\x00-\x1f]/.test(dir) || /^\s|\s$/.test(dir)) return { ok: false };
+  const name = String(fileName).replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
+  if (!name || /[\/\\\x00-\x1f]/.test(name)) return { ok: false };
+  return { ok: true, src: dir ? dir + '/' + name : name };
+}
+
+// Folder part of a relative image address ('' if there is none).
+function folderOfSrc(value) {
+  const path = String(value).trim().split(/[?#]/)[0].replace(/\\/g, '/');
+  const cut = path.lastIndexOf('/');
+  return cut < 0 ? '' : path.slice(0, cut);
+}
+
+// ---------------------------------------------------------------- alignment in a style attribute
+
+const ALIGN_VALUES = words('left right center justify');
+
+// The alignment if the style consists of nothing but one text-align declaration, otherwise ''.
+function onlyAlign(style) {
+  const m = /^\s*text-align\s*:\s*([a-z]+)\s*;?\s*$/i.exec(style);
+  return m && ALIGN_VALUES.has(m[1].toLowerCase()) ? m[1].toLowerCase() : '';
+}
+
+// Returns the style text with its text-align declaration replaced by `value` ('' removes it). Every other
+// declaration stays exactly as written, and adding and removing again gives back the text that was there.
+function withAlign(style, value) {
+  let rest = String(style);
+  for (let guard = 0; guard < 20; guard++) {
+    const m = /(^|;)\s*text-align\s*:[^;]*(;|$)/i.exec(rest);
+    if (!m) break;
+    // a declaration at the end goes together with the semicolon in front of it
+    rest = m[2] ? rest.slice(0, m.index + m[1].length) + rest.slice(m.index + m[0].length) : rest.slice(0, m.index);
+  }
+  rest = rest.trim();
+  if (!value) return rest;
+  if (!rest) return 'text-align: ' + value;
+  return /;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value;
+}
+
+// ---------------------------------------------------------------- single attributes of a start tag
+
+// Rewrites single attributes of a start tag and leaves every other character of it as written. `from`..`to`
+// is the tag text behind the tag name up to and including '>', `attrs` the tokenizer's offsets
+// [nameAt, nameTo, valueAt, valueTo, ...], `changes` maps lower-case names to the new value or null (remove).
+function patchAttrs(src, from, to, attrs, changes) {
+  const ws = (ch) => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\r';
+  const has = (name) => Object.prototype.hasOwnProperty.call(changes, name);
+  const edits = [];
+  const seen = new Set();
+  let last = from;
+  for (let i = 0; i < attrs.length; i += 4) {
+    const nameAt = attrs[i], nameTo = attrs[i + 1], valueAt = attrs[i + 2], valueTo = attrs[i + 3];
+    const end = valueTo >= 0 ? valueTo : nameTo;
+    if (end > last) last = end;
+    const name = src.slice(nameAt, nameTo).toLowerCase();
+    if (seen.has(name)) continue;                 // the browser uses the first of several equal names
+    seen.add(name);
+    if (!has(name)) continue;
+    const value = changes[name];
+    if (value === null) {
+      let a = nameAt;
+      while (a > from && ws(src[a - 1])) a--;
+      edits.push([a, end, '']);
+    } else if (valueAt < 0) edits.push([nameTo, nameTo, '="' + escapeAttr(value) + '"']);
+    else if (src[valueAt] === "'") edits.push([valueAt, valueTo, "'" + escapeAttr(value).replace(/&quot;/g, '"').replace(/'/g, '&#39;') + "'"]);
+    else edits.push([valueAt, valueTo, '"' + escapeAttr(value) + '"']);
+  }
+  let added = '';
+  for (const name of Object.keys(changes)) if (!seen.has(name) && changes[name] !== null) added += ' ' + name + '="' + escapeAttr(changes[name]) + '"';
+  if (added) edits.push([last, last, added]);
+  edits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let out = '', at = from;
+  for (const e of edits) { out += src.slice(at, e[0]) + e[2]; at = e[1]; }
+  return out + src.slice(at, to);
 }
 
 // ---------------------------------------------------------------- file bytes <-> text
@@ -491,7 +594,7 @@ function parseHtml(src, quirks, tokens) {
     }
   }
   function element(name, tok) {
-    return { type: 'el', name, start: tok.start, nameEnd: tok.nameEnd, tagEnd: tok.end, closeStart: tok.end, end: tok.end, children: [] };
+    return { type: 'el', name, start: tok.start, nameEnd: tok.nameEnd, tagEnd: tok.end, attrs: tok.attrs, closeStart: tok.end, end: tok.end, children: [] };
   }
 
   function onStart(tok) {
@@ -616,6 +719,7 @@ function locateBody(root, src) {
 
 const HTML_NS = 'http://www.w3.org/1999/xhtml';
 const HREF_HOLDER = 'data-se-href';
+const FILE_HOLDER = 'data-se-file';      // address of an image as written in the source
 
 const DROP = words('script link meta base title template noframes noembed frameset frame param source track head html body');
 const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', object: 'Eingebettetes Objekt', embed: 'Eingebettetes Objekt', applet: 'Eingebettetes Objekt', audio: 'Audio', video: 'Video', portal: 'Eingebettete Seite', fencedframe: 'Eingebettete Seite' });
@@ -738,7 +842,7 @@ function matchKids(src, t, d, isTail) {
 // ---------------------------------------------------------------- inactive content report
 
 function newReport() {
-  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0 };
+  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0, files: 0 };
 }
 
 function reportText(r) {
@@ -746,6 +850,7 @@ function reportText(r) {
   const add = (n, one, many) => { if (n) parts.push(n === 1 ? one : n + ' ' + many); };
   add(r.scripts + r.handlers, '1 Skript', 'Skripte');
   add(r.images, '1 Bild von außerhalb', 'Bilder von außerhalb');
+  add(r.files, '1 Bild aus einer Datei', 'Bilder aus Dateien');
   add(r.sheets, '1 externe CSS-Datei', 'externe CSS-Dateien');
   add(r.css, '1 Adresse im CSS', 'Adressen im CSS');
   add(r.frames, '1 eingebetteter Inhalt', 'eingebettete Inhalte');
@@ -757,9 +862,11 @@ function reportText(r) {
 
 // ---------------------------------------------------------------- projection
 
-function safeAttrs(d, name, html, rep) {
+// `files`: images the pupil has chosen in this session, by file name. An image whose address is a plain file
+// name is shown from there; the address itself is never loaded.
+function safeAttrs(d, name, html, rep, files) {
   const out = [];
-  let blockedImage = null, hasTitle = false;
+  let blockedImage = null, hasTitle = false, byFile = false;
   for (const a of attrsOf(d)) {
     const n = a.name, ln = n.toLowerCase(), v = a.value;
     if (ln.startsWith('on')) { rep.handlers++; continue; }
@@ -771,7 +878,13 @@ function safeAttrs(d, name, html, rep) {
       if (!v.startsWith('#')) { rep.other++; continue; }
     } else if (ln === 'src') {
       if (name === 'img' && html && isRasterDataUrl(v)) { out.push([n, v]); continue; }
-      if (name === 'img') { blockedImage = v; rep.images++; } else rep.other++;
+      if (name === 'img') {
+        const file = html ? fileOfSrc(v) : '', known = file && files ? files.get(file) : null;
+        if (known) { out.push([n, known.url], [FILE_HOLDER, v]); continue; }
+        blockedImage = v;
+        byFile = !!file;
+        if (file) rep.files++; else rep.images++;
+      } else rep.other++;
       continue;
     } else if (ln === 'style') {
       if (CSS_FETCH.test(v)) rep.css++;
@@ -780,8 +893,8 @@ function safeAttrs(d, name, html, rep) {
     out.push([n, v]);
   }
   if (blockedImage !== null) {
-    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage]);
-    if (!hasTitle) out.push(['title', 'Dieses Bild liegt nicht in der Seite und wird im Editor nicht geladen.']);
+    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage], [FILE_HOLDER, blockedImage]);
+    if (!hasTitle) out.push(['title', byFile ? 'Der Editor kennt dieses Bild noch nicht. Klicke es an und wähle die Datei mit dem Knopf „Bild“ aus, dann siehst du es hier.' : 'Bilder aus dem Internet lädt der Editor nicht.']);
   }
   return out;
 }
@@ -804,7 +917,7 @@ function describe(d, t, st) {
     rep.frames++;
     return { k: 1, name: 'span', ns: HTML_NS, attrs: [['contenteditable', 'false'], ['data-se-box', '']], fixed: BOX[name] + ' (im Editor ausgeschaltet)' };
   }
-  const attrs = safeAttrs(d, name, html, rep);
+  const attrs = safeAttrs(d, name, html, rep, st.files);
   if (t && !t.ok) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
     if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
@@ -912,13 +1025,13 @@ function syncHead(view, st) {
 
 // Updates the preview document `doc`. `info` (WeakMap) receives, for every preview node, its source node and a
 // snapshot of its rendered state; the serializer uses the snapshot to tell edited parts from untouched ones.
-function renderView(view, doc, info) {
-  const st = { doc, info, report: newReport(), changed: false, attrChanged: false };
+function renderView(view, doc, info, files) {
+  const st = { doc, info, files: files || null, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
   syncHead(view, st);
-  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report), st);
+  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report, null), st);
   const srcBody = bodyOf(dom);
-  const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report) : [];
+  const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report, null) : [];
   bodyAttrs.push(['contenteditable', view.ok ? 'true' : 'false']);
   syncAttrs(doc.body, bodyAttrs, st);
   if (docBody(dom) && !srcBody) st.report.frames++;
@@ -1110,7 +1223,7 @@ function isClean(ctx, node) {
   const memo = ctx.memo.get(node);
   if (memo !== undefined) return memo;
   const inf = ctx.info.get(node);
-  let ok = !!inf;
+  let ok = !!inf && !inf.attrs;                    // a command changed attributes of this element
   if (ok && node.nodeType !== 1) ok = node.data === inf.data;
   else if (ok) {
     const want = inf.kids, have = node.childNodes;
@@ -1278,12 +1391,14 @@ function emitNew(ctx, c, indent) {
   if (known) {
     for (const a of Array.from(c.attributes)) {
       const n = a.name.toLowerCase();
-      let outName = n;
-      if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(a.value)) continue; outName = 'href'; }
-      else if (n === 'src') { if (name !== 'img' || !isRasterDataUrl(a.value)) continue; }
-      else if (n.startsWith('on') || n.startsWith('data-se-') || (n === 'style' && !copy) || n === 'id' || n === 'href' || n === 'contenteditable') continue;
+      let outName = n, value = a.value;
+      if (n === HREF_HOLDER) { if (name !== 'a' || !isSafeHref(value)) continue; outName = 'href'; }
+      else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
+      else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
+      else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }
+      else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'id' || n === 'href' || n === 'contenteditable') continue;
       else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
-      attrs += ' ' + outName + '="' + escapeAttr(a.value) + '"';
+      attrs += ' ' + outName + '="' + escapeAttr(value) + '"';
     }
   }
   if (!known || (name === 'span' && !attrs)) { emitInner(ctx, c, indent); return false; }
@@ -1307,7 +1422,7 @@ function emitNode(ctx, c, indent) {
   const src = ctx.src;
   const inf = ctx.info.get(c), t = inf && inf.t;
   const standIn = c.nodeType === 1 && c.hasAttribute('data-se-box');       // label text of a stand-in is never written
-  if (t && !inf.rename && (standIn || isClean(ctx, c))) {
+  if (t && !inf.rename && !inf.attrs && (standIn || isClean(ctx, c))) {
     const at = ctx.s.length;
     ctx.s += src.slice(t.lead, t.end);
     for (const p of ctx.points) if (p.out == null && (p.node === c || c.contains(p.node))) p.out = at + srcOffsetOf(ctx.view, ctx.info, p.node, p.offset) - t.lead;
@@ -1325,7 +1440,14 @@ function emitNode(ctx, c, indent) {
   // of its own, like a new block. Renamed in place, the white space around it stays as written.
   const moved = !!inf.rename && BLOCKS.has(name) && !inPlace(t, mappedT(ctx, c.parentNode));
   if (moved) freshLine(ctx, indent);
-  ctx.s += t.synthetic ? '<' + name + '>' : inf.rename ? '<' + name + src.slice(t.nameEnd, t.tagEnd) : src.slice(t.start, t.tagEnd);
+  // The start tag stays as written; a renamed element gets the new name, changed attributes are patched in.
+  if (t.synthetic) {
+    ctx.s += '<' + name;
+    for (const key of Object.keys(inf.attrs || {})) if (inf.attrs[key] !== null) ctx.s += ' ' + key + '="' + escapeAttr(inf.attrs[key]) + '"';
+    ctx.s += '>';
+  } else {
+    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs) : src.slice(t.nameEnd, t.tagEnd));
+  }
   if (VOID_TAGS.has(name)) return false;
   const own = moved ? null : lineIndentAt(src, t.start);
   emitKids(ctx, c, t, own == null ? indent : own);
@@ -1601,11 +1723,10 @@ function createHistory(limitChars) {
 }
 
 // ---- images.js
-// Local raster images: checked by their file signature, embedded as data: URLs. Large photos are scaled down
-// in memory (which also drops camera metadata). Nothing is read without an explicit file selection.
-const MAX_IMAGE_INPUT = 20 * 1024 * 1024;
-const SMALL_IMAGE = 200 * 1024;
-const MAX_IMAGE_EMBED = 450 * 1024;
+// Local raster images. The source text refers to an image by its file name; the editor never reads the folder
+// of a page. To show an image in the page pane anyway, the file the pupil has chosen is kept in memory and
+// addressed by an object URL. Nothing is read without an explicit file selection.
+const LARGE_IMAGE = 2 * 1024 * 1024;
 
 function sniffImage(b) {
   if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
@@ -1615,18 +1736,10 @@ function sniffImage(b) {
   return null;
 }
 
-function toDataUrl(blob, type) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => { const s = String(reader.result); resolve('data:' + type + ';base64,' + s.slice(s.indexOf(',') + 1)); };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
-// Returns { dataUrl, scaled } or { error: 'big' | 'type' | 'gif' | 'decode' }.
-async function prepareImage(file) {
-  if (file.size > MAX_IMAGE_INPUT) return { error: 'big' };
+// Checks a chosen file and returns { name, url, width, height, large } or { error: 'type' | 'decode' }.
+// The type comes from the file signature, not from the name or the type the system reports, and the object
+// URL is created for a copy labelled with that type.
+async function readImage(file) {
   let type, bitmap;
   try {
     type = sniffImage(new Uint8Array(await file.slice(0, 16).arrayBuffer()));
@@ -1635,30 +1748,9 @@ async function prepareImage(file) {
   } catch (e) {
     return { error: type ? 'decode' : 'type' };
   }
-  try {
-    if (file.size <= SMALL_IMAGE) return { dataUrl: await toDataUrl(file, type), scaled: false };
-    if (type === 'image/gif') return { error: 'gif' };
-    let side = 1280, quality = 0.85;
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      const g = canvas.getContext('2d');
-      g.fillStyle = '#fff';
-      g.fillRect(0, 0, canvas.width, canvas.height);
-      g.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-      if (blob && blob.size <= MAX_IMAGE_EMBED) return { dataUrl: await toDataUrl(blob, 'image/jpeg'), scaled: true };
-      side = Math.round(side * 0.7);
-      quality = 0.8;
-    }
-    return { error: 'big' };
-  } catch (e) {
-    return { error: 'decode' };
-  } finally {
-    if (bitmap.close) bitmap.close();
-  }
+  const size = { width: bitmap.width, height: bitmap.height };
+  if (bitmap.close) bitmap.close();
+  return { name: file.name, url: URL.createObjectURL(new Blob([file], { type })), width: size.width, height: size.height, large: file.size > LARGE_IMAGE };
 }
 
 // ---- commands.js
@@ -1760,9 +1852,17 @@ function rename(env, el, tag, keep) {
   while (el.firstChild) fresh.appendChild(el.firstChild);
   el.parentNode.replaceChild(fresh, el);
   const inf = env.info.get(el);
-  if (inf && inf.t && !inf.t.synthetic && !inf.t.implied) { env.info.set(fresh, { t: inf.t, rename: tag }); inf.t.pv = fresh; }
+  if (inf && inf.t && !inf.t.synthetic && !inf.t.implied) { env.info.set(fresh, { t: inf.t, rename: tag, attrs: inf.attrs }); inf.t.pv = fresh; }
   if (keep) { if (keep.an === el) keep.an = fresh; if (keep.fn === el) keep.fn = fresh; }
   return fresh;
+}
+
+// Notes changed attributes of an element that came from the source (null removes one). The writer then
+// rewrites exactly these attributes of its start tag and leaves the rest of the tag as written. An element
+// created in this session needs no note: it is written from the page itself.
+function record(env, el, changes) {
+  const inf = env.info.get(el);
+  if (inf && inf.t && inf.t.type === 'el' && !inf.t.implied) inf.attrs = Object.assign(inf.attrs || {}, changes);
 }
 
 function placeCaretIn(doc, el) {
@@ -2030,15 +2130,103 @@ function removeLinks(env) {
   return 'ok';
 }
 
-function insertImage(env, range, dataUrl, alt) {
+// The image if the selection is exactly one image (set by a click on it), otherwise null.
+function selectedImage(doc) {
+  const range = getRange(doc);
+  if (!range || range.collapsed || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 1 || range.endOffset - range.startOffset !== 1) return null;
+  const node = range.startContainer.childNodes[range.startOffset];
+  return node && node.nodeType === 1 && node.localName === 'img' && isEditableAt(node.parentNode) ? node : null;
+}
+
+// Inserts an image that the source will address by file name. `image`: { src, url, alt, width }: `src` is
+// written into the source, `url` only shows the chosen file in the page pane.
+function insertImage(env, range, image) {
   const doc = env.doc;
   const img = doc.createElement('img');
-  img.setAttribute('src', dataUrl);
-  img.setAttribute('alt', alt);
+  img.setAttribute(FILE_HOLDER, image.src);
+  img.setAttribute('src', image.url);
+  img.setAttribute('alt', image.alt);
+  if (image.width) img.setAttribute('width', image.width);
   range.collapse(false);
   range.insertNode(img);
   try { doc.getSelection().collapse(img.parentNode, Array.prototype.indexOf.call(img.parentNode.childNodes, img) + 1); } catch (e) { /* ignore */ }
   return 'ok';
+}
+
+// Changes an existing image. `changes` may hold src (with url for the page pane), alt and width ('' removes
+// the width); a key that is missing leaves that attribute alone. A new width removes a height attribute, so
+// that the picture keeps its proportions.
+function changeImage(env, img, changes) {
+  const set = {};
+  if (changes.src !== undefined && changes.src !== img.getAttribute(FILE_HOLDER)) {
+    set.src = changes.src;
+    img.setAttribute(FILE_HOLDER, changes.src);
+    if (changes.url) img.setAttribute('src', changes.url);
+  }
+  if (changes.alt !== undefined && changes.alt !== (img.getAttribute('alt') || '')) { set.alt = changes.alt; img.setAttribute('alt', changes.alt); }
+  if (changes.width !== undefined && changes.width !== (img.getAttribute('width') || '')) {
+    set.width = changes.width || null;
+    if (changes.width) img.setAttribute('width', changes.width); else img.removeAttribute('width');
+    if (img.hasAttribute('height')) { set.height = null; img.removeAttribute('height'); }
+  }
+  if (!Object.keys(set).length) return 'same';
+  record(env, img, set);
+  return 'ok';
+}
+
+// The link that holds the whole selection, or null.
+function linkAround(doc, range) {
+  const a = closestTag(range.startContainer, doc.body, LINK);
+  return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
+}
+
+function changeLink(env, a, url) {
+  if (a.getAttribute(HREF_HOLDER) === url) return 'same';
+  a.setAttribute(HREF_HOLDER, url);
+  record(env, a, { href: url });
+  return 'ok';
+}
+
+const ALIGNABLE = words('p h1 h2 h3 h4 h5 h6 li td th blockquote div');
+
+// How the text of an element is aligned in the page, whatever rule says so: 'left', 'center', 'right', 'justify'.
+function alignOf(el) {
+  const v = el.ownerDocument.defaultView.getComputedStyle(el).textAlign;
+  return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
+}
+
+// Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
+// the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
+// style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
+// align the block differently.
+function setAlign(env, value) {
+  const doc = env.doc, range = getRange(doc);
+  if (!range) return 'none';
+  const keep = saveSel(doc);
+  const img = selectedImage(doc);
+  let targets;
+  if (img) { const block = closestTag(img, doc.body, ALIGNABLE); targets = block ? [block] : []; }
+  else {
+    targets = elementsInRange(doc, range, ALIGNABLE);
+    targets = targets.filter((el) => !targets.some((other) => other !== el && el.contains(other)));
+  }
+  if (!targets.length) {
+    const run = looseRun(doc, img || range.startContainer);
+    if (!run) return 'none';
+    targets = [wrapRun(doc, run, 'p')];
+  }
+  let changed = false;
+  for (const el of targets) {
+    const old = el.getAttribute('style') || '';
+    const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
+    let next = put(withAlign(old, value === 'left' ? '' : value));
+    if (value === 'left' && alignOf(el) !== 'left') next = put(withAlign(old, 'left'));
+    if (next === old) continue;
+    record(env, el, { style: next || null });
+    changed = true;
+  }
+  restoreSel(doc, keep);
+  return changed ? 'ok' : 'same';
 }
 
 // Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.
@@ -2061,7 +2249,7 @@ function insertPlainText(env, text) {
 // What the toolbar should show as active for the current caret position.
 function caretState(doc) {
   const range = getRange(doc);
-  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false };
+  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false, align: '', image: false };
   if (!range) return state;
   const body = doc.body;
   state.editable = isEditableAt(range.startContainer);
@@ -2072,6 +2260,9 @@ function caretState(doc) {
   state.link = !!closestTag(range.startContainer, body, LINK);
   state.bold = !!closestTag(range.startContainer, body, INLINE_ON.bold);
   state.italic = !!closestTag(range.startContainer, body, INLINE_ON.italic);
+  const image = selectedImage(doc);
+  state.image = !!image;
+  state.align = alignOf(closestTag(image || range.startContainer, body, ALIGNABLE) || body);
   return state;
 }
 
@@ -2096,7 +2287,7 @@ const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(input,select,textarea,button){pointer-events:none}' +
   '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
 const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">' +
+  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: blob:">' +
   '<style id="se-base">' + PREVIEW_CSS + '</style></head><body></body></html>';
 
 const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
@@ -2119,6 +2310,7 @@ const state = {
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
+const files = new Map();          // images chosen in this session, by file name: { name, url, width, height }
 const blocked = new Set();        // file names of addresses the browser's policy stopped in the page pane
 const els = {};
 let pvDoc = null, pvWin = null;
@@ -2274,7 +2466,7 @@ function render(restore) {
   let view, res;
   try {
     view = analyze(state.text, tokensFor(state.text));
-    res = renderView(view, pvDoc, info);
+    res = renderView(view, pvDoc, info, files);
   } catch (e) {
     // Last line of defence: show nothing editable rather than a page that does not match the text.
     view = { ok: false, failed: true };
@@ -2397,6 +2589,10 @@ function updateToolbar() {
   press(els.bItalic, s.italic);
   press(els.bUl, s.list === 'ul');
   press(els.bOl, s.list === 'ol');
+  press(els.bAlignLeft, s.editable && s.align === 'left');
+  press(els.bAlignCenter, s.editable && s.align === 'center');
+  press(els.bAlignRight, s.editable && s.align === 'right');
+  press(els.bAlignJustify, s.editable && s.align === 'justify');
   els.bUnlink.disabled = !s.link && !(pvDoc.getSelection() && !pvDoc.getSelection().isCollapsed);
 }
 
@@ -2467,23 +2663,32 @@ function restoreRange(range) {
   try { const sel = pvDoc.getSelection(); sel.removeAllRanges(); sel.addRange(range); } catch (e) { /* ignore */ }
 }
 
+// "Link": with the caret or the selection inside one link, its address is changed; otherwise a link is made.
 async function linkFlow() {
   const live = readyToEdit();
   if (!live) return;
   const range = live.cloneRange();
-  const problem = linkProblem(pvDoc, range);
-  if (problem === 'inlink') { setStatus('Hier ist schon ein Link. Entferne ihn zuerst mit „Link entfernen“.', 'warn'); return; }
-  if (problem === 'multi') { setStatus('Markiere für einen Link nur Text innerhalb eines Absatzes.', 'warn'); return; }
+  const link = linkAround(pvDoc, range);
+  if (!link) {
+    const problem = linkProblem(pvDoc, range);
+    if (problem === 'inlink') { setStatus('Die Markierung reicht über einen Link hinaus. Setze den Cursor in den Link, um ihn zu ändern.', 'warn'); return; }
+    if (problem === 'multi') { setStatus('Markiere für einen Link nur Text innerhalb eines Absatzes.', 'warn'); return; }
+  }
   const rev = state.rev, docId = state.docId;
-  els.linkUrl.value = '';
+  els.linkTitle.textContent = link ? 'Link ändern' : 'Link einfügen';
+  els.linkOk.textContent = link ? 'Übernehmen' : 'Einfügen';
+  els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
-  els.linkTextRow.hidden = !range.collapsed;
+  els.linkTextRow.hidden = !!link || !range.collapsed;
   els.linkErr.textContent = '';
-  const answer = await openDialog(els.dlgLink);
+  const asked = openDialog(els.dlgLink);
+  els.linkUrl.select();
+  const answer = await asked;
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   if (answer !== 'ok') return;
   const url = els.linkOk.dataset.url, text = els.linkText.value.trim();
+  if (link) { if (link.isConnected) runCommand(() => changeLink(env, link, url)); return; }
   runCommand(() => insertLink(env, getRange(pvDoc) || range, url, text));
 }
 
@@ -2499,49 +2704,108 @@ function validateLinkDialog() {
   return true;
 }
 
-let pickedImage = null;
+// ---------------------------------------------------------------- images
+//
+// The source names an image by its file name (with an optional folder). The file itself is never copied into
+// the document. `files` remembers what the pupil has chosen, so that the page pane can show it.
 
+let picked = null;          // file chosen in the open dialog, not yet accepted
+let imageEdit = null;       // image that the open dialog changes, or null when it inserts
+let imageResult = null;     // what the dialog decided: { src, url, alt, width }
+let lastFolder = '';
+
+function dropPicked() {
+  if (picked && files.get(picked.name) !== picked) URL.revokeObjectURL(picked.url);
+  picked = null;
+}
+
+// "Bild": with an image selected (a click selects it) the image is changed, otherwise one is inserted.
 async function imageFlow(dropped) {
   const live = readyToEdit();
   if (!live) return;
   const range = live.cloneRange();
+  const img = dropped ? null : selectedImage(pvDoc);
   const rev = state.rev, docId = state.docId;
-  pickedImage = null;
-  els.imgAlt.value = '';
+  const address = img ? img.getAttribute(FILE_HOLDER) : null;
+  dropPicked();
+  imageEdit = img;
+  imageResult = null;
+  els.imgTitle.textContent = img ? 'Bild ändern' : 'Bild einfügen';
+  els.imgOk.textContent = img ? 'Übernehmen' : 'Einfügen';
   els.imgErr.textContent = '';
-  els.imgName.textContent = 'Noch kein Bild ausgewählt.';
-  els.imgPrev.hidden = true;
+  els.imgAlt.value = img ? img.getAttribute('alt') || '' : '';
+  els.imgWidth.value = img ? img.getAttribute('width') || '' : '';
+  els.imgDir.value = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
+  els.imgName.textContent = !img ? 'Noch kein Bild ausgewählt.'
+    : address ? 'Jetzt: ' + (address.length > 60 ? address.slice(0, 57) + '…' : address)
+    : 'Jetzt: Das Bild steckt im Code der Seite.';
+  const shown = img && !img.hasAttribute('data-se-src') ? img.getAttribute('src') : null;
+  els.imgPrev.hidden = !shown;
+  if (shown) els.imgPrev.src = shown; else els.imgPrev.removeAttribute('src');
   if (dropped) pickImage(dropped);
   const answer = await openDialog(els.dlgImage);
-  const picked = pickedImage;
-  pickedImage = null;
+  const result = imageResult, chosen = picked;
+  imageEdit = imageResult = null;
   els.imgPrev.removeAttribute('src');
-  if (state.rev !== rev || state.docId !== docId) return;
+  if (state.rev !== rev || state.docId !== docId) { dropPicked(); return; }
   restoreRange(range);
-  if (answer !== 'ok' || !picked) return;
-  const alt = els.imgAlt.value.trim();
-  runCommand(() => insertImage(env, getRange(pvDoc) || range, picked.dataUrl, alt));
-  if (picked.scaled) setStatus('Das Bild wurde verkleinert, damit deine Seite nicht zu groß wird.');
+  if (answer !== 'ok' || !result) { dropPicked(); return; }
+  picked = null;
+  if (chosen) {
+    const old = files.get(chosen.name);
+    if (old && old !== chosen) URL.revokeObjectURL(old.url);
+    files.set(chosen.name, chosen);
+    lastFolder = folderOfSrc(result.src || '');
+  }
+  if (img) { if (img.isConnected) runCommand(() => changeImage(env, img, result)); }
+  else runCommand(() => insertImage(env, getRange(pvDoc) || range, result));
+  if (chosen) {
+    const folder = folderOfSrc(result.src);
+    setStatus('Lege die Datei „' + chosen.name + '“ ' + (folder ? 'in den Ordner „' + folder + '“ neben deiner Seite.' : 'in denselben Ordner wie deine Seite.') + ' Sonst fehlt das Bild später im Browser.', 'ok');
+  }
 }
 
 async function pickImage(file) {
   els.imgErr.textContent = '';
   els.imgName.textContent = 'Bild wird geprüft …';
-  const result = await prepareImage(file);
+  const result = await readImage(file);
+  if (!els.dlgImage.open) { if (result.url) URL.revokeObjectURL(result.url); return; }
   if (result.error) {
-    pickedImage = null;
-    els.imgPrev.hidden = true;
-    els.imgName.textContent = 'Noch kein Bild ausgewählt.';
+    els.imgName.textContent = picked ? picked.name : imageEdit ? 'Das bisherige Bild bleibt.' : 'Noch kein Bild ausgewählt.';
     els.imgErr.textContent = result.error === 'type' ? 'Diese Datei ist kein unterstütztes Bild. Erlaubt sind PNG, JPG, GIF und WebP.'
-      : result.error === 'gif' ? 'Dieses GIF ist zu groß (höchstens 200 KB).'
-      : result.error === 'big' ? 'Dieses Bild ist zu groß und konnte nicht genug verkleinert werden.'
       : 'Das Bild konnte nicht gelesen werden. Vielleicht ist die Datei beschädigt.';
     return;
   }
-  pickedImage = result;
-  els.imgName.textContent = file.name + (result.scaled ? ' (wird verkleinert eingefügt)' : '');
-  els.imgPrev.src = result.dataUrl;
+  dropPicked();
+  picked = result;
+  els.imgName.textContent = result.name + ' (' + result.width + ' × ' + result.height + ' Pixel' + (result.large ? ', eine sehr große Datei' : '') + ')';
+  els.imgPrev.src = result.url;
   els.imgPrev.hidden = false;
+}
+
+// Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
+function validateImageDialog() {
+  const fail = (message) => { els.imgErr.textContent = message; return false; };
+  if (!imageEdit && !picked) return fail('Wähle zuerst ein Bild aus.');
+  const width = els.imgWidth.value.trim();
+  if (width && !/^[1-9][0-9]{0,3}$/.test(width)) return fail('Die Breite ist eine Zahl in Pixeln, zum Beispiel 300.');
+  const result = { alt: els.imgAlt.value.trim(), width };
+  const address = imageEdit ? imageEdit.getAttribute(FILE_HOLDER) : null;
+  const folder = els.imgDir.value;
+  if (picked) {
+    const made = imagePath(folder, picked.name);
+    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+    // the same file in the same folder keeps the address exactly as it is written in the code
+    result.src = address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
+    result.url = picked.url;
+  } else if (address && fileOfSrc(address)) {
+    // same file, perhaps another folder: the file name stays exactly as it is written in the code
+    const made = imagePath(folder, 'x');
+    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+    result.src = made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop();
+  }
+  imageResult = result;
+  return true;
 }
 
 // ---------------------------------------------------------------- formatting the source
@@ -2568,7 +2832,7 @@ async function sameLayout(a, b) {
     if (!doc) return false;
     const prints = [];
     for (const text of [a, b]) {
-      renderView(analyze(text, tokenize(text)), doc, new WeakMap());
+      renderView(analyze(text, tokenize(text)), doc, new WeakMap(), files);
       await Promise.all(Array.from(doc.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
       prints.push(layoutPrint(doc));
     }
@@ -2879,7 +3143,19 @@ function wirePreview() {
   });
   pvDoc.addEventListener('dragstart', (e) => e.preventDefault());
   wireDrop(pvDoc, true);
-  pvDoc.addEventListener('click', (e) => { const a = e.target && e.target.closest ? e.target.closest('a') : null; if (a) e.preventDefault(); });
+  pvDoc.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!target || !target.closest) return;
+    if (target.closest('a')) e.preventDefault();
+    // A click on an image selects it, so that "Bild" and the alignment buttons know which one is meant.
+    if (target.localName === 'img' && target.parentNode && target.parentNode.isContentEditable) {
+      const range = pvDoc.createRange();
+      range.selectNode(target);
+      const sel = pvDoc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
   pvDoc.addEventListener('keydown', (e) => {
     if (onShortcut(e)) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
@@ -2919,6 +3195,10 @@ function wireChrome() {
   tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
+  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock));
+  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock));
+  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock));
+  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock));
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));
@@ -2931,12 +3211,8 @@ function wireChrome() {
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.imgPick.addEventListener('click', () => els.imgIn.click());
   els.imgIn.addEventListener('change', () => { const file = els.imgIn.files[0]; els.imgIn.value = ''; if (file) pickImage(file); });
-  els.imgOk.addEventListener('click', () => {
-    if (!pickedImage) { els.imgErr.textContent = 'Wähle zuerst ein Bild aus.'; return; }
-    if (!els.imgAlt.value.trim()) { els.imgErr.textContent = 'Beschreibe das Bild kurz – diesen Text hören Menschen, die das Bild nicht sehen können.'; return; }
-    els.dlgImage.close('ok');
-  });
-  els.imgAlt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
+  els.imgOk.addEventListener('click', () => { if (validateImageDialog()) els.dlgImage.close('ok'); });
+  for (const field of [els.imgAlt, els.imgDir, els.imgWidth]) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
   els.fileIn.addEventListener('change', () => {
     const file = els.fileIn.files[0], op = pickOp && pickOp.seq === state.opSeq ? pickOp : beginReplace();
     els.fileIn.value = '';

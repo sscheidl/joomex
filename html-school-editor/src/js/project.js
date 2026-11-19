@@ -5,11 +5,12 @@
 // renderView() brings the preview document in line with that analysis by changing as little as possible, so
 //              caret, selection and scroll position survive. Dangerous or network-bound content is never
 //              created in the preview; it stays untouched in the source text.
-import { words, isRasterDataUrl } from './util.js';
+import { words, isRasterDataUrl, fileOfSrc } from './util.js';
 import { parseHtml, locateBody } from './tree.js';
 
 export const HTML_NS = 'http://www.w3.org/1999/xhtml';
 export const HREF_HOLDER = 'data-se-href';
+export const FILE_HOLDER = 'data-se-file';      // address of an image as written in the source
 
 const DROP = words('script link meta base title template noframes noembed frameset frame param source track head html body');
 const BOX = Object.assign(Object.create(null), { iframe: 'Eingebettete Seite', object: 'Eingebettetes Objekt', embed: 'Eingebettetes Objekt', applet: 'Eingebettetes Objekt', audio: 'Audio', video: 'Video', portal: 'Eingebettete Seite', fencedframe: 'Eingebettete Seite' });
@@ -132,7 +133,7 @@ function matchKids(src, t, d, isTail) {
 // ---------------------------------------------------------------- inactive content report
 
 function newReport() {
-  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0 };
+  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0, files: 0 };
 }
 
 export function reportText(r) {
@@ -140,6 +141,7 @@ export function reportText(r) {
   const add = (n, one, many) => { if (n) parts.push(n === 1 ? one : n + ' ' + many); };
   add(r.scripts + r.handlers, '1 Skript', 'Skripte');
   add(r.images, '1 Bild von außerhalb', 'Bilder von außerhalb');
+  add(r.files, '1 Bild aus einer Datei', 'Bilder aus Dateien');
   add(r.sheets, '1 externe CSS-Datei', 'externe CSS-Dateien');
   add(r.css, '1 Adresse im CSS', 'Adressen im CSS');
   add(r.frames, '1 eingebetteter Inhalt', 'eingebettete Inhalte');
@@ -151,9 +153,11 @@ export function reportText(r) {
 
 // ---------------------------------------------------------------- projection
 
-function safeAttrs(d, name, html, rep) {
+// `files`: images the pupil has chosen in this session, by file name. An image whose address is a plain file
+// name is shown from there; the address itself is never loaded.
+function safeAttrs(d, name, html, rep, files) {
   const out = [];
-  let blockedImage = null, hasTitle = false;
+  let blockedImage = null, hasTitle = false, byFile = false;
   for (const a of attrsOf(d)) {
     const n = a.name, ln = n.toLowerCase(), v = a.value;
     if (ln.startsWith('on')) { rep.handlers++; continue; }
@@ -165,7 +169,13 @@ function safeAttrs(d, name, html, rep) {
       if (!v.startsWith('#')) { rep.other++; continue; }
     } else if (ln === 'src') {
       if (name === 'img' && html && isRasterDataUrl(v)) { out.push([n, v]); continue; }
-      if (name === 'img') { blockedImage = v; rep.images++; } else rep.other++;
+      if (name === 'img') {
+        const file = html ? fileOfSrc(v) : '', known = file && files ? files.get(file) : null;
+        if (known) { out.push([n, known.url], [FILE_HOLDER, v]); continue; }
+        blockedImage = v;
+        byFile = !!file;
+        if (file) rep.files++; else rep.images++;
+      } else rep.other++;
       continue;
     } else if (ln === 'style') {
       if (CSS_FETCH.test(v)) rep.css++;
@@ -174,8 +184,8 @@ function safeAttrs(d, name, html, rep) {
     out.push([n, v]);
   }
   if (blockedImage !== null) {
-    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage]);
-    if (!hasTitle) out.push(['title', 'Dieses Bild liegt nicht in der Seite und wird im Editor nicht geladen.']);
+    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage], [FILE_HOLDER, blockedImage]);
+    if (!hasTitle) out.push(['title', byFile ? 'Der Editor kennt dieses Bild noch nicht. Klicke es an und wähle die Datei mit dem Knopf „Bild“ aus, dann siehst du es hier.' : 'Bilder aus dem Internet lädt der Editor nicht.']);
   }
   return out;
 }
@@ -198,7 +208,7 @@ function describe(d, t, st) {
     rep.frames++;
     return { k: 1, name: 'span', ns: HTML_NS, attrs: [['contenteditable', 'false'], ['data-se-box', '']], fixed: BOX[name] + ' (im Editor ausgeschaltet)' };
   }
-  const attrs = safeAttrs(d, name, html, rep);
+  const attrs = safeAttrs(d, name, html, rep, st.files);
   if (t && !t.ok) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
     if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
@@ -306,13 +316,13 @@ function syncHead(view, st) {
 
 // Updates the preview document `doc`. `info` (WeakMap) receives, for every preview node, its source node and a
 // snapshot of its rendered state; the serializer uses the snapshot to tell edited parts from untouched ones.
-export function renderView(view, doc, info) {
-  const st = { doc, info, report: newReport(), changed: false, attrChanged: false };
+export function renderView(view, doc, info, files) {
+  const st = { doc, info, files: files || null, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
   syncHead(view, st);
-  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report), st);
+  syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report, null), st);
   const srcBody = bodyOf(dom);
-  const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report) : [];
+  const bodyAttrs = srcBody ? safeAttrs(srcBody, 'body', true, st.report, null) : [];
   bodyAttrs.push(['contenteditable', view.ok ? 'true' : 'false']);
   syncAttrs(doc.body, bodyAttrs, st);
   if (docBody(dom) && !srcBody) st.report.frames++;

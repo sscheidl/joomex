@@ -1,8 +1,8 @@
 // Editing commands on the preview document. Block structure (paragraph, headings, lists), links and images
 // are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
 // italic use the browser's own editing command. Every command works on the current selection of the preview.
-import { words } from './util.js';
-import { HREF_HOLDER } from './project.js';
+import { words, withAlign } from './util.js';
+import { HREF_HOLDER, FILE_HOLDER } from './project.js';
 import { BLOCKS } from './serialize.js';
 
 const PARA = words('p h1 h2 h3 h4 h5 h6');
@@ -99,9 +99,17 @@ function rename(env, el, tag, keep) {
   while (el.firstChild) fresh.appendChild(el.firstChild);
   el.parentNode.replaceChild(fresh, el);
   const inf = env.info.get(el);
-  if (inf && inf.t && !inf.t.synthetic && !inf.t.implied) { env.info.set(fresh, { t: inf.t, rename: tag }); inf.t.pv = fresh; }
+  if (inf && inf.t && !inf.t.synthetic && !inf.t.implied) { env.info.set(fresh, { t: inf.t, rename: tag, attrs: inf.attrs }); inf.t.pv = fresh; }
   if (keep) { if (keep.an === el) keep.an = fresh; if (keep.fn === el) keep.fn = fresh; }
   return fresh;
+}
+
+// Notes changed attributes of an element that came from the source (null removes one). The writer then
+// rewrites exactly these attributes of its start tag and leaves the rest of the tag as written. An element
+// created in this session needs no note: it is written from the page itself.
+function record(env, el, changes) {
+  const inf = env.info.get(el);
+  if (inf && inf.t && inf.t.type === 'el' && !inf.t.implied) inf.attrs = Object.assign(inf.attrs || {}, changes);
 }
 
 function placeCaretIn(doc, el) {
@@ -369,15 +377,103 @@ export function removeLinks(env) {
   return 'ok';
 }
 
-export function insertImage(env, range, dataUrl, alt) {
+// The image if the selection is exactly one image (set by a click on it), otherwise null.
+export function selectedImage(doc) {
+  const range = getRange(doc);
+  if (!range || range.collapsed || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 1 || range.endOffset - range.startOffset !== 1) return null;
+  const node = range.startContainer.childNodes[range.startOffset];
+  return node && node.nodeType === 1 && node.localName === 'img' && isEditableAt(node.parentNode) ? node : null;
+}
+
+// Inserts an image that the source will address by file name. `image`: { src, url, alt, width }: `src` is
+// written into the source, `url` only shows the chosen file in the page pane.
+export function insertImage(env, range, image) {
   const doc = env.doc;
   const img = doc.createElement('img');
-  img.setAttribute('src', dataUrl);
-  img.setAttribute('alt', alt);
+  img.setAttribute(FILE_HOLDER, image.src);
+  img.setAttribute('src', image.url);
+  img.setAttribute('alt', image.alt);
+  if (image.width) img.setAttribute('width', image.width);
   range.collapse(false);
   range.insertNode(img);
   try { doc.getSelection().collapse(img.parentNode, Array.prototype.indexOf.call(img.parentNode.childNodes, img) + 1); } catch (e) { /* ignore */ }
   return 'ok';
+}
+
+// Changes an existing image. `changes` may hold src (with url for the page pane), alt and width ('' removes
+// the width); a key that is missing leaves that attribute alone. A new width removes a height attribute, so
+// that the picture keeps its proportions.
+export function changeImage(env, img, changes) {
+  const set = {};
+  if (changes.src !== undefined && changes.src !== img.getAttribute(FILE_HOLDER)) {
+    set.src = changes.src;
+    img.setAttribute(FILE_HOLDER, changes.src);
+    if (changes.url) img.setAttribute('src', changes.url);
+  }
+  if (changes.alt !== undefined && changes.alt !== (img.getAttribute('alt') || '')) { set.alt = changes.alt; img.setAttribute('alt', changes.alt); }
+  if (changes.width !== undefined && changes.width !== (img.getAttribute('width') || '')) {
+    set.width = changes.width || null;
+    if (changes.width) img.setAttribute('width', changes.width); else img.removeAttribute('width');
+    if (img.hasAttribute('height')) { set.height = null; img.removeAttribute('height'); }
+  }
+  if (!Object.keys(set).length) return 'same';
+  record(env, img, set);
+  return 'ok';
+}
+
+// The link that holds the whole selection, or null.
+export function linkAround(doc, range) {
+  const a = closestTag(range.startContainer, doc.body, LINK);
+  return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
+}
+
+export function changeLink(env, a, url) {
+  if (a.getAttribute(HREF_HOLDER) === url) return 'same';
+  a.setAttribute(HREF_HOLDER, url);
+  record(env, a, { href: url });
+  return 'ok';
+}
+
+const ALIGNABLE = words('p h1 h2 h3 h4 h5 h6 li td th blockquote div');
+
+// How the text of an element is aligned in the page, whatever rule says so: 'left', 'center', 'right', 'justify'.
+function alignOf(el) {
+  const v = el.ownerDocument.defaultView.getComputedStyle(el).textAlign;
+  return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
+}
+
+// Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
+// the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
+// style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
+// align the block differently.
+export function setAlign(env, value) {
+  const doc = env.doc, range = getRange(doc);
+  if (!range) return 'none';
+  const keep = saveSel(doc);
+  const img = selectedImage(doc);
+  let targets;
+  if (img) { const block = closestTag(img, doc.body, ALIGNABLE); targets = block ? [block] : []; }
+  else {
+    targets = elementsInRange(doc, range, ALIGNABLE);
+    targets = targets.filter((el) => !targets.some((other) => other !== el && el.contains(other)));
+  }
+  if (!targets.length) {
+    const run = looseRun(doc, img || range.startContainer);
+    if (!run) return 'none';
+    targets = [wrapRun(doc, run, 'p')];
+  }
+  let changed = false;
+  for (const el of targets) {
+    const old = el.getAttribute('style') || '';
+    const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
+    let next = put(withAlign(old, value === 'left' ? '' : value));
+    if (value === 'left' && alignOf(el) !== 'left') next = put(withAlign(old, 'left'));
+    if (next === old) continue;
+    record(env, el, { style: next || null });
+    changed = true;
+  }
+  restoreSel(doc, keep);
+  return changed ? 'ok' : 'same';
 }
 
 // Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.
@@ -400,7 +496,7 @@ export function insertPlainText(env, text) {
 // What the toolbar should show as active for the current caret position.
 export function caretState(doc) {
   const range = getRange(doc);
-  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false };
+  const state = { block: '', list: '', link: false, bold: false, italic: false, editable: false, align: '', image: false };
   if (!range) return state;
   const body = doc.body;
   state.editable = isEditableAt(range.startContainer);
@@ -411,5 +507,8 @@ export function caretState(doc) {
   state.link = !!closestTag(range.startContainer, body, LINK);
   state.bold = !!closestTag(range.startContainer, body, INLINE_ON.bold);
   state.italic = !!closestTag(range.startContainer, body, INLINE_ON.italic);
+  const image = selectedImage(doc);
+  state.image = !!image;
+  state.align = alignOf(closestTag(image || range.startContainer, body, ALIGNABLE) || body);
   return state;
 }
