@@ -62,6 +62,18 @@ function childIndent(ctx, el, t, parentIndent) {
   return t && t.virtual ? '' : parentIndent + '  ';
 }
 
+// True if the loose run kids[i..j) directly in the page is nothing but one <br>. That is the line break a
+// browser keeps for itself in a page without visible content (Firefox), or what is left when everything was
+// deleted. It is not content of the document and is not written.
+function paddingBreak(ctx, kids, i, j) {
+  let breaks = 0;
+  for (let k = i; k < j; k++) {
+    if (kids[k].nodeType === 1) { if (kids[k].localName !== 'br') return false; breaks++; }
+    else if (!WS_ONLY.test(kids[k].data)) return false;
+  }
+  return breaks === 1;
+}
+
 const isLoose = (ctx, c) => !mappedT(ctx, c) && (c.nodeType === 3 || (c.nodeType === 1 && !BLOCKS.has(c.localName) && !c.hasAttribute('data-se-box')));
 
 function emitKids(ctx, el, t, parentIndent) {
@@ -74,6 +86,7 @@ function emitKids(ctx, el, t, parentIndent) {
     if (el === ctx.top && isLoose(ctx, kids[i])) {
       let j = i, solid = false;
       while (j < kids.length && isLoose(ctx, kids[j])) { if (kids[j].nodeType === 1 || /\S/.test(kids[j].data)) solid = true; j++; }
+      if (solid && paddingBreak(ctx, kids, i, j)) { i = j - 1; continue; }
       if (solid) {
         freshLine(ctx, indent);
         ctx.s += '<p>';
@@ -101,6 +114,35 @@ function needsEndTag(ctx, c, t) {
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
   return next !== origNext;
+}
+
+const WS_ONLY = /^[ \t\n\f\r]*$/;
+
+// True if white space at this edge of text node `c` cannot be seen: what stands next to it in the same line
+// ends with white space, or nothing stands there (edge of the block, a line break). Comments are looked through.
+function unseenEdge(c, before) {
+  for (let n = before ? c.previousSibling : c.nextSibling; ; n = before ? n.previousSibling : n.nextSibling) {
+    if (!n) { const p = c.parentNode; return !!p && (p.localName === 'body' || BLOCKS.has(p.localName)); }
+    if (n.nodeType === 8 || (n.nodeType === 3 && !n.data)) continue;
+    // While typing, the engine writes the space it keeps as a no-break space; the writer turns it back.
+    if (n.nodeType === 3) { const ch = before ? n.data[n.data.length - 1] : n.data[0]; return ch === NBSP || WS_ONLY.test(ch); }
+    return n.nodeType === 1 && (n.localName === 'br' || BLOCKS.has(n.localName));
+  }
+}
+
+// The browser's editing engine tidies white space that cannot be seen. While the pupil types somewhere else,
+// it may empty a text that only holds line breaks and indentation, and it may drop a space at the edge of a
+// neighbouring text when another space stands next to it (Firefox does both). Such a change of a text that
+// was not edited is not an edit. `typing`: the pending input consisted of insertions only; after a deletion a
+// missing space counts as deleted.
+function engineTidied(ctx, c, old, now, t) {
+  if (t.hidden) return WS_ONLY.test(now);           // line breaks and indentation between elements: never an edit
+  if (!ctx.typing || !/^(?:normal|nowrap)$/.test(c.ownerDocument.defaultView.getComputedStyle(c.parentNode).whiteSpace)) return false;
+  if (WS_ONLY.test(old)) return WS_ONLY.test(now) && (unseenEdge(c, true) || unseenEdge(c, false));
+  const lead = /^[ \t\n\f\r]*/.exec(old)[0].length, trail = /[ \t\n\f\r]*$/.exec(old)[0].length;
+  const cutLead = !!lead && now === old.slice(lead), cutTrail = !!trail && now === old.slice(0, old.length - trail);
+  const cutBoth = !!lead && !!trail && now === old.slice(lead, old.length - trail);
+  return (cutLead && unseenEdge(c, true)) || (cutTrail && unseenEdge(c, false)) || (cutBoth && unseenEdge(c, true) && unseenEdge(c, false));
 }
 
 const NBSP = String.fromCharCode(160);
@@ -140,6 +182,12 @@ function emitText(ctx, c, inf) {
   }
   // Mapped text that was edited: keep the unchanged beginning and end exactly as written in the source.
   const old = inf.data;
+  if (engineTidied(ctx, c, old, data, t)) {
+    const at = ctx.s.length;
+    ctx.s += src.slice(t.lead, t.end);
+    for (const p of mine) p.out = at + (t.start - t.lead) + rawPos(src, t, Math.min(old.length, p.offset + (old.length - data.length)), false)[0] - t.start;
+    return;
+  }
   // The browser's editing engine drops line breaks at the edges of a text and swaps ordinary spaces for
   // no-break spaces around the caret. Both are side effects, not edits: the source formatting is kept.
   let lead = '';
@@ -259,19 +307,32 @@ function emitNode(ctx, c, indent) {
 // Content without a visible counterpart (comments, scripts, style and similar elements) must not disappear from
 // the source just because the browser's editing engine dropped its invisible stand-in while joining or deleting
 // text. Such stand-ins are put back next to their surviving neighbours before the text is written.
-export function rescueHidden(view) {
+// `typing`: every pending input was an insertion. Then a space between two elements that the engine took out
+// is put back as well, if it could not be seen (another space or the edge of the block is next to it); after a
+// deletion such a space counts as deleted.
+export function rescueHidden(view, typing) {
   let moved = false;
   // `lost`: the element of `t` itself is gone, its content is looked at from the surviving parent.
   const walk = (t, pvParent, cursor, lost) => {
     for (const k of t.mk || []) {
       const pv = k.pv;
       if (!pv) continue;
+      if (!k.hidden && typing && !lost && k.type === 'text' && !pv.isConnected && !k.dropped && k.text && WS_ONLY.test(k.text)) {
+        const data = pv.data;
+        pv.data = k.text;
+        pvParent.insertBefore(pv, cursor ? cursor.nextSibling : pvParent.firstChild);
+        if (unseenEdge(pv, true) || unseenEdge(pv, false)) { moved = true; cursor = pv; continue; }
+        pv.remove();
+        pv.data = data;
+        continue;
+      }
       if (k.hidden) {
         if (!pv.isConnected) {
           if (k.dropped) continue;                                                 // removed on purpose by a command
           const next = cursor ? cursor.nextSibling : pvParent.firstChild;
           const blank = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
           if (pv.nodeType === 3 && (lost || blank(cursor) || blank(next))) continue;      // no runs of empty lines, no indentation of a removed element
+          if (pv.nodeType === 3 && pv.data !== k.text) pv.data = k.text;                  // the engine may have emptied it before taking it out
           pvParent.insertBefore(pv, next);
           moved = true;
         }
@@ -289,9 +350,10 @@ export function rescueHidden(view) {
 
 // Returns the new document text for the current state of the preview body. `points` is an optional list of
 // { node, offset } preview positions; `sel` holds their offsets in the new text (or null).
-export function serializeBody(view, info, pvBody, points) {
+// `typing`: every pending input was an insertion (see engineTidied).
+export function serializeBody(view, info, pvBody, points, typing) {
   const src = view.src, body = view.body;
-  const ctx = { view, src, info, s: '', before: src.slice(Math.max(0, body.tagEnd - 200), body.tagEnd), points: points || [], memo: new Map(), top: pvBody };
+  const ctx = { view, src, info, typing: !!typing, s: '', before: src.slice(Math.max(0, body.tagEnd - 200), body.tagEnd), points: points || [], memo: new Map(), top: pvBody };
   const own = body.virtual ? '' : lineIndentAt(src, body.start);
   emitKids(ctx, pvBody, body, own == null ? '' : own);
   return {

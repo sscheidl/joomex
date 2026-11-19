@@ -137,7 +137,7 @@ export function setBlock(env, tag) {
 
 // Removes a white-space text between blocks for good (rescueHidden() in serialize.js would put it back).
 function dropSpace(env, n) {
-  if (!n || n.nodeType !== 3 || /\S/.test(n.data)) return false;
+  if (!n || n.nodeType !== 3 || /[^ \t\n\f\r]/.test(n.data)) return false;       // HTML white space only, not a no-break space
   const inf = env.info.get(n);
   if (inf && inf.t) inf.t.dropped = true;
   n.remove();
@@ -445,7 +445,8 @@ function alignOf(el) {
 // Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
 // the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
 // style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
-// align the block differently.
+// align the block differently. Returns 'odd' if nothing could be done because a style attribute is written in
+// a way that cannot be read with certainty (an open string, comment or bracket).
 export function setAlign(env, value) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -462,18 +463,20 @@ export function setAlign(env, value) {
     if (!run) return 'none';
     targets = [wrapRun(doc, run, 'p')];
   }
-  let changed = false;
+  let changed = false, odd = false;
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
+    let next = withAlign(old, value === 'left' ? '' : value);
+    if (next === null) { odd = true; continue; }       // the style text cannot be read with certainty: leave it alone
     const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
-    let next = put(withAlign(old, value === 'left' ? '' : value));
+    put(next);
     if (value === 'left' && alignOf(el) !== 'left') next = put(withAlign(old, 'left'));
     if (next === old) continue;
     record(env, el, { style: next || null });
     changed = true;
   }
   restoreSel(doc, keep);
-  return changed ? 'ok' : 'same';
+  return changed ? 'ok' : odd ? 'odd' : 'same';
 }
 
 // Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.

@@ -79,7 +79,11 @@ export const functional = [
         await ed.clickPv('d.querySelector("i")', 2);
         await sleep(150);
         mark = await sourceMark(ed);
-        c.ok(mark && mark.text.startsWith('beides') && mark.line === 18, 'double-click on nested emphasis marks exactly that text in the source', JSON.stringify(mark));
+        // Browsers select a word with or without the space behind it. Whatever is selected in the page must be
+        // what is marked in the source: the marked source without its tags is the selected text.
+        const picked = await ed.eval(PV + '.getSelection().toString()');
+        c.ok(/^beides ?$/.test(picked), 'double-click selects the word in the nested emphasis', JSON.stringify(picked));
+        c.ok(mark && mark.text.replace(/<[^>]*>/g, '') === picked && mark.text.includes('beides') && mark.line === 18, 'and marks exactly that text in the source', JSON.stringify(mark));
         c.ok((await ed.eval('document.getElementById("src").value.length')) > 400, 'the rest of the source stays visible');
         await ed.sourceCaret('<p>Hallo</p>\n  <p>Anfang', 5);
         await sleep(150);

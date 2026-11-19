@@ -11,7 +11,7 @@
 import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
-import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, HREF_HOLDER, FILE_HOLDER } from './project.js';
+import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER } from './project.js';
 import { serializeBody, rescueHidden } from './serialize.js';
 import { formatSource, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
@@ -44,15 +44,14 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const now = () => performance.now();
 
 const state = {
-  text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, composing: false, inCommand: false,
-  name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '',
+  text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
+  name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false,
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
 const files = new Map();          // images chosen in this session, by file name: { name, url, width, height }
-const blocked = new Set();        // file names of addresses the browser's policy stopped in the page pane
 const els = {};
 let pvDoc = null, pvWin = null;
 let renderTimer = 0, commitTimer = 0, statusTimer = 0, markFrame = 0;
@@ -83,11 +82,12 @@ function openDialog(dialog) {
 }
 
 function infoBox(message) {
-  els.infoText.textContent = message;
+  if (!els.dlgInfo.open) els.infoText.textContent = message;
   return openDialog(els.dlgInfo);
 }
 
 async function confirmBox(message, okLabel) {
+  if (els.dlgConfirm.open) return false;            // one question at a time; the text of the open one stays
   els.confirmText.textContent = message;
   els.confirmOk.textContent = okLabel;
   return (await openDialog(els.dlgConfirm)) === 'ok';
@@ -219,6 +219,7 @@ function render(restore) {
   state.view = view;
   state.pvRev = state.rev;
   state.visualDirty = false;
+  state.onlyInserts = true;
   state.report = view.failed ? '' : reportText(res.report);
   showInactive();
   els.lockNote.hidden = view.ok;
@@ -231,11 +232,11 @@ function render(restore) {
 }
 
 // The note above the page lists what the editor found and left out. Whatever the browser's content policy
-// had to stop in the page pane is announced as well, so that nothing is switched off without a note. Such an
-// entry counts as long as the stopped address still occurs in the text.
+// had to stop in the page pane is announced as well, so that nothing is switched off without a note. A stop
+// by the policy is remembered for the document until another one is opened: the editor cannot tell which
+// part of the text caused it, and a note that stays too long is better than a stop without a note.
 function showInactive() {
-  let text = state.report;
-  if (!text) for (const name of blocked) if (state.text.includes(name)) { text = 'Inhalte von außerhalb der Seite'; break; }
+  const text = state.report || (state.blocked ? 'Inhalte von außerhalb der Seite (vom Browser blockiert)' : '');
   els.inactive.hidden = !text;
   els.inactiveText.textContent = text ? 'Im Editor ausgeschaltet: ' + text + '.' : '';
 }
@@ -261,8 +262,8 @@ function commitVisual(kind) {
   const sel = pvDoc.getSelection();
   const points = sel && sel.rangeCount && pvDoc.body.contains(sel.anchorNode) && pvDoc.body.contains(sel.focusNode)
     ? [{ node: sel.anchorNode, offset: sel.anchorOffset }, { node: sel.focusNode, offset: sel.focusOffset }] : [];
-  rescueHidden(state.view);
-  const out = serializeBody(state.view, info, pvDoc.body, points);
+  rescueHidden(state.view, state.onlyInserts);
+  const out = serializeBody(state.view, info, pvDoc.body, points, state.onlyInserts);
   state.visualDirty = false;
   applyText(out.text, kind || 'vis-type');
   render(out.sel);
@@ -386,13 +387,14 @@ function readyToEdit() {
   return range;
 }
 
-function runCommand(fn, emptyMessage) {
+function runCommand(fn, emptyMessage, oddMessage) {
   if (!readyToEdit()) return;
   focusPreview();
   let result;
   state.inCommand = true;
   try { result = fn(); } finally { state.inCommand = false; }
   if (result === 'none' && emptyMessage) setStatus(emptyMessage, 'warn');
+  if (result === 'odd' && oddMessage) setStatus(oddMessage, 'warn');
   history.seal();
   markVisualDirty();
   commitVisual('cmd');
@@ -454,6 +456,7 @@ let picked = null;          // file chosen in the open dialog, not yet accepted
 let imageEdit = null;       // image that the open dialog changes, or null when it inserts
 let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
+let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
 
 function dropPicked() {
   if (picked && files.get(picked.name) !== picked) URL.revokeObjectURL(picked.url);
@@ -469,6 +472,7 @@ async function imageFlow(dropped) {
   const rev = state.rev, docId = state.docId;
   const address = img ? img.getAttribute(FILE_HOLDER) : null;
   dropPicked();
+  pickSeq++;
   imageEdit = img;
   imageResult = null;
   els.imgTitle.textContent = img ? 'Bild ändern' : 'Bild einfügen';
@@ -483,9 +487,11 @@ async function imageFlow(dropped) {
   const shown = img && !img.hasAttribute('data-se-src') ? img.getAttribute('src') : null;
   els.imgPrev.hidden = !shown;
   if (shown) els.imgPrev.src = shown; else els.imgPrev.removeAttribute('src');
+  showAddress();
   if (dropped) pickImage(dropped);
   const answer = await openDialog(els.dlgImage);
   const result = imageResult, chosen = picked;
+  pickSeq++;
   imageEdit = imageResult = null;
   els.imgPrev.removeAttribute('src');
   if (state.rev !== rev || state.docId !== docId) { dropPicked(); return; }
@@ -496,8 +502,8 @@ async function imageFlow(dropped) {
     const old = files.get(chosen.name);
     if (old && old !== chosen) URL.revokeObjectURL(old.url);
     files.set(chosen.name, chosen);
-    lastFolder = folderOfSrc(result.src || '');
   }
+  if (result.src !== undefined) lastFolder = folderOfSrc(result.src);        // suggested for the next picture
   if (img) { if (img.isConnected) runCommand(() => changeImage(env, img, result)); }
   else runCommand(() => insertImage(env, getRange(pvDoc) || range, result));
   if (chosen) {
@@ -509,11 +515,15 @@ async function imageFlow(dropped) {
 async function pickImage(file) {
   els.imgErr.textContent = '';
   els.imgName.textContent = 'Bild wird geprüft …';
+  const seq = ++pickSeq;
   const result = await readImage(file);
-  if (!els.dlgImage.open) { if (result.url) URL.revokeObjectURL(result.url); return; }
+  // Only the latest choice of the dialog that is open now counts. A check that was started for an earlier
+  // choice or for a dialog that has been closed since is dropped.
+  if (seq !== pickSeq || !els.dlgImage.open) { if (result.url) URL.revokeObjectURL(result.url); return; }
   if (result.error) {
     els.imgName.textContent = picked ? picked.name : imageEdit ? 'Das bisherige Bild bleibt.' : 'Noch kein Bild ausgewählt.';
     els.imgErr.textContent = result.error === 'type' ? 'Diese Datei ist kein unterstütztes Bild. Erlaubt sind PNG, JPG, GIF und WebP.'
+      : result.error === 'big' ? 'Dieses Bild ist zu groß (mehr als 20 MB). Verkleinere es zuerst.'
       : 'Das Bild konnte nicht gelesen werden. Vielleicht ist die Datei beschädigt.';
     return;
   }
@@ -522,6 +532,32 @@ async function pickImage(file) {
   els.imgName.textContent = result.name + ' (' + result.width + ' × ' + result.height + ' Pixel' + (result.large ? ', eine sehr große Datei' : '') + ')';
   els.imgPrev.src = result.url;
   els.imgPrev.hidden = false;
+  showAddress();
+}
+
+// The address the image dialog would write into the code with its present fields: a text; `undefined` if the
+// address is not touched (no picture chosen yet, or a picture embedded in the code or from the network that
+// keeps its address); null if the folder name is not allowed. The browser does not tell from which folder a
+// file was chosen, so the folder comes from the field alone.
+function dialogAddress() {
+  const address = imageEdit ? imageEdit.getAttribute(FILE_HOLDER) : null;
+  const folder = els.imgDir.value;
+  if (picked) {
+    const made = imagePath(folder, picked.name);
+    if (!made.ok) return null;
+    // the same file in the same folder keeps the address exactly as it is written in the code
+    return address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
+  }
+  if (!address || !fileOfSrc(address)) return undefined;
+  // same file, perhaps another folder: the file name stays exactly as it is written in the code
+  const made = imagePath(folder, 'x');
+  return made.ok ? made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop() : null;
+}
+
+// Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen.
+function showAddress() {
+  const src = dialogAddress();
+  els.imgCode.textContent = typeof src === 'string' ? 'Im Code steht dann: <' + 'img src="' + src + '">' : '';
 }
 
 // Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
@@ -531,20 +567,10 @@ function validateImageDialog() {
   const width = els.imgWidth.value.trim();
   if (width && !/^[1-9][0-9]{0,3}$/.test(width)) return fail('Die Breite ist eine Zahl in Pixeln, zum Beispiel 300.');
   const result = { alt: els.imgAlt.value.trim(), width };
-  const address = imageEdit ? imageEdit.getAttribute(FILE_HOLDER) : null;
-  const folder = els.imgDir.value;
-  if (picked) {
-    const made = imagePath(folder, picked.name);
-    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
-    // the same file in the same folder keeps the address exactly as it is written in the code
-    result.src = address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
-    result.url = picked.url;
-  } else if (address && fileOfSrc(address)) {
-    // same file, perhaps another folder: the file name stays exactly as it is written in the code
-    const made = imagePath(folder, 'x');
-    if (!made.ok) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
-    result.src = made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop();
-  }
+  const src = dialogAddress();
+  if (src === null) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+  if (src !== undefined) result.src = src;
+  if (picked) result.url = picked.url;
   imageResult = result;
   return true;
 }
@@ -575,6 +601,7 @@ async function sameLayout(a, b) {
     for (const text of [a, b]) {
       renderView(analyze(text, tokenize(text)), doc, new WeakMap(), files);
       await Promise.all(Array.from(doc.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
+      if (!prints.length && hiddenLayoutRisk(doc, FMT_BLOCK)) return false;
       prints.push(layoutPrint(doc));
     }
     return prints[0] === prints[1];
@@ -586,6 +613,8 @@ const FORMAT_NO = {
   external: 'Diese Seite verwendet eine externe CSS-Datei. Der Editor kann sie nicht lesen und deshalb nicht prüfen, ob die Seite nach dem Aufräumen noch gleich aussieht.',
   parse: 'Der Code konnte nicht sicher aufgeräumt werden. Wahrscheinlich ist ein Tag nicht richtig geschlossen oder verschachtelt.',
   look: 'Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite.',
+  conditional: 'Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht.',
+  unclear: 'Im CSS dieser Seite ist etwas nicht abgeschlossen, zum Beispiel fehlt ein Anführungszeichen oder das Ende eines Kommentars. Deshalb wird der Code nicht automatisch aufgeräumt.',
 };
 
 // "Tidy up" is applied only if three independent checks agree that nothing but insignificant white space
@@ -602,8 +631,10 @@ async function formatDoc() {
   try {
     const before = new DOMParser().parseFromString(src, 'text/html');
     const css = cssFacts(before);
-    if (css.spaces) problem = 'spaces';
+    if (css.unclear) problem = 'unclear';
+    else if (css.spaces) problem = 'spaces';
     else if (css.external) problem = 'external';
+    else if (css.conditional) problem = 'conditional';
     else {
       out = formatSource(src, parseHtml(src, before.compatMode === 'BackCompat', tokensFor(src)).root);
       if (out === src) { setStatus('Der Code ist schon aufgeräumt.'); return; }
@@ -641,7 +672,7 @@ function replaceDocument(text, meta) {
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
-  blocked.clear();
+  state.blocked = false;
   history.reset(text);
   els.src.value = text;
   els.src.setSelectionRange(0, 0);
@@ -873,7 +904,13 @@ function wirePreview() {
     else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
   });
-  pvDoc.addEventListener('input', () => { markVisualDirty(); if (!state.composing) scheduleCommit(); });
+  pvDoc.addEventListener('input', (e) => {
+    // Remembered for the writer: after a deletion, a space that is gone was deleted; while only typing, the
+    // browser may have tidied it away next door (see engineTidied in serialize.js).
+    if (!/^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/.test(e.inputType || '')) state.onlyInserts = false;
+    markVisualDirty();
+    if (!state.composing) scheduleCommit();
+  });
   pvDoc.addEventListener('compositionstart', () => { state.composing = true; });
   pvDoc.addEventListener('compositionend', () => { state.composing = false; if (state.visualDirty) scheduleCommit(); });
   pvDoc.addEventListener('paste', (e) => {
@@ -906,13 +943,7 @@ function wirePreview() {
     }
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
-  pvDoc.addEventListener('securitypolicyviolation', (e) => {
-    const name = String(e.blockedURI || '').split(/[?#]/)[0].split('/').filter(Boolean).pop() || '';
-    if (name.length < 3 || blocked.size > 200 || blocked.has(name)) return;       // keywords like "inline" carry no address
-    blocked.add(name);
-    try { blocked.add(decodeURIComponent(name)); } catch (err) { /* keep the raw form */ }
-    showInactive();
-  });
+  pvDoc.addEventListener('securitypolicyviolation', () => { if (!state.blocked) { state.blocked = true; showInactive(); } });
 }
 
 function wireChrome() {
@@ -936,10 +967,11 @@ function wireChrome() {
   tool(els.bItalic, () => runCommand(() => toggleInline(env, 'italic'), noText));
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
-  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock));
-  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock));
-  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock));
-  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock));
+  const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code.';
+  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock, oddStyle));
+  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock, oddStyle));
+  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock, oddStyle));
+  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock, oddStyle));
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));
@@ -953,6 +985,7 @@ function wireChrome() {
   els.imgPick.addEventListener('click', () => els.imgIn.click());
   els.imgIn.addEventListener('change', () => { const file = els.imgIn.files[0]; els.imgIn.value = ''; if (file) pickImage(file); });
   els.imgOk.addEventListener('click', () => { if (validateImageDialog()) els.dlgImage.close('ok'); });
+  els.imgDir.addEventListener('input', showAddress);
   for (const field of [els.imgAlt, els.imgDir, els.imgWidth]) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.imgOk.click(); } });
   els.fileIn.addEventListener('change', () => {
     const file = els.fileIn.files[0], op = pickOp && pickOp.seq === state.opSeq ? pickOp : beginReplace();

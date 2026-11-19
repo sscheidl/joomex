@@ -113,10 +113,14 @@ export class Editor {
   // Loads a file through the real file input. Over unsaved work the product asks first; a test that simply
   // moves on to its next document answers like a pupil who agrees. The question itself is the subject of T-15
   // and RV-01, which pass `wait: false` and handle the dialog themselves.
+  //
+  // "Opened" is the editor's own message for this load, shown after the document was replaced. The status line
+  // is emptied first, so a file of the same name that is already open cannot be mistaken for the new one.
   async openFile(file, { wait = true } = {}) {
+    if (wait) await this.eval('document.getElementById("msg").textContent = ""');
     await this.page.setFiles('#fileIn', [file]);
     if (!wait) return;
-    const opened = 'document.getElementById("docName").textContent === ' + JSON.stringify(path.basename(file));
+    const opened = 'document.getElementById("msg").textContent.startsWith("Geöffnet") && document.getElementById("docName").textContent === ' + JSON.stringify(path.basename(file));
     await this.until(opened + ' || document.getElementById("dlgConfirm").open', 'file opened or question shown');
     if (await this.dialogOpen('dlgConfirm')) await this.dialogButton('dlgConfirm', 'Änderungen verwerfen');
     await this.until(opened, 'file opened');
@@ -176,7 +180,8 @@ export class Editor {
   // Chooses a file in the open image dialog through its real file input and waits until it was checked.
   async pickImage(file) {
     await this.page.setFiles('#imgIn', [file]);
-    await this.until('document.getElementById("imgName").textContent.includes(' + JSON.stringify(path.basename(file)) + ')', 'image accepted', 30000);
+    // the label of a checked file is "name (width × height Pixel)"; "Jetzt: name" of an image being changed is not it
+    await this.until('document.getElementById("imgName").textContent.startsWith(' + JSON.stringify(path.basename(file) + ' (') + ')', 'image accepted', 30000);
   }
   inactiveNote() { return this.eval('document.getElementById("inactive").hidden ? "" : document.getElementById("inactiveText").textContent'); }
   key(name, mods) { return this.page.key(name, mods); }

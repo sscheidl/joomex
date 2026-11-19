@@ -5,7 +5,7 @@
 // renderView() brings the preview document in line with that analysis by changing as little as possible, so
 //              caret, selection and scroll position survive. Dangerous or network-bound content is never
 //              created in the preview; it stays untouched in the source text.
-import { words, isRasterDataUrl, fileOfSrc } from './util.js';
+import { words, isRasterDataUrl, fileOfSrc, cssRisks } from './util.js';
 import { parseHtml, locateBody } from './tree.js';
 
 export const HTML_NS = 'http://www.w3.org/1999/xhtml';
@@ -248,10 +248,13 @@ function syncKids(pv, tKids, dNodes, st) {
   const old = Array.from(pv.childNodes), n = dNodes.length;
   const descs = new Array(n);
   for (let i = 0; i < n; i++) descs[i] = describe(dNodes[i], tKids ? tKids[i] : null, st);
+  // An existing node is kept if it has the right kind. A <br> must also be one of our own: in an empty page
+  // some browsers (Firefox) keep a line break of their own there, which they remove again when they like.
+  const keep = (node, desc) => fits(node, desc) && (desc.k !== 1 || desc.name !== 'br' || st.info.has(node));
   let a = 0;
-  while (a < old.length && a < n && fits(old[a], descs[a])) a++;
+  while (a < old.length && a < n && keep(old[a], descs[a])) a++;
   let bo = old.length, bn = n;
-  while (bo > a && bn > a && fits(old[bo - 1], descs[bn - 1])) { bo--; bn--; }
+  while (bo > a && bn > a && keep(old[bo - 1], descs[bn - 1])) { bo--; bn--; }
   const update = (node, j) => {
     const desc = descs[j], t = tKids ? tKids[j] : null;
     if (desc.k !== 1) {
@@ -278,7 +281,12 @@ function syncKids(pv, tKids, dNodes, st) {
   };
   for (let i = 0; i < a; i++) update(old[i], i);
   for (let j = bn; j < n; j++) update(old[bo + j - bn], j);
-  for (let i = a; i < bo; i++) { pv.removeChild(old[i]); st.changed = true; }
+  for (let i = a; i < bo; i++) {
+    pv.removeChild(old[i]);
+    // A line break that the browser put into the page for itself is not part of the projection: taking it out
+    // (the browser may put it back) does not count as a change of the page.
+    if (!(pv === st.doc.body && old[i].nodeType === 1 && old[i].localName === 'br' && !st.info.has(old[i]))) st.changed = true;
+  }
   const ref = bo < old.length ? old[bo] : null;
   for (let j = a; j < bn; j++) {
     const node = make(descs[j], st);
@@ -447,37 +455,50 @@ export function canonDom(doc, blockNames, keepNames) {
   return out;
 }
 
-// What the style rules of a parsed document say about white space. `spaces`: some rule may make every space
-// count (anything but the collapsing values of white-space). `external`: rules come from a file the editor
-// does not read. Comments and escapes are resolved first, as the browser does before it reads a property name.
+// What the style rules of a parsed document say that matters for moving white space (see cssRisks in util.js):
+// `spaces`, `conditional`, `unclear`, and `external` if rules come from a file the editor does not read. Every
+// style element and every style attribute is read as CSS, with comments, strings and escapes respected.
 export function cssFacts(dom) {
-  let css = '', external = false;
+  const facts = { spaces: false, external: false, conditional: false, unclear: false };
   const walk = (node) => {
     for (const c of childrenOf(node)) {
       if (typeOf(c) !== 1) continue;
       const name = nameOf(c);
-      if (name === 'style') css += textOf(c) + '\n';
-      else if (name === 'link' && /stylesheet/i.test(attrOf(c, 'rel') || '')) external = true;
+      if (name === 'style') cssRisks(textOf(c), facts);
+      else if (name === 'link' && /stylesheet/i.test(attrOf(c, 'rel') || '')) facts.external = true;
       const own = attrOf(c, 'style');
-      if (own) css += '{' + own + '}\n';
+      if (own) cssRisks(own, facts);
       walk(c);
     }
   };
   walk(dom);
-  css = css.replace(/\/\*[^]*?\*\//g, ' ').replace(/\\([0-9a-f]{1,6})[ \t\n\f\r]?|\\([^\n])/gi,
-    (m, hex, ch) => (hex ? String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff) || 0xfffd) : ch));
-  if (/@import/i.test(css)) external = true;
-  let spaces = false;
-  const decl = /(?:white-space(?:-collapse)?|text-space-collapse)\s*:([^;{}]*)/gi;
-  for (let m; (m = decl.exec(css));) {
-    if (!/^(?:\s*(?:normal|nowrap|collapse|wrap|balance|pretty|stable|initial|inherit|unset|revert|revert-layer|!\s*important))*\s*$/i.test(m[1])) spaces = true;
+  return facts;
+}
+
+// True if a part of the laid-out page that is not shown at the moment (hidden attribute, closed details,
+// display: none of an ancestor) would not follow the default display of its elements once it is shown: a
+// block element displayed inline, or generated content at its edge. Such a part has no boxes, so the layout
+// comparison cannot answer for it.
+export function hiddenLayoutRisk(doc, blockNames) {
+  const view = doc.defaultView;
+  const walker = doc.createTreeWalker(doc.body, 1);
+  for (let el = walker.nextNode(); el; el = walker.nextNode()) {
+    if (!blockNames.has(el.localName) || el.namespaceURI !== HTML_NS || el.getClientRects().length) continue;
+    const display = view.getComputedStyle(el).display;
+    if (display === 'none') continue;                           // hidden by its own rule: nothing to compare with
+    if (/^inline|^contents$|^ruby/.test(display)) return true;
+    for (const pseudo of ['::before', '::after']) {
+      const content = view.getComputedStyle(el, pseudo).content;
+      if (content && content !== 'none' && content !== 'normal') return true;
+    }
   }
-  return { external, spaces };
+  return false;
 }
 
 // Where every element box and every rendered piece of text of a laid-out document lies, in quarter pixels.
 // Two versions of a page that differ only in white space look the same exactly if these lists are equal: white
-// space that is not rendered has no box, white space that is rendered moves something or has a box itself.
+// space that is not rendered has no width, white space that is rendered moves something or has a width itself.
+// (For white space between blocks Firefox reports a box with a height and no width; that is not a rendering.)
 export function layoutPrint(doc) {
   const out = [];
   const add = (r) => { out.push(Math.round(r.left * 4), Math.round(r.top * 4), Math.round(r.width * 4), Math.round(r.height * 4)); };
@@ -487,7 +508,8 @@ export function layoutPrint(doc) {
     if (n.nodeType === 1) { add(n.getBoundingClientRect()); continue; }
     range.selectNodeContents(n);
     const r = range.getBoundingClientRect();
-    if (r.width || r.height || /[^ \t\n\f\r]/.test(n.data)) add(r);
+    if (/[^ \t\n\f\r]/.test(n.data)) add(r);
+    else if (r.width) add(r);
   }
   return out.join(',');
 }

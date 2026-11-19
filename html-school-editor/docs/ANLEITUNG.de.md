@@ -37,6 +37,8 @@ Drücke **Bild** und wähle eine Bilddatei aus. Im Code steht dann nur der Name 
 
 **Wichtig:** Lege die Bilddatei in denselben Ordner wie deine Seite. Liegt sie in einem Unterordner, schreibst du dessen Namen in das Feld „Unterordner“, zum Beispiel `bilder`. Im Code steht dann `bilder/katze.jpg`. Fehlt die Datei dort, zeigt der Browser später kein Bild.
 
+Der Editor erfährt nicht, aus welchem Ordner du ein Bild ausgewählt hast. Deshalb musst du den Unterordner selbst eintragen. Unter dem Feld zeigt dir der Editor, was im Code stehen wird.
+
 Im selben Fenster kannst du das Bild beschreiben (diese Beschreibung hören Menschen, die das Bild nicht sehen können) und eine Breite in Pixeln angeben. Beides ist freiwillig.
 
 Zum Ändern klickst du das Bild rechts an und drückst wieder **Bild**. Mit der Taste Entf löschst du ein angeklicktes Bild. Mit **Links**, **Mitte** und **Rechts** stellst du ein, wo das Bild in seiner Zeile steht.

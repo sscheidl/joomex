@@ -2,11 +2,11 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.3 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 0.1.0-alpha.4 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 ## Use
 
-Give pupils the single file [`dist/school-editor.html`](dist/school-editor.html). They open it in Microsoft Edge or Google Chrome. A short German guide for pupils is in [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md).
+Give pupils the single file [`dist/school-editor.html`](dist/school-editor.html). They open it in Microsoft Edge or Google Chrome. In Firefox the editor was measured as well: editing works, and Save is always a download there, because Firefox cannot write to a chosen file. A short German guide for pupils is in [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md).
 
 What the editor does:
 
@@ -26,11 +26,11 @@ Requirements for development only: Node.js 22 or newer, Git, and an installed Ed
 node tools/build.mjs                 # writes dist/school-editor.html
 node tools/build.mjs --check         # verifies that dist/ matches the sources (reproducible build)
 node --test tests/unit/*.test.mjs    # unit tests of the DOM-free modules
-node tests/run.mjs                   # acceptance suite in Edge and Chrome against dist/school-editor.html
+node tests/run.mjs                   # acceptance suite in Edge, Chrome and Firefox against dist/school-editor.html
 node tests/run.mjs --browser edge --only T-10,X-03
 ```
 
-The acceptance suite starts the delivered file from `file://` in a fresh browser profile and drives it with real key and mouse events over the DevTools protocol. Results are written to `tests/results/acceptance-<browser>.json`. A browser that is not installed is recorded as `NOT MEASURED`.
+The acceptance suite starts the delivered file from `file://` in a fresh browser profile and drives it with real key and mouse events, over the DevTools protocol in Edge and Chrome and over WebDriver BiDi in Firefox. Results are written to `tests/results/acceptance-<browser>.json`. A browser that is not installed is recorded as `NOT MEASURED`; a case that needs automation which exists for one protocol only is recorded as `PARTIAL`.
 
 The publication check for the whole repository is described in [RULES.md](../RULES.md).
 

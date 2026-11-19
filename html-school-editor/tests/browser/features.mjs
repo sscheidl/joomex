@@ -22,6 +22,12 @@ export const features = [
       await withEditor(browser, {}, async (ed) => {
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.click('bImage');
+        // a file above the size limit is refused before anything of it is decoded
+        const huge = Buffer.alloc(20 * 1024 * 1024 + 1);
+        makePng(4, 4, false).copy(huge);
+        await ed.page.setFiles('#imgIn', [tmpFile('f01-riesig.png', huge)]);
+        await ed.until('document.getElementById("imgErr").textContent.length > 0', 'oversized image refused');
+        c.ok((await imgError(ed)).includes('zu groß'), 'a picture file above 20 MB is refused with an explanation', await imgError(ed));
         await ed.pickImage(png);
         await ed.field('imgDir', 'a:b');
         await ed.dialogButton('dlgImage', 'Einfügen');
@@ -125,6 +131,22 @@ export const features = [
         await edit(0, () => ed.field('imgDir', 'img'));
         const dirLine = altLine.replace('SRC="bilder/a.png"', 'SRC="img/a.png"');
         c.eq(await ed.source(), source.replace(line, dirLine), 'new folder: only the folder part of the address changes');
+        // owner's report: the same file chosen again from another folder. The browser does not tell the folder,
+        // so the code changes only through the folder field, and the dialog shows what the code will be.
+        const again = tmpFile('a.png', makePng(12, 12, false));
+        const code = () => ed.eval('document.getElementById("imgCode").textContent');
+        await ed.clickPv('d.querySelectorAll("img")[0]');
+        await ed.click('bImage');
+        c.eq(await code(), 'Im Code steht dann: <img src="img/a.png">', 'the dialog shows the address that stands in the code');
+        await ed.pickImage(again);
+        c.eq(await code(), 'Im Code steht dann: <img src="img/a.png">', 'choosing the same file name again, from whatever folder, leaves the address: the folder comes from the field only');
+        await ed.field('imgDir', 'fotos/2026');
+        c.eq(await code(), 'Im Code steht dann: <img src="fotos/2026/a.png">', 'typing a folder shows the new address at once');
+        await ed.dialogButton('dlgImage', 'Übernehmen');
+        await ed.settle();
+        c.eq(await ed.source(), source.replace(line, dirLine.replace('SRC="img/a.png"', 'SRC="fotos/2026/a.png"')), 'and accepting writes exactly this address into the code');
+        await ed.click('bUndo');
+        await ed.settle();
         await edit(0, () => ed.field('imgWidth', ''));
         c.eq(await ed.source(), source.replace(line, dirLine.replace(' width="120"', '')), 'empty width removes the attribute');
         for (let i = 0; i < 4; i++) { await ed.click('bUndo'); await ed.settle(); }
@@ -135,7 +157,7 @@ export const features = [
         await edit(2, () => ed.field('imgAlt', 'außen'));
         c.ok((await ed.source()).includes('X<img src="' + sink.origin + '/f02/aussen.png" alt="außen"></p>'), 'picture from the network: description added, address untouched');
         const png = tmpFile('f02-neu.png', makePng(30, 30, false));
-        await edit(2, () => ed.pickImage(png));
+        await edit(2, async () => { await ed.pickImage(png); await ed.field('imgDir', ''); });       // the field suggests the folder used last
         c.ok((await ed.source()).includes('X<img src="f02-neu.png" alt="außen"></p>'), 'choosing a file for it replaces the address by the file name');
         // links
         await ed.caret('Zum ', 2);

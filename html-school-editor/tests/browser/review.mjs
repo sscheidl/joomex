@@ -286,10 +286,10 @@ export const review = [
           await ed.key('Delete');
           await ed.settle();
           c.eq(await ed.source(), '<!doctype html><p>Text</p>', 'the style attribute was deleted in the source (real key)');
-          c.eq(await noteText(ed), '', 'the note disappears when the address is no longer in the code');
+          c.ok((await noteText(ed)).includes('blockiert'), 'the note about the stop by the policy stays for this document (see A3-05)', await noteText(ed) || '(no note)');
           await ed.openText('rv04-neu.html', samples[5][1]);
           await sleep(500);
-          c.ok((await noteText(ed)).includes('außerhalb'), 'opening the sample again shows the note again', await noteText(ed) || '(no note)');
+          c.ok((await noteText(ed)).includes('außerhalb'), 'opening the sample again shows the note', await noteText(ed) || '(no note)');
           await ed.click('bNew');
           await ed.settle();
           c.eq(await noteText(ed), '', 'a new page shows no note');

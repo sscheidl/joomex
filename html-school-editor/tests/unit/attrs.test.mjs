@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenize } from '../../src/js/tokenizer.js';
 import { parseHtml } from '../../src/js/tree.js';
-import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign } from '../../src/js/util.js';
+import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks } from '../../src/js/util.js';
 
 // Applies `changes` to the first tag of `tag` the way the writer does.
 function patched(tag, changes) {
@@ -28,6 +28,16 @@ test('attributes: adding and removing', () => {
   assert.equal(patched('<p style="text-align: center">', { style: null }), '<p>');
   assert.equal(patched('<p id=a>', { style: null }), '<p id=a>', 'removing what is not there changes nothing');
   assert.equal(patched('<a href="1" href="2">', { href: 'neu' }), '<a href="neu" href="2">', 'the first of two equal names is the one the browser uses');
+});
+
+test('attributes: badly written tags (review findings A3-02)', () => {
+  assert.equal(patched('<img width=80 WIDTH=160>', { width: null }), '<img>', 'removal takes every spelling of the name');
+  assert.equal(patched('<img src="a.png" alt="x" width="80" WIDTH="160" height="40" HEIGHT="90">', { width: null, height: null }), '<img src="a.png" alt="x">');
+  assert.equal(patched('<img alt= >', { alt: 'Changed' }), '<img alt="Changed" >', 'an equals sign without value belongs to the attribute');
+  assert.equal(patched('<img alt=>', { alt: 'x' }), '<img alt="x">');
+  assert.equal(patched('<img alt = >', { alt: null }), '<img >');
+  assert.equal(patched('<img alt = src="a.png">', { width: '5' }), '<img alt = src="a.png" width="5">', 'an attribute the change does not name stays as it is');
+  assert.equal(patched('<img a="1"b="2">', { b: null }), '<img a="1">');
 });
 
 test('attributes: the position tree carries the offsets of the tokenizer', () => {
@@ -69,7 +79,34 @@ test('alignment: the declaration is added, replaced and removed without touching
   for (const style of ['color:red', 'color:red;', 'color: red;  background: url(data:image/png;base64,AA==)', 'font: 12px "A;B"']) {
     assert.equal(withAlign(withAlign(style, 'center'), ''), style, 'adding and removing gives back: ' + style);
   }
+  // review finding A3-01: the word inside a string, a bracket or a comment is not a declaration
+  const quoted = '--label:"A;text-align: left;B"; color:red';
+  assert.equal(withAlign(quoted, 'center'), quoted + '; text-align: center');
+  assert.equal(withAlign(withAlign(quoted, 'center'), ''), quoted);
+  assert.equal(withAlign('background:url(a;text-align:b)', 'left'), 'background:url(a;text-align:b); text-align: left');
+  assert.equal(withAlign('/* text-align: left */ color: red', ''), '/* text-align: left */ color: red');
+  assert.equal(withAlign('te\\78t-align: left; x:y', 'right'), 'x:y; text-align: right', 'a name written with an escape is the same property');
+  assert.equal(withAlign('text-align/**/: left', ''), '');
+  assert.equal(withAlign('text-align: left; a:b; text-align: right;', 'center'), 'a:b; text-align: center;');
+  for (const open of ['x:"a', "x:'a", 'x:(a', 'x: a /* b', 'x: a)', 'x:"a\nb"']) assert.equal(withAlign(open, 'center'), null, 'not certain, left alone: ' + JSON.stringify(open));
+  assert.deepEqual(styleDeclarations('a:b; c:"d;e"').map((d) => d.name), ['a', 'c']);
   assert.equal(onlyAlign('text-align: center'), 'center');
   assert.equal(onlyAlign(' TEXT-ALIGN:Justify; '), 'justify');
   for (const style of ['', 'color:red', 'text-align: center; color: red', 'text-align: start', 'text-align: url(x)', 'text-align: center; position: fixed']) assert.equal(onlyAlign(style), '', style);
+});
+
+test('style rules: what stands in the way of moving white space (review findings RV-02, A3-03)', () => {
+  const risks = (css) => Object.keys(cssRisks(css, {})).sort().join(',');
+  for (const css of ['p{color:red}', 'a:hover{color:red}', '@media print{p{color:black}}', '@keyframes k{to{margin-left:9px}}', '@font-face{font-family:x;src:local(y)}', ':root{--d:inline}',
+    'p::before{content:"x"}', '.a{display:flex}', '@media(x){p{white-space:nowrap}}', 'p{/* display:inline */color:red} @media x{/* p{display:inline} */}', 'color: red; display: inline', '@layer a{p{display:inline}}']) {
+    assert.equal(risks(css), '', css);
+  }
+  for (const css of ['@media(min-width:1500px){p{display:inline}}', 'li:hover{display:inline}', 'p{display:var(--d)}', '@media(x){:root{--d:inline}}', '@keyframes k{to{display:inline}}', 'details[open] p{display:inline}',
+    'p:hover::before{content:"x"}', '.b:not(:hover){display:none}', 'p{&:hover{display:inline}}', '} @media x{ a{all:unset} }', '@supports (x:y){p{all:unset}}', '@container (min-width: 1px){p{display:inline}}', '@m\\65 dia x{p{display:inline}}']) {
+    assert.equal(risks(css), 'conditional', css);
+  }
+  for (const css of ['p{white-space:pre}', 'p{white-\\73 pace:pre}', 'white-space: /**/ pre-wrap', 'p{white-space:var(--w)}', 'p{white-space-collapse:preserve}']) assert.equal(risks(css), 'spaces', css);
+  assert.equal(risks('@import "a.css";'), 'external');
+  assert.equal(risks('p{content:"}'), 'unclear');
+  assert.equal(risks('p{color:red} /* offen'), 'unclear');
 });

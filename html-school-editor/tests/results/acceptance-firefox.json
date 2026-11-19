@@ -1,0 +1,2545 @@
+{
+ "artefact": "dist/school-editor.html",
+ "bytes": 176008,
+ "sha256": "e9ad516a91fbe632353908271dc6f37236e75ab80734b30fbd336e90402e9f49",
+ "sizeLimit": 200000,
+ "node": "v24.22.1",
+ "os": "Windows_NT 10.0.26300",
+ "date": "2026-11-19T09:05:49.848Z",
+ "browser": "firefox",
+ "results": [
+  {
+   "id": "T-01",
+   "title": "fresh offline start from file://, both panes edit",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 965,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "page runs from the file system"
+    },
+    {
+     "pass": true,
+     "label": "browser network is switched off for this case"
+    },
+    {
+     "pass": true,
+     "label": "typing in the page reaches the source",
+     "detail": "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text. äöü ß</p>\n</body>\n</html>\n"
+    },
+    {
+     "pass": true,
+     "label": "typing in the source reaches the page"
+    },
+    {
+     "pass": true,
+     "label": "no request besides the local file"
+    },
+    {
+     "pass": true,
+     "label": "no script errors"
+    }
+   ]
+  },
+  {
+   "id": "T-02",
+   "title": "source <-> preview on a full document keeps head, comments and attributes",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1098,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "whole source visible after opening"
+    },
+    {
+     "pass": true,
+     "label": "source edit appears in the page"
+    },
+    {
+     "pass": true,
+     "label": "after both edits only the two edited places differ"
+    },
+    {
+     "pass": true,
+     "label": "attributes are shown in the page"
+    }
+   ]
+  },
+  {
+   "id": "T-03",
+   "title": "selection in each pane maps to the right place, focus stays where the user works",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1251,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "caret in the 2nd of three identical paragraphs marks source line 16",
+     "detail": "{\"text\":\"<p>Hallo</p>\",\"line\":16}"
+    },
+    {
+     "pass": true,
+     "label": "focus stays in the page after selecting"
+    },
+    {
+     "pass": true,
+     "label": "next keystroke went into the intended paragraph only",
+     "detail": "  <p class=\"wichtig\" title='Ein \"Titel\"'>Hallo</p> /   <p>HalloX</p> /   <p>Hallo</p>"
+    },
+    {
+     "pass": true,
+     "label": "double-click selects the word in the nested emphasis",
+     "detail": "\"beides \""
+    },
+    {
+     "pass": true,
+     "label": "and marks exactly that text in the source",
+     "detail": "{\"text\":\"<i>beides</i></b> \",\"line\":18}"
+    },
+    {
+     "pass": true,
+     "label": "the rest of the source stays visible"
+    },
+    {
+     "pass": true,
+     "label": "caret in the source marks the 3rd paragraph in the page",
+     "detail": "{\"tag\":\"p\",\"index\":2}"
+    },
+    {
+     "pass": true,
+     "label": "focus stays in the source"
+    },
+    {
+     "pass": true,
+     "label": "keystroke after selecting in the source goes into the source"
+    }
+   ]
+  },
+  {
+   "id": "T-04",
+   "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1471,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "paragraph -> h1 keeps its attributes verbatim",
+     "detail": "  <h1 class=\"wichtig\" title='Ein \"Titel\"'>Hallo</h1>"
+    },
+    {
+     "pass": true,
+     "label": "paragraph -> h2 keeps nested child elements"
+    },
+    {
+     "pass": true,
+     "label": "heading -> paragraph"
+    },
+    {
+     "pass": true,
+     "label": "bold creates <b>",
+     "detail": "    <li><b>Punkt A</b></li>"
+    },
+    {
+     "pass": true,
+     "label": "selection survives the toolbar click"
+    },
+    {
+     "pass": true,
+     "label": "bold works inside a heading too (structure, not computed style)",
+     "detail": "  <h1 id=\"titel\"><b>Erste</b> Zeile</h1>"
+    },
+    {
+     "pass": true,
+     "label": "and is removed again"
+    },
+    {
+     "pass": true,
+     "label": "without a selection the word at the caret becomes bold and the caret stays in place",
+     "detail": "    <li><b>PuXnkt</b> B</li>"
+    },
+    {
+     "pass": true,
+     "label": "word-level bold removed again"
+    },
+    {
+     "pass": true,
+     "label": "italic creates <i>"
+    },
+    {
+     "pass": true,
+     "label": "bold again removes the tag"
+    },
+    {
+     "pass": true,
+     "label": "saved file has no span, font or inline style"
+    },
+    {
+     "pass": true,
+     "label": "saved file differs from the original only at the edited places"
+    }
+   ]
+  },
+  {
+   "id": "T-05",
+   "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 902,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "three paragraphs become one list with three items, indented; the first keeps its attributes as written",
+     "detail": "  <!-- Kommentar im Body -->\n  <ul>\n    <li class=\"wichtig\" title='Ein \"Titel\"'>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n  </ul>\n  <p>Anfang <b>fett <i>beides</i></b> Ende</p>\n  <ul>"
+    },
+    {
+     "pass": true,
+     "label": "no list inside a paragraph, only li inside lists"
+    },
+    {
+     "pass": true,
+     "label": "Enter inside the list adds a list item",
+     "detail": "  <ul>\n    <li class=\"wichtig\" title='Ein \"Titel\"'>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Neu</li>\n  </ul>\n  <p>Anfang <b>fett <i>beides</i></b> Ende</p>"
+    },
+    {
+     "pass": true,
+     "label": "switching turns the whole list into a numbered list",
+     "detail": "  <!-- Kommentar im Body -->\n  <ol>\n    <li class=\"wichtig\" title='Ein \"Titel\"'>Hallo</li>\n    <li>Hallo</li>\n    <li>Hallo</li>\n    <li>Neu</li>\n  </ol>\n  <p>Anfang <b>fett <i>beides</i></b> Ende</p>"
+    },
+    {
+     "pass": true,
+     "label": "reopening the saved file gives the same structure (no phantom paragraphs)"
+    },
+    {
+     "pass": true,
+     "label": "no empty paragraphs after reopen"
+    },
+    {
+     "pass": true,
+     "label": "removing the list gives back paragraphs, the first with its attributes",
+     "detail": "  <!-- Kommentar im Body -->\n  <p class=\"wichtig\" title='Ein \"Titel\"'>Hallo</p>\n  <p>Hallo</p>\n  <p>Hallo</p>\n  <p>Neu</p>\n  <p>Anfang <b>fett <i>beides</i></b> Ende</p>\n  <ul>\n    <li>Punkt A</li>"
+    },
+    {
+     "pass": true,
+     "label": "still valid nesting"
+    },
+    {
+     "pass": true,
+     "label": "the untouched second list is unchanged"
+    }
+   ]
+  },
+  {
+   "id": "T-06",
+   "title": "links and local raster images; text inputs stay data",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 3047,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "link dialog opens"
+    },
+    {
+     "pass": true,
+     "label": "link element with escaped address",
+     "detail": "    <li><a href=\"https://example.org/a?b=1&amp;c=2\">Punkt B</a></li>"
+    },
+    {
+     "pass": true,
+     "label": "the page in the editor keeps the link inert (no href)"
+    },
+    {
+     "pass": true,
+     "label": "removing the link restores the original source exactly"
+    },
+    {
+     "pass": true,
+     "label": "refused address: JaVaScRiPt:alert(1)",
+     "detail": "Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten."
+    },
+    {
+     "pass": true,
+     "label": "refused address: java&#115;cript:alert(1)",
+     "detail": "Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten."
+    },
+    {
+     "pass": true,
+     "label": "refused address: javascript&colon;alert(1)",
+     "detail": "Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten."
+    },
+    {
+     "pass": true,
+     "label": "refused address: data:text/html,<b>x</b>",
+     "detail": "Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten."
+    },
+    {
+     "pass": true,
+     "label": "refused address: vbscript:x",
+     "detail": "Diese Art von Adresse ist nicht erlaubt. Erlaubt sind Web-Adressen (https://…), E-Mail-Links (mailto:…) und Dateinamen deiner eigenen Seiten."
+    },
+    {
+     "pass": true,
+     "label": "refused addresses leave the document unchanged"
+    },
+    {
+     "pass": true,
+     "label": "markup-shaped address stays one attribute value"
+    },
+    {
+     "pass": true,
+     "label": "image dialog opens"
+    },
+    {
+     "pass": true,
+     "label": "no image chosen: dialog explains"
+    },
+    {
+     "pass": true,
+     "label": "img element with the file name as address and the escaped description",
+     "detail": "  <h1 id=\"titel\">Erste Zeile<img src=\"t06-klein.png\" alt=\"Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr\"></h1>"
+    },
+    {
+     "pass": true,
+     "label": "the source holds no embedded image data and no internal address"
+    },
+    {
+     "pass": true,
+     "label": "the description is plain text in the parsed file, no script element"
+    },
+    {
+     "pass": true,
+     "label": "no script element in the page either"
+    },
+    {
+     "pass": true,
+     "label": "the page pane shows the chosen picture"
+    },
+    {
+     "pass": true,
+     "label": "the pupil is told where the file has to be",
+     "detail": "Lege die Datei „t06-klein.png“ in denselben Ordner wie deine Seite. Sonst fehlt das Bild später im Browser."
+    },
+    {
+     "pass": true,
+     "label": "unsupported file gets an understandable message: t06-text.png"
+    },
+    {
+     "pass": true,
+     "label": "unsupported file gets an understandable message: t06-vektor.svg"
+    },
+    {
+     "pass": true,
+     "label": "refused files leave the document unchanged"
+    },
+    {
+     "pass": true,
+     "label": "size of a large picture is shown",
+     "detail": "t06-gross.png (1600 × 1200 Pixel, eine sehr große Datei)"
+    },
+    {
+     "pass": true,
+     "label": "a 5763023-byte picture adds only its file name to the source; an empty description gives alt=\"\"",
+     "detail": "    <li>Pu<img src=\"t06-gross.png\" alt=\"\">nkt A</li>"
+    },
+    {
+     "pass": true,
+     "label": "the source grew by 32 characters"
+    }
+   ]
+  },
+  {
+   "id": "T-07",
+   "title": "explicit formatting changes white space only and is verified",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 486,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "formatting is applied"
+    },
+    {
+     "pass": true,
+     "label": "formatted text equals the hand-written expectation"
+    },
+    {
+     "pass": true,
+     "label": "only white space changed"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: ink"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: pre"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: ta"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: script"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: style"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: title"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: first"
+    },
+    {
+     "pass": true,
+     "label": "parsed result unchanged: br"
+    },
+    {
+     "pass": true,
+     "label": "space between inline elements kept, none added"
+    },
+    {
+     "pass": true,
+     "label": "undo restores the unformatted text"
+    },
+    {
+     "pass": true,
+     "label": "malformed document: formatter changed white space only"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "malformed document",
+     "detail": "formatter accepted it after verification"
+    },
+    {
+     "pass": true,
+     "label": "document with white-space: pre is not formatted"
+    },
+    {
+     "pass": true,
+     "label": "and stays unchanged"
+    }
+   ]
+  },
+  {
+   "id": "T-08",
+   "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 733,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "lf: editor shows the text with LF line ends, without BOM"
+    },
+    {
+     "pass": true,
+     "label": "lf: downloaded bytes are identical to the opened file",
+     "detail": "532 vs 532"
+    },
+    {
+     "pass": true,
+     "label": "lf: download keeps the file name"
+    },
+    {
+     "pass": true,
+     "label": "crlf: editor shows the text with LF line ends, without BOM"
+    },
+    {
+     "pass": true,
+     "label": "crlf: downloaded bytes are identical to the opened file",
+     "detail": "556 vs 556"
+    },
+    {
+     "pass": true,
+     "label": "crlf: download keeps the file name"
+    },
+    {
+     "pass": true,
+     "label": "bom-crlf: editor shows the text with LF line ends, without BOM"
+    },
+    {
+     "pass": true,
+     "label": "bom-crlf: downloaded bytes are identical to the opened file",
+     "detail": "559 vs 559"
+    },
+    {
+     "pass": true,
+     "label": "bom-crlf: download keeps the file name"
+    },
+    {
+     "pass": true,
+     "label": "bom-lf: editor shows the text with LF line ends, without BOM"
+    },
+    {
+     "pass": true,
+     "label": "bom-lf: downloaded bytes are identical to the opened file",
+     "detail": "535 vs 535"
+    },
+    {
+     "pass": true,
+     "label": "bom-lf: download keeps the file name"
+    },
+    {
+     "pass": true,
+     "label": "mixed line ends are reported"
+    },
+    {
+     "pass": true,
+     "label": "mixed line ends are unified to the dominant convention (documented policy)"
+    },
+    {
+     "pass": true,
+     "label": "a non-UTF-8 file is not opened silently"
+    },
+    {
+     "pass": true,
+     "label": "declining keeps the current document"
+    },
+    {
+     "pass": true,
+     "label": "accepting converts the text correctly"
+    },
+    {
+     "pass": true,
+     "label": "a converted document counts as not saved"
+    },
+    {
+     "pass": true,
+     "label": "UTF-16 file is refused, current document stays"
+    }
+   ]
+  },
+  {
+   "id": "T-09",
+   "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1374,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "legacy document (omitted end tags, table without tbody) is editable"
+    },
+    {
+     "pass": true,
+     "label": "inactive content is announced",
+     "detail": "Im Editor ausgeschaltet: 4 Skripte, 1 Bild von außerhalb."
+    },
+    {
+     "pass": true,
+     "label": "downloaded file equals the original plus the one typed character"
+    },
+    {
+     "pass": true,
+     "label": "edited paragraph keeps its tag, inactive handler and character references",
+     "detail": "ErsterX Absatz mit   Abst&auml;nden &amp; Zeichen &lt;wie&gt; diesen.\n"
+    },
+    {
+     "pass": true,
+     "label": "everything outside the edited paragraph is byte-identical"
+    },
+    {
+     "pass": true,
+     "label": "editing a paragraph without end tag adds nothing but the typed character"
+    },
+    {
+     "pass": true,
+     "label": "typing in a table cell without end tags adds no tags"
+    },
+    {
+     "pass": true,
+     "label": "joining two paragraphs keeps the inactive script and the image of the first one",
+     "detail": "<P>ZweiterZ Absatz ohne Endtag\n<IMG src=\"http://example.invalid/bild.gif\" width=10 height=10 alt=\"Fremdes Bild\">\n<SCRIPT>document.write(\"aktiv\")</SCRIPT>\nDritter Absatz.!</P>\n<TABLE"
+    },
+    {
+     "pass": true,
+     "label": "replacing the whole visible content keeps the document frame, the body tag and the inactive script",
+     "detail": "<BODY bgcolor=\"#ffffee\" onload=\"start()\">\n<SCRIPT>document.write(\"aktiv\")</SCRIPT>\n  <p>Neu</p>\n</BODY>\n</HTML>\n"
+    },
+    {
+     "pass": true,
+     "label": "public/system doctype and head are intact"
+    }
+   ]
+  },
+  {
+   "id": "T-10",
+   "title": "saving immediately after the last keystroke in the page contains that keystroke",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 3092,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the page edit was still pending when the button was pressed"
+    },
+    {
+     "pass": true,
+     "label": "download button: file contains the final keystroke",
+     "detail": "  <p>Hier steht mein Text. Ganz neu</p>"
+    },
+    {
+     "pass": true,
+     "label": "document counts as saved afterwards"
+    },
+    {
+     "pass": true,
+     "label": "pending page edit before Ctrl+S"
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+S in the page (download fallback): file contains the final keystroke"
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+S in the source: file contains the final keystroke"
+    },
+    {
+     "pass": true,
+     "label": "MOCK file handle: written text contains the final keystroke"
+    },
+    {
+     "pass": true,
+     "label": "MOCK file handle: saved state after a completed write"
+    },
+    {
+     "pass": true,
+     "label": "MOCK file handle: name of the chosen file is shown"
+    },
+    {
+     "pass": true,
+     "label": "MOCK file handle: second save writes to the same file without asking again"
+    },
+    {
+     "pass": true,
+     "label": "MOCK failed write: not marked as saved, user is told",
+     "detail": "Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“."
+    },
+    {
+     "pass": true,
+     "label": "MOCK cancelled picker: not marked as saved",
+     "detail": "Speichern abgebrochen. Deine Seite ist noch nicht gespeichert."
+    },
+    {
+     "pass": true,
+     "label": "work is still there after cancelling"
+    }
+   ]
+  },
+  {
+   "id": "T-11",
+   "title": "rapid alternating edits never lose the newer text",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 26710,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "42 alternating schedules (delays 0–800 ms, both directions, outdated page) keep every edit"
+    },
+    {
+     "pass": true,
+     "label": "24 keystrokes alternating between the panes without pauses all arrive in order"
+    },
+    {
+     "pass": true,
+     "label": "page shows the same text"
+    }
+   ]
+  },
+  {
+   "id": "T-12",
+   "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
+   "status": "PARTIAL",
+   "partsNotMeasured": 1,
+   "ms": 2203,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "note": true,
+     "label": "document size",
+     "detail": "146008 characters, 1500 paragraphs"
+    },
+    {
+     "pass": true,
+     "label": "162 fast keystrokes arrive complete and in order",
+     "detail": "<p>Absatz 700:schnell getippt 0123456789 abcdefghijklmnopqrstuvwxyz schnell getippt 0123456789 abcdefghijklmnopqrstuvwxyz schnell getippt 0123456789 abcdefghijklmnopqrstuvwxyz&nbsp; Dies ist ein längerer Beispielsatz mit Umlauten äöü und <b>fettem</b> Text.</p>"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "typing speed",
+     "detail": "162 keystrokes sent in 935 ms, panes in sync after 1170 ms"
+    },
+    {
+     "pass": true,
+     "label": "no characters lost in the document"
+    },
+    {
+     "pass": true,
+     "label": "source caret stays where it was (not moved to the end)"
+    },
+    {
+     "pass": true,
+     "label": "page caret is still in the edited paragraph"
+    },
+    {
+     "pass": true,
+     "label": "page keeps its scroll position when the source is edited",
+     "detail": "40818 -> 40818"
+    },
+    {
+     "pass": true,
+     "label": "source caret stays at the typing position"
+    },
+    {
+     "pass": true,
+     "label": "source edit visible in the page"
+    },
+    {
+     "pass": true,
+     "label": "selection survives a toolbar command in a long document"
+    },
+    {
+     "pass": true,
+     "label": "toolbar command applied to the selection"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: Input.imeSetComposition has no implemented Firefox automation equivalent"
+    }
+   ]
+  },
+  {
+   "id": "T-13",
+   "title": "one undo/redo history across source edits, page edits and toolbar commands",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 4002,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "three edits (source, page, toolbar) produce the expected states"
+    },
+    {
+     "pass": true,
+     "label": "undo 1 reverts the toolbar command"
+    },
+    {
+     "pass": true,
+     "label": "page follows the undo"
+    },
+    {
+     "pass": true,
+     "label": "undo 2 reverts the page edit"
+    },
+    {
+     "pass": true,
+     "label": "undo 3 reverts the source edit"
+    },
+    {
+     "pass": true,
+     "label": "nothing left to undo"
+    },
+    {
+     "pass": true,
+     "label": "redo twice returns to the page edit"
+    },
+    {
+     "pass": true,
+     "label": "a new edit invalidates redo"
+    },
+    {
+     "pass": true,
+     "label": "new edit applied"
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+Z in the page uses the same history"
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+Z in the source continues in the same history"
+    },
+    {
+     "pass": true,
+     "label": "Ctrl+Y redoes"
+    },
+    {
+     "pass": true,
+     "label": "a burst of typing is one undo step"
+    }
+   ]
+  },
+  {
+   "id": "T-14",
+   "title": "malformed, incomplete, empty and oversized input",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 4861,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "malformed file: source is shown unchanged"
+    },
+    {
+     "pass": true,
+     "label": "malformed file: page is displayed"
+    },
+    {
+     "pass": true,
+     "label": "parts that cannot be mapped safely are read-only and marked",
+     "detail": "whole page locked: true, read-only parts: 0"
+    },
+    {
+     "pass": true,
+     "label": "typing in the source changes only that character (no silent rewrite)"
+    },
+    {
+     "pass": true,
+     "label": "typing into the locked page changes nothing"
+    },
+    {
+     "pass": true,
+     "label": "incomplete fragment is editable"
+    },
+    {
+     "pass": true,
+     "label": "incomplete fragment: edit is applied without inventing a document frame",
+     "detail": "<h1>Titel</h1>\n<p>Offen!"
+    },
+    {
+     "pass": true,
+     "label": "empty file opens as empty document"
+    },
+    {
+     "pass": true,
+     "label": "typing into an empty page creates a paragraph (file ends with a line break)"
+    },
+    {
+     "pass": true,
+     "label": "oversized file is refused with a message"
+    },
+    {
+     "pass": true,
+     "label": "current work is kept after the refusal"
+    },
+    {
+     "pass": true,
+     "label": "a document nested 30000 levels deep opens with unchanged source"
+    },
+    {
+     "pass": true,
+     "label": "its deep part is read-only"
+    },
+    {
+     "pass": true,
+     "label": "typing in the source still works"
+    },
+    {
+     "pass": true,
+     "label": "no script errors"
+    }
+   ]
+  },
+  {
+   "id": "T-15",
+   "title": "new/open/drop while unsaved, failed open, outdated operations",
+   "status": "PARTIAL",
+   "partsNotMeasured": 1,
+   "ms": 734,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "New with unsaved work asks first"
+    },
+    {
+     "pass": true,
+     "label": "cancel keeps the work"
+    },
+    {
+     "pass": true,
+     "label": "Open with unsaved work asks first"
+    },
+    {
+     "pass": true,
+     "label": "Escape keeps the work"
+    },
+    {
+     "pass": true,
+     "label": "a failed open keeps the work"
+    },
+    {
+     "pass": true,
+     "label": "and it still counts as unsaved"
+    },
+    {
+     "pass": true,
+     "label": "confirming discards and starts a new page"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: Page.setInterceptFileChooserDialog has no implemented Firefox automation equivalent"
+    }
+   ]
+  },
+  {
+   "id": "T-16",
+   "title": "Save falls back to a real download when direct file access is missing",
+   "status": "PASS",
+   "partsNotMeasured": 1,
+   "ms": 329,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "Save button produces a real download with the current text"
+    },
+    {
+     "pass": true,
+     "label": "download uses the document name"
+    },
+    {
+     "pass": true,
+     "label": "state shows saved"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "native open/save pickers and write-back to a real file handle",
+     "detail": "NOT MEASURED: cannot be driven by this harness; handle logic is covered with a labelled mock in T-10 and T-15"
+    }
+   ]
+  },
+  {
+   "id": "T-17",
+   "title": "no persistence between sessions",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 886,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "no storage is written while working"
+    },
+    {
+     "pass": true,
+     "label": "a new start in the same browser profile shows the empty template, not the previous work"
+    }
+   ]
+  },
+  {
+   "id": "X-01",
+   "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2043,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "no marker was set in the editor window, the storage sentinel was not read, the title is untouched"
+    },
+    {
+     "pass": true,
+     "label": "no marker inside the preview document either"
+    },
+    {
+     "pass": true,
+     "label": "the preview contains no script elements"
+    },
+    {
+     "pass": true,
+     "label": "the preview contains no event-handler attributes"
+    },
+    {
+     "pass": true,
+     "label": "the source keeps all scripts and handlers; only the typed paragraph text differs"
+    },
+    {
+     "pass": true,
+     "label": "typing in the page still works"
+    },
+    {
+     "pass": true,
+     "label": "no request reached the server"
+    },
+    {
+     "pass": true,
+     "label": "sentinel still present (it was readable only by the editor itself)"
+    },
+    {
+     "pass": true,
+     "label": "no script errors in the editor"
+    }
+   ]
+  },
+  {
+   "id": "X-02",
+   "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 4907,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "editable page: fixture is editable"
+    },
+    {
+     "pass": true,
+     "label": "editable page: no navigation, submission or frame load reached the server"
+    },
+    {
+     "pass": true,
+     "label": "editable page: the editor window did not navigate"
+    },
+    {
+     "pass": true,
+     "label": "editable page: the preview frame did not navigate"
+    },
+    {
+     "pass": true,
+     "label": "editable page: no window or tab was opened"
+    },
+    {
+     "pass": true,
+     "label": "editable page: no script URL was executed"
+    },
+    {
+     "pass": true,
+     "label": "editable page: the preview has no frames, base, refresh, form targets or live link addresses"
+    },
+    {
+     "pass": true,
+     "label": "editable page: the source is unchanged"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "editable page: request attempts seen by the browser",
+     "detail": "[]"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: fixture is locked"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: no navigation, submission or frame load reached the server"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: the editor window did not navigate"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: the preview frame did not navigate"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: no window or tab was opened"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: no script URL was executed"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: the preview has no frames, base, refresh, form targets or live link addresses"
+    },
+    {
+     "pass": true,
+     "label": "read-only page: the source is unchanged"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "read-only page: request attempts seen by the browser",
+     "detail": "[]"
+    }
+   ]
+  },
+  {
+   "id": "X-03",
+   "title": "no external resource of an opened document is fetched",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 3359,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "control: the same browser does fetch these resources from an ordinary local page",
+     "detail": "GET /control/img.png,GET /control/style.css"
+    },
+    {
+     "pass": true,
+     "label": "requests delivered to the server: none"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "request attempts reported by the browser",
+     "detail": "0: []"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "policy blocks reported by the browser",
+     "detail": "18: [\"/x03/font.woff2\",\"/x03/cursor.cur\",\"/x03/css-body-bg.png\",\"/x03/inline-style-bg.png\",\"/x03/css-content.png\",\"/x03/list-style.png\",\"/x03/image-set.png\",\"/x03/border-image.png\"]"
+    },
+    {
+     "pass": true,
+     "label": "no element of the preview carries a loadable external address (inline CSS aside, which the policy blocks)"
+    },
+    {
+     "pass": true,
+     "label": "the user is told that content is switched off",
+     "detail": "Im Editor ausgeschaltet: 1 Skript, 7 Bilder von außerhalb, 1 externe CSS-Datei, 3 Adressen im CSS, 2 eingebettete Inhalte, 3 weitere Verweise."
+    },
+    {
+     "pass": true,
+     "label": "the addresses stay in the source"
+    }
+   ]
+  },
+  {
+   "id": "X-04",
+   "title": "pasting rich content and markup-shaped text fields create no active content",
+   "status": "NOT MEASURED",
+   "partsNotMeasured": 1,
+   "ms": 44,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: a constructed paste event carries no data in this browser; paste through the system clipboard is not automated"
+    }
+   ]
+  },
+  {
+   "id": "X-07",
+   "title": "element names that shadow DOM properties do not disturb the editor",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 836,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "opening causes no script error"
+    },
+    {
+     "pass": true,
+     "label": "the source is unchanged"
+    },
+    {
+     "pass": true,
+     "label": "the preview holds no element that could shadow document properties"
+    },
+    {
+     "pass": true,
+     "label": "document properties of the preview are the real ones"
+    },
+    {
+     "pass": true,
+     "label": "typing before, inside and after the form changes exactly those three places"
+    },
+    {
+     "pass": true,
+     "label": "formatting and saving still work"
+    },
+    {
+     "pass": true,
+     "label": "the form and its field names are kept in the saved file"
+    },
+    {
+     "pass": true,
+     "label": "no script error afterwards"
+    }
+   ]
+  },
+  {
+   "id": "X-05",
+   "title": "no message bridge exists",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 3,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the delivered file contains no message channel between windows; the parent edits the frame DOM directly"
+    }
+   ]
+  },
+  {
+   "id": "X-06",
+   "title": "static scan of the delivered file",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 7,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "no eval or function constructor"
+    },
+    {
+     "pass": true,
+     "label": "no string-evaluated timers"
+    },
+    {
+     "pass": true,
+     "label": "no persistent storage API"
+    },
+    {
+     "pass": true,
+     "label": "no network or dynamic import API"
+    },
+    {
+     "pass": true,
+     "label": "no document.write / insertAdjacentHTML / outerHTML assignment"
+    },
+    {
+     "pass": true,
+     "label": "only inert example/namespace addresses occur: https://www.beispiel.de http://www.w3.org/1999/xhtml https://…"
+    },
+    {
+     "pass": true,
+     "label": "exactly one script element"
+    },
+    {
+     "pass": true,
+     "label": "no linked or embedded external file"
+    },
+    {
+     "pass": true,
+     "label": "preview frame: sandbox=\"allow-same-origin\" only, no script/form/popup/navigation permission anywhere",
+     "detail": "<iframe id=\"pv\" sandbox=\"allow-same-origin\" title=\"Vorschau deiner Seite zum Bearbeiten\">"
+    },
+    {
+     "pass": true,
+     "label": "page policy allows only the one hashed script, inline styles and data: images",
+     "detail": "default-src 'none'; script-src 'sha256-8sWGtrt3qkw/W0pUs2PPdlKeGFnC6eK45m8q9VE6jiU='; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'"
+    },
+    {
+     "pass": true,
+     "label": "preview frame carries its own policy without any script source; images only from the document text or from files chosen in this session"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "innerHTML assignments",
+     "detail": "3 (escaped highlight lines in the editor chrome and the character-reference decoder in an inert document)"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "size",
+     "detail": "176008 bytes"
+    }
+   ]
+  },
+  {
+   "id": "R-01",
+   "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 27615,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "44 snippets: edits are local, the page matches the source, undo restores, formatting is white-space only"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "corpus statistics",
+     "detail": "{\"documents\":44,\"locked\":2,\"withReadOnlyParts\":1,\"edits\":92,\"exact\":91,\"whitespaceOnly\":1,\"formatted\":42,\"formatRefused\":0}"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "examples of white-space-only side effects in the edited text",
+     "detail": "korpus-32.html: \"   \" -> \"Q\""
+    },
+    {
+     "pass": true,
+     "label": "most snippets (including omitted end tags, tables, fragments) are editable",
+     "detail": "2 locked"
+    },
+    {
+     "pass": true,
+     "label": "no script errors"
+    }
+   ]
+  },
+  {
+   "id": "R-02",
+   "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1031,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "note": true,
+     "label": "generated corpus",
+     "detail": "3044 documents, 2128 editable after comparison with the browser parser, 984 single-character edits"
+    },
+    {
+     "pass": true,
+     "label": "no exception for any document"
+    },
+    {
+     "pass": true,
+     "label": "writing back an unedited page reproduces the source text exactly"
+    },
+    {
+     "pass": true,
+     "label": "rendering the same text again changes nothing in the page"
+    },
+    {
+     "pass": true,
+     "label": "appending one character to a text changes exactly that place"
+    },
+    {
+     "pass": true,
+     "label": "a meaningful share of the generated documents is editable",
+     "detail": "2128"
+    },
+    {
+     "pass": true,
+     "label": "the projection alone (this page has no content security policy) requested no resource"
+    }
+   ]
+  },
+  {
+   "id": "RV-01",
+   "title": "review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)",
+   "status": "PARTIAL",
+   "partsNotMeasured": 1,
+   "ms": 780,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "New during a read: the late read does not replace the new page"
+    },
+    {
+     "pass": true,
+     "label": "the typed text is the text that stayed"
+    },
+    {
+     "pass": true,
+     "label": "document name unchanged"
+    },
+    {
+     "pass": true,
+     "label": "undo history kept"
+    },
+    {
+     "pass": true,
+     "label": "still shown as unsaved"
+    },
+    {
+     "pass": true,
+     "label": "no question is needed: the read was cancelled by New"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: Page.setInterceptFileChooserDialog has no implemented Firefox automation equivalent"
+    }
+   ]
+  },
+  {
+   "id": "RV-02",
+   "title": "review finding: \"tidy up\" never changes how the page looks (S-05, T-07)",
+   "status": "PARTIAL",
+   "partsNotMeasured": 1,
+   "ms": 1186,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: white-space behind a CSS comment: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: white-space behind a CSS comment: the reason is given",
+     "detail": "Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: white-space behind a CSS comment: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs displayed inline: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs displayed inline: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs displayed inline: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "white-space written with a CSS escape: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "white-space written with a CSS escape: the reason is given",
+     "detail": "Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "white-space written with a CSS escape: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "white-space through a custom property: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "white-space through a custom property: the reason is given",
+     "detail": "Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "white-space through a custom property: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "white-space-collapse: preserve: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "white-space-collapse: preserve: the reason is given",
+     "detail": "Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "white-space-collapse: preserve: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "white-space only under a condition: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "white-space only under a condition: the reason is given",
+     "detail": "Diese Seite verwendet die CSS-Eigenschaft „white-space“. Dabei kann jedes Leerzeichen zählen, deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "white-space only under a condition: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "all: unset makes paragraphs inline: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "all: unset makes paragraphs inline: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "all: unset makes paragraphs inline: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "list items as inline blocks on one line: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "list items as inline blocks on one line: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "list items as inline blocks on one line: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "generated content in front of a leading space: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "generated content in front of a leading space: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "generated content in front of a leading space: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "external style sheet: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "external style sheet: the reason is given",
+     "detail": "Diese Seite verwendet eine externe CSS-Datei. Der Editor kann sie nicht lesen und deshalb nicht prüfen, ob die Seite nach dem Aufräumen noch gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "external style sheet: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "imported style sheet: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "imported style sheet: the reason is given",
+     "detail": "Diese Seite verwendet eine externe CSS-Datei. Der Editor kann sie nicht lesen und deshalb nicht prüfen, ob die Seite nach dem Aufräumen noch gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "imported style sheet: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "colours, nowrap and a flex container: formatted"
+    },
+    {
+     "pass": true,
+     "label": "colours, nowrap and a flex container: white space changed, nothing else",
+     "detail": "<!doctype html>\n<style>h1 { color: navy; white-space: nowrap } .reihe { display: flex; gap: 8px } p { margin: 4px 0 }</style>\n<h1>Titel</h1>\n<div class=\"reihe\">\n  <p>Alpha <b>fett</b> Beta</p>\n  <p>Gamma</p>\n</div>\n<ul>\n  <li>Eins</li>\n  <li>Zwei</li>\n</ul>\n"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: Emulation.setScriptExecutionDisabled has no implemented Firefox automation equivalent"
+    }
+   ]
+  },
+  {
+   "id": "RV-03",
+   "title": "review finding: list commands keep attributes (S-05, T-05)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1274,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: the list item carries the attributes of the paragraph"
+    },
+    {
+     "pass": true,
+     "label": "and back: the paragraph carries them again"
+    },
+    {
+     "pass": true,
+     "label": "attributes keep their spelling, including one the editor does not show (onclick) and the style"
+    },
+    {
+     "pass": true,
+     "label": "a whole list with attributes becomes a block that keeps them; items become paragraphs with their attributes"
+    },
+    {
+     "pass": true,
+     "label": "undo restores the list"
+    },
+    {
+     "pass": true,
+     "label": "one item taken out of the middle: both remaining lists keep class and style"
+    },
+    {
+     "pass": true,
+     "label": "the other items keep their attributes"
+    },
+    {
+     "pass": true,
+     "label": "the id exists once"
+    },
+    {
+     "pass": true,
+     "label": "first item taken out: the list element itself, with its id, continues behind the paragraph"
+    },
+    {
+     "pass": true,
+     "label": "an item that holds a paragraph and has attributes becomes a block with these attributes",
+     "detail": "<!doctype html>\n<div title=\"Hinweis\"><p>Absatz</p></div>\n"
+    }
+   ]
+  },
+  {
+   "id": "RV-04",
+   "title": "review finding: whatever is switched off in the page pane is announced (S-04, X-03)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 5390,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: SVG animation that assigns an image address: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: SVG animation that assigns an image address: the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: 1 Animation."
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: SVG animation that assigns an image address: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "SVG animate element: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "SVG animate element: the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: 1 Animation."
+    },
+    {
+     "pass": true,
+     "label": "SVG animate element: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "style element inside SVG: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "style element inside SVG: the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: 1 Adresse im CSS."
+    },
+    {
+     "pass": true,
+     "label": "style element inside SVG: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "SVG presentation attribute with an address: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "SVG presentation attribute with an address: the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: 1 Adresse im CSS."
+    },
+    {
+     "pass": true,
+     "label": "SVG presentation attribute with an address: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "image-set() without url(): nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "image-set() without url(): the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: 1 Adresse im CSS."
+    },
+    {
+     "pass": true,
+     "label": "image-set() without url(): source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "url() written with a CSS escape (found by the browser policy only): nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "url() written with a CSS escape (found by the browser policy only): the note above the page says so",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "url() written with a CSS escape (found by the browser policy only): source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "control: the escaped address really was attempted and stopped by the policy",
+     "detail": "[\"/rv04/image-set.png\",\"/rv04/escaped.png\"]"
+    },
+    {
+     "pass": true,
+     "label": "the animated addresses are no longer attempted at all",
+     "detail": "[\"/rv04/image-set.png\",\"/rv04/escaped.png\"]"
+    },
+    {
+     "pass": true,
+     "label": "the page pane holds no animation element"
+    },
+    {
+     "pass": true,
+     "label": "the style attribute was deleted in the source (real key)"
+    },
+    {
+     "pass": true,
+     "label": "the note about the stop by the policy stays for this document (see A3-05)",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "opening the sample again shows the note",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "a new page shows no note"
+    }
+   ]
+  },
+  {
+   "id": "F-01",
+   "title": "images are addressed by file name: folder, width, optional description; files next to the editor are never read",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1851,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "a picture file above 20 MB is refused with an explanation",
+     "detail": "Dieses Bild ist zu groß (mehr als 20 MB). Verkleinere es zuerst."
+    },
+    {
+     "pass": true,
+     "label": "a folder name with a colon is refused with an explanation",
+     "detail": "Der Name des Unterordners darf keine Zeichen wie : ? # \" < > enthalten."
+    },
+    {
+     "pass": true,
+     "label": "width \"abc\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "width \"0\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "width \"12.5\" is refused with an explanation"
+    },
+    {
+     "pass": true,
+     "label": "folder, file name, empty description and width are written as plain attributes",
+     "detail": "  <p>Hier steht mein Text.<img src=\"bilder/fotos/f01-katze.png\" alt=\"\" width=\"60\"></p>"
+    },
+    {
+     "pass": true,
+     "label": "the page pane shows the chosen file in the given width",
+     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":60,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "a picture the editor knows is not reported as switched off"
+    },
+    {
+     "pass": true,
+     "label": "the hint names the folder",
+     "detail": "Lege die Datei „f01-katze.png“ in den Ordner „bilder/fotos“ neben deiner Seite. Sonst fehlt das Bild später im Browser."
+    },
+    {
+     "pass": true,
+     "label": "the folder of the last picture is suggested again"
+    },
+    {
+     "pass": true,
+     "label": "the characters # and % of a file name are written so that the address still means this file",
+     "detail": "  <h1><img src=\"f01 mein bild %231 100%25.png\" alt=\"\">Meine erste Webseite</h1>"
+    },
+    {
+     "pass": true,
+     "label": "and the page pane shows it",
+     "detail": "{\"kind\":\"blob\",\"natural\":10,\"shown\":10,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "the saved file holds file names only, no image data and no internal address"
+    },
+    {
+     "pass": true,
+     "label": "a picture chosen earlier in this session is shown in another page that names the same file",
+     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "pictures that lie next to the editor are not read: both are shown as a box",
+     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true}]"
+    },
+    {
+     "pass": true,
+     "label": "no image element of the page pane has an address that could be loaded"
+    },
+    {
+     "pass": true,
+     "label": "the browser reports no request for any of the pictures"
+    },
+    {
+     "pass": true,
+     "label": "nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "a picture from the network is a box, a picture embedded in the code is shown as before",
+     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"data\",\"natural\":16,\"shown\":16,\"box\":false}]"
+    },
+    {
+     "pass": true,
+     "label": "the note tells both kinds apart",
+     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb, 2 Bilder aus Dateien."
+    },
+    {
+     "pass": true,
+     "label": "the box explains what to do"
+    },
+    {
+     "pass": true,
+     "label": "a click on the box and \"Bild\" opens the dialog for this picture"
+    },
+    {
+     "pass": true,
+     "label": "choosing the file again does not change the code"
+    },
+    {
+     "pass": true,
+     "label": "both places that name this file now show it",
+     "detail": "[{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false},{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}]"
+    },
+    {
+     "pass": true,
+     "label": "the note no longer lists them",
+     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb."
+    },
+    {
+     "pass": true,
+     "label": "still nothing reached the local counter"
+    }
+   ]
+  },
+  {
+   "id": "F-02",
+   "title": "existing images and links are changed through the dialogs; only the changed attribute is rewritten",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2352,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "page pane focused"
+    },
+    {
+     "pass": true,
+     "label": "the dialog shows folder, description and width of the clicked picture"
+    },
+    {
+     "pass": true,
+     "label": "accepting the dialog without a change leaves the code as it is"
+    },
+    {
+     "pass": true,
+     "label": "and adds no undo step"
+    },
+    {
+     "pass": true,
+     "label": "new width: the width attribute is rewritten, the height attribute goes, everything else stays as written"
+    },
+    {
+     "pass": true,
+     "label": "new description: written inside the single quotes the pupil used"
+    },
+    {
+     "pass": true,
+     "label": "new folder: only the folder part of the address changes"
+    },
+    {
+     "pass": true,
+     "label": "the dialog shows the address that stands in the code"
+    },
+    {
+     "pass": true,
+     "label": "choosing the same file name again, from whatever folder, leaves the address: the folder comes from the field only"
+    },
+    {
+     "pass": true,
+     "label": "typing a folder shows the new address at once"
+    },
+    {
+     "pass": true,
+     "label": "and accepting writes exactly this address into the code"
+    },
+    {
+     "pass": true,
+     "label": "empty width removes the attribute"
+    },
+    {
+     "pass": true,
+     "label": "four undo steps restore the original text"
+    },
+    {
+     "pass": true,
+     "label": "embedded picture: width added, the embedded data stays",
+     "detail": "<p>E<img alt=\"klein\" src=\"data:image/png;base64,iVBORw0KGgoA"
+    },
+    {
+     "pass": true,
+     "label": "picture from the network: description added, address untouched"
+    },
+    {
+     "pass": true,
+     "label": "choosing a file for it replaces the address by the file name"
+    },
+    {
+     "pass": true,
+     "label": "with the caret in a link, \"Link\" opens the dialog with its address"
+    },
+    {
+     "pass": true,
+     "label": "an address that is not allowed is refused here as well"
+    },
+    {
+     "pass": true,
+     "label": "new address: only the value of the attribute changes, inside its quotes",
+     "detail": "<p><a HREF='neu.html' title=\"t\" onclick=\"x()\">Zum <b>Ziel</b></a> und <a name=\"anker\">Anker</a></p>"
+    },
+    {
+     "pass": true,
+     "label": "links in the page pane stay inert"
+    },
+    {
+     "pass": true,
+     "label": "a selection inside the link changes the same link"
+    },
+    {
+     "pass": true,
+     "label": "an anchor without address gets one as a new attribute"
+    },
+    {
+     "pass": true,
+     "label": "a selection that reaches beyond a link is explained instead",
+     "detail": "Die Markierung reicht über einen Link hinaus. Setze den Cursor in den Link, um ihn zu ändern."
+    }
+   ]
+  },
+  {
+   "id": "F-03",
+   "title": "alignment left, centre, right, justified for text and pictures; the only style the editor writes",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2133,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "an ordinary paragraph shows \"Links\" as active"
+    },
+    {
+     "pass": true,
+     "label": "centre: one style attribute on the paragraph, nothing else changes"
+    },
+    {
+     "pass": true,
+     "label": "the button shows the alignment"
+    },
+    {
+     "pass": true,
+     "label": "justified replaces the value"
+    },
+    {
+     "pass": true,
+     "label": "right replaces the value"
+    },
+    {
+     "pass": true,
+     "label": "left removes the attribute: the original text is back"
+    },
+    {
+     "pass": true,
+     "label": "a selection over three blocks aligns all three"
+    },
+    {
+     "pass": true,
+     "label": "and left restores them"
+    },
+    {
+     "pass": true,
+     "label": "an existing style attribute keeps its own declaration, its spelling and its quotes"
+    },
+    {
+     "pass": true,
+     "label": "and gets it back unchanged"
+    },
+    {
+     "pass": true,
+     "label": "list item and table cell"
+    },
+    {
+     "pass": true,
+     "label": "each alignment is one undo step"
+    },
+    {
+     "pass": true,
+     "label": "a clicked picture is aligned through the paragraph it stands in"
+    },
+    {
+     "pass": true,
+     "label": "a picture that stands directly in the page gets a paragraph of its own for the alignment",
+     "detail": "  <p style=\"text-align: right\"><img alt=\"lose\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABZ0lEQVR42mNgYOcTlVHWMrSwd/MNiU7KLCiva+2ZPGvhivXb9h45fenmg+fvvv5h5hKUkFfTNbF28mRAYgeEx6XmFFc1dvRPm7tk9aadB46fu3rn8auPP/6z8YpIK2kamNu5+jAgsYOjEjPyy2pbuifNXLB83dY9h09dvHH/2dsvv5k4BcTlVHWMrRw9/BmQ2GGxKdlFlQ3tfVPnLF61ccf+Y2ev3H708sP3f6w8wlKKGvpmti7eQQxI7MiE9LzSmuauiTPmL1u7Zfehkxeu33v65vMvRg5+MVkVbSNLB3e/UAYkdkxyVmFFfVvvlNmLVm7Yvu/omcu3Hr54/+0vC7eQpIK6nqmNs1dgBAMSOz4tt6S6qXPC9HlL12zedfDE+Wt3n7z+9BM1HBlICtOA8DgGksI0OCqRgaQwDYtNYSApTCMT0hlICtOY5CwGksI0Pi2XgaQwTcosYCApTFNzihlICtOM/D"
+    },
+    {
+     "pass": true,
+     "label": "and it stands at the right edge of the page pane"
+    },
+    {
+     "pass": true,
+     "label": "the saved file has the three style attributes the pupil asked for or wrote (two alignments, one colour) and no other"
+    },
+    {
+     "pass": true,
+     "label": "\"Code aufräumen\" accepts the aligned page",
+     "detail": "applied Der Code wurde aufgeräumt."
+    },
+    {
+     "pass": true,
+     "label": "the buttons show the alignment that the page rule gives"
+    },
+    {
+     "pass": true,
+     "label": "left is written out when a rule of the page would align differently"
+    },
+    {
+     "pass": true,
+     "label": "and can be changed again"
+    },
+    {
+     "pass": true,
+     "label": "Enter after an aligned paragraph gives a paragraph with at most this alignment as style",
+     "detail": "  <p style=\"text-align: center\">Erste</p>\n  <p style=\"text-align: center\">Zweite</p>\n</body>"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "alignment of the paragraph made by Enter",
+     "detail": "continues the alignment (browser behaviour)"
+    }
+   ]
+  },
+  {
+   "id": "A3-01",
+   "title": "review finding: alignment reads the style attribute as CSS and never touches other declarations (S-05, F-03)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1359,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: the declaration is appended, the string with \";text-align:\" inside stays as written"
+    },
+    {
+     "pass": true,
+     "label": "the generated text in front of the paragraph is unchanged"
+    },
+    {
+     "pass": true,
+     "label": "left gives back the original text"
+    },
+    {
+     "pass": true,
+     "label": "an address with a semicolon inside brackets"
+    },
+    {
+     "pass": true,
+     "label": "a comment that mentions text-align"
+    },
+    {
+     "pass": true,
+     "label": "the property name written with a CSS escape"
+    },
+    {
+     "pass": true,
+     "label": "two alignment declarations"
+    },
+    {
+     "pass": true,
+     "label": "left alone: color: red; font-family: \"Open"
+    },
+    {
+     "pass": true,
+     "label": "and the pupil is told why: color: red; font-family: \"Open",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code."
+    },
+    {
+     "pass": true,
+     "label": "left alone: color: red; width: calc(1px"
+    },
+    {
+     "pass": true,
+     "label": "and the pupil is told why: color: red; width: calc(1px",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code."
+    },
+    {
+     "pass": true,
+     "label": "left alone: color: red /* offen"
+    },
+    {
+     "pass": true,
+     "label": "and the pupil is told why: color: red /* offen",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code."
+    }
+   ]
+  },
+  {
+   "id": "A3-02",
+   "title": "review finding: changing attributes of badly written tags keeps the intended meaning (S-05, F-02)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 937,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: removing the width removes every width and height attribute"
+    },
+    {
+     "pass": true,
+     "label": "the parsed image has neither width nor height"
+    },
+    {
+     "pass": true,
+     "label": "a new width changes the first attribute, which is the one that counts; height goes in every spelling"
+    },
+    {
+     "pass": true,
+     "label": "the parsed image has the new width and no height"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: an empty value written as \"alt= \" takes the new text"
+    },
+    {
+     "pass": true,
+     "label": "no extra attribute appears"
+    },
+    {
+     "pass": true,
+     "label": "another odd spelling: only the width changes"
+    },
+    {
+     "pass": true,
+     "label": "and the other attributes mean what they meant before"
+    }
+   ]
+  },
+  {
+   "id": "A3-03",
+   "title": "review finding: \"tidy up\" refuses pages whose rules hold only sometimes, or in parts that are hidden (S-05, T-07)",
+   "status": "PARTIAL",
+   "partsNotMeasured": 1,
+   "ms": 1095,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs inline above a window width: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs inline above a window width: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: paragraphs inline above a window width: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "inline only while the pointer is over the list: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "inline only while the pointer is over the list: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "inline only while the pointer is over the list: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "box type taken from a custom property: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "box type taken from a custom property: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "box type taken from a custom property: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "custom property set under a condition: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "custom property set under a condition: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "custom property set under a condition: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "box type changed by an animation: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "box type changed by an animation: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "box type changed by an animation: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "inline only in opened details (attribute selector): not formatted"
+    },
+    {
+     "pass": true,
+     "label": "inline only in opened details (attribute selector): the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "inline only in opened details (attribute selector): source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "generated content only under a condition: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "generated content only under a condition: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "generated content only under a condition: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "condition written with a CSS escape: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "condition written with a CSS escape: the reason is given",
+     "detail": "Das CSS dieser Seite ändert die Darstellung nur unter bestimmten Bedingungen, zum Beispiel bei einer anderen Fensterbreite oder wenn die Maus über einem Element steht. Der Editor kann deshalb nicht prüfen, ob die Seite nach dem Aufräumen immer gleich aussieht. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "condition written with a CSS escape: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "a string that is not closed: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "a string that is not closed: the reason is given",
+     "detail": "Im CSS dieser Seite ist etwas nicht abgeschlossen, zum Beispiel fehlt ein Anführungszeichen oder das Ende eines Kommentars. Deshalb wird der Code nicht automatisch aufgeräumt. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "a string that is not closed: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in a part that is hidden now: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in a part that is hidden now: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in a part that is hidden now: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in closed details: not formatted"
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in closed details: the reason is given",
+     "detail": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert."
+    },
+    {
+     "pass": true,
+     "label": "inline paragraphs in closed details: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "colour while the pointer is over a link: formatted"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "notMeasured": true,
+     "label": "the rest of this case",
+     "detail": "NOT MEASURED: Emulation.setScriptExecutionDisabled has no implemented Firefox automation equivalent"
+    }
+   ]
+  },
+  {
+   "id": "A3-04",
+   "title": "review finding: only the latest choice of the open image dialog counts (S-06, F-01)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1656,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the result of the cancelled dialog does not change the open one"
+    },
+    {
+     "pass": true,
+     "label": "the open dialog shows the file chosen in it"
+    },
+    {
+     "pass": true,
+     "label": "the inserted image is the later choice",
+     "detail": "  <p>Hier steht mein Text.<img src=\"a3-schnell.png\" alt=\"\"></p>"
+    },
+    {
+     "pass": true,
+     "label": "the cancelled dialog itself inserted nothing"
+    },
+    {
+     "pass": true,
+     "label": "second choice in the same dialog: the earlier, slower check does not win",
+     "detail": "a3-schnell.png (30 × 15 Pixel)"
+    },
+    {
+     "pass": true,
+     "label": "and the later choice is inserted"
+    },
+    {
+     "pass": true,
+     "label": "the page pane shows the later picture"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "timing",
+     "detail": "completion of createImageBitmap() is held by the test after the real decoding; files, file input and buttons are real"
+    }
+   ]
+  },
+  {
+   "id": "A3-05",
+   "title": "review finding: every stop by the content policy is announced, whatever the address looks like (S-04)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2767,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: escaped url() with a one-letter path: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: escaped url() with a one-letter path: the note says that something was stopped",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: escaped url() with a one-letter path: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "escaped url() to the bare host: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "escaped url() to the bare host: the note says that something was stopped",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "escaped url() to the bare host: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "escaped url() with an address that is spelled with percent codes: nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "escaped url() with an address that is spelled with percent codes: the note says that something was stopped",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "escaped url() with an address that is spelled with percent codes: source unchanged"
+    },
+    {
+     "pass": true,
+     "label": "control: the browser reports the stops (6 reports)"
+    },
+    {
+     "pass": true,
+     "label": "after the address is deleted the note stays until another document is opened",
+     "detail": "Im Editor ausgeschaltet: Inhalte von außerhalb der Seite (vom Browser blockiert)."
+    },
+    {
+     "pass": true,
+     "label": "a new page starts without a note"
+    }
+   ]
+  },
+  {
+   "id": "A3-T",
+   "title": "review finding about the test helper: opening a file waits for that file, also when the name is the same",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 544,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "first file opened"
+    },
+    {
+     "pass": true,
+     "label": "reviewer schedule: while the read of a file with the same name is held, the helper has not returned"
+    },
+    {
+     "pass": true,
+     "label": "when the helper returns, the new bytes are in the editor"
+    }
+   ]
+  },
+  {
+   "id": "FF-01",
+   "title": "Firefox measurement: typing never changes white space in a neighbouring text (S-05)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1407,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "reviewer sample: a letter typed in front of a comment leaves the space behind the comment"
+    },
+    {
+     "pass": true,
+     "label": "the space between the words can be deleted with the Delete key"
+    },
+    {
+     "pass": true,
+     "label": "and the source has no space left there, the comment stays",
+     "detail": "<p>TextQ<!-- comment -->weiter.</p>"
+    },
+    {
+     "pass": true,
+     "label": "reviewer sample: a line break behind an unknown element stays when typing inside the element"
+    },
+    {
+     "pass": true,
+     "label": "spaces on both sides of a comment between inline elements stay"
+    }
+   ]
+  },
+  {
+   "id": "FF-02",
+   "title": "Firefox measurement: a line break the browser keeps in an empty page is never written into the document (S-05)",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1190,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the page pane holds exactly the one line break of the document"
+    },
+    {
+     "pass": true,
+     "label": "an edit elsewhere leaves the line break at the start of the page as written"
+    },
+    {
+     "pass": true,
+     "label": "a command in an empty page gives one empty paragraph and no second line break",
+     "detail": "<body>\n  <p style=\"text-align: center\"><br></p>\n</body>"
+    },
+    {
+     "pass": true,
+     "label": "text typed into an empty page becomes one paragraph",
+     "detail": "<body>\n  <p>Hallo</p>\n</body>"
+    }
+   ]
+  }
+ ],
+ "version": "Firefox/160.0.1",
+ "mode": "headless",
+ "driver": "WebDriver BiDi",
+ "status": "PARTIAL",
+ "summary": {
+  "pass": 35,
+  "fail": 0,
+  "partial": 5,
+  "notMeasured": 1,
+  "checks": 467,
+  "partsNotMeasured": 7
+ }
+}

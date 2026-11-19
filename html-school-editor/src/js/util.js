@@ -120,18 +120,136 @@ export function onlyAlign(style) {
 
 // Returns the style text with its text-align declaration replaced by `value` ('' removes it). Every other
 // declaration stays exactly as written, and adding and removing again gives back the text that was there.
+// Declarations are found by reading the text as CSS (strings, comments, escapes and brackets are respected),
+// never by searching for the word. Returns null if the text cannot be split into declarations with certainty;
+// the caller then leaves the attribute alone.
 export function withAlign(style, value) {
-  let rest = String(style);
-  for (let guard = 0; guard < 20; guard++) {
-    const m = /(^|;)\s*text-align\s*:[^;]*(;|$)/i.exec(rest);
-    if (!m) break;
-    // a declaration at the end goes together with the semicolon in front of it
-    rest = m[2] ? rest.slice(0, m.index + m[1].length) + rest.slice(m.index + m[0].length) : rest.slice(0, m.index);
+  const text = String(style), decls = styleDeclarations(text);
+  if (!decls) return null;
+  let rest = text;
+  for (let k = decls.length - 1; k >= 0; k--) {
+    const d = decls[k];
+    if (d.name !== 'text-align') continue;
+    // a declaration at the end goes together with the semicolon in front of it, any other with its own
+    rest = k === decls.length - 1 ? rest.slice(0, k ? d.start - 1 : d.start) + rest.slice(d.end) : rest.slice(0, d.start) + rest.slice(d.end + 1);
   }
   rest = rest.trim();
   if (!value) return rest;
   if (!rest) return 'text-align: ' + value;
   return /;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value;
+}
+
+// ---------------------------------------------------------------- reading CSS text
+
+// Position behind the piece of CSS that starts at `i`: a string, a comment, an escaped character, or one
+// other character. -1 if a string or comment is not closed (the browser then reads the rest differently).
+function cssSkip(css, i) {
+  const ch = css[i];
+  if (ch === '\\') return Math.min(i + 2, css.length);
+  if (ch === '/' && css[i + 1] === '*') { const e = css.indexOf('*/', i + 2); return e < 0 ? -1 : e + 2; }
+  if (ch === '"' || ch === "'") {
+    for (let j = i + 1; j < css.length; j++) {
+      if (css[j] === '\\') j++;
+      else if (css[j] === ch) return j + 1;
+      else if (css[j] === '\n') return -1;
+    }
+    return -1;
+  }
+  return i + 1;
+}
+
+// CSS text as the browser understands its names: comments removed, escapes resolved, lower case.
+function cssPlain(text) {
+  let out = '';
+  for (let i = 0; i < text.length;) {
+    const ch = text[i];
+    if (ch === '/' && text[i + 1] === '*') { const e = text.indexOf('*/', i + 2); out += ' '; i = e < 0 ? text.length : e + 2; }
+    else if (ch === '\\') {
+      const m = /^\\([0-9a-f]{1,6})[ \t\n\f\r]?/i.exec(text.slice(i, i + 8));
+      if (m) { out += String.fromCodePoint(Math.min(parseInt(m[1], 16), 0x10ffff) || 0xfffd); i += m[0].length; }
+      else { out += text[i + 1] || ''; i += 2; }
+    } else { out += ch; i++; }
+  }
+  return out.toLowerCase();
+}
+
+// Splits the text of a style attribute into its declarations: [{ start, end, name }], `end` in front of the
+// semicolon, `name` the property name as the browser reads it. null if a string, comment or bracket is left
+// open, because then the borders between the declarations are not certain.
+export function styleDeclarations(style) {
+  const out = [];
+  let depth = 0, start = 0;
+  for (let i = 0; i < style.length;) {
+    const ch = style[i];
+    if (ch === ';' && depth === 0) { out.push({ start, end: i }); start = ++i; continue; }
+    if (ch === '(' || ch === '[' || ch === '{') depth++;
+    else if (ch === ')' || ch === ']' || ch === '}') { if (--depth < 0) return null; }
+    i = cssSkip(style, i);
+    if (i < 0) return null;
+  }
+  if (depth) return null;
+  out.push({ start, end: style.length });
+  for (const d of out) {
+    const plain = cssPlain(style.slice(d.start, d.end)), colon = plain.indexOf(':');
+    d.name = colon < 0 ? '' : plain.slice(0, colon).trim();
+  }
+  return out;
+}
+
+const SPACE_PROPS = words('white-space white-space-collapse text-space-collapse');
+const SPACE_KEEP = words('normal nowrap collapse wrap balance pretty stable initial inherit unset revert revert-layer');
+const LAYOUT_PROPS = words('display content all');
+const PLAIN_AT = words('font-face counter-style property namespace charset layer page font-feature-values font-palette-values color-profile');
+const STATE = /:(?:hover|active|focus|focus-within|focus-visible|target|target-within|checked|indeterminate|default|enabled|disabled|read-only|read-write|placeholder-shown|valid|invalid|in-range|out-of-range|required|optional|user-valid|user-invalid|open|popover-open|modal|fullscreen|picture-in-picture|playing|paused|seeking|buffering|stalled|muted|volume-locked|autofill|current|past|future|state)(?![a-z0-9-])|\[\s*open(?![a-z0-9-])/;
+
+// What a piece of CSS says that matters for moving white space in the HTML source ("tidy up"):
+//   spaces       a rule may make every space count (white-space with a value outside the collapsing ones)
+//   external     rules come from a file (@import)
+//   conditional  a rule that holds only sometimes (other window width, print, pointer over an element, a
+//                moment of an animation …) changes the kind of box, generated content or a custom property;
+//                or such a property takes its value from a custom property. The layout comparison sees one
+//                state of the page and cannot answer for the others.
+//   unclear      a string or comment is not closed
+// The text may be a style sheet or the content of a style attribute. `facts` collects the answers.
+export function cssRisks(css, facts) {
+  const declaration = (piece, conditional) => {
+    const plain = cssPlain(piece).trim();
+    if (plain[0] === '@') { if (plain.slice(0, 7) === '@import' && !/[a-z0-9-]/.test(plain[7] || '')) facts.external = true; return; }
+    const colon = plain.indexOf(':');
+    if (colon < 0) return;
+    const name = plain.slice(0, colon).trim(), value = plain.slice(colon + 1).replace(/!\s*important\s*$/, '').trim();
+    if (SPACE_PROPS.has(name) && !value.split(/[ \t\n\f\r]+/).every((w) => SPACE_KEEP.has(w))) facts.spaces = true;
+    if (LAYOUT_PROPS.has(name) && (conditional || /(?:var|if)\s*\(/.test(value))) facts.conditional = true;
+    if (conditional && name.startsWith('--')) facts.conditional = true;
+  };
+  const sometimes = (prelude) => {
+    const plain = cssPlain(prelude).trim();
+    if (plain[0] !== '@') return STATE.test(plain);
+    const m = /^@([a-z-]+)/.exec(plain);
+    return !(m && PLAIN_AT.has(m[1]));
+  };
+  // Reads declarations and rules up to the closing brace of the block that starts at `i`.
+  const block = (i, conditional) => {
+    let start = i, depth = 0;
+    while (i < css.length) {
+      const ch = css[i];
+      if (depth === 0 && ch === '{') { i = block(i + 1, conditional || sometimes(css.slice(start, i))); start = i; continue; }
+      if (depth === 0 && (ch === ';' || ch === '}')) {
+        declaration(css.slice(start, i), conditional);
+        if (ch === '}') return i + 1;
+        start = ++i;
+        continue;
+      }
+      if (ch === '(' || ch === '[') depth++;
+      else if ((ch === ')' || ch === ']') && depth) depth--;
+      i = cssSkip(css, i);
+      if (i < 0) { facts.unclear = true; return css.length; }
+    }
+    declaration(css.slice(start), conditional);
+    return css.length;
+  };
+  for (let i = 0; i < css.length;) i = block(i, false);      // a stray '}' ends a block early: go on behind it
+  return facts;
 }
 
 // ---------------------------------------------------------------- single attributes of a start tag
@@ -147,18 +265,26 @@ export function patchAttrs(src, from, to, attrs, changes) {
   let last = from;
   for (let i = 0; i < attrs.length; i += 4) {
     const nameAt = attrs[i], nameTo = attrs[i + 1], valueAt = attrs[i + 2], valueTo = attrs[i + 3];
-    const end = valueTo >= 0 ? valueTo : nameTo;
+    let end = valueTo >= 0 ? valueTo : nameTo;
+    if (valueTo < 0) {
+      // "name=" with nothing behind the equals sign is an empty value, not a bare name: the sign belongs to it
+      let j = nameTo;
+      while (j < to && ws(src[j])) j++;
+      if (src[j] === '=') end = j + 1;
+    }
     if (end > last) last = end;
     const name = src.slice(nameAt, nameTo).toLowerCase();
-    if (seen.has(name)) continue;                 // the browser uses the first of several equal names
+    const first = !seen.has(name);                // the browser uses the first of several equal names
     seen.add(name);
     if (!has(name)) continue;
     const value = changes[name];
     if (value === null) {
+      // every spelling of the name goes; otherwise a later one, ignored until now, would take effect
       let a = nameAt;
       while (a > from && ws(src[a - 1])) a--;
       edits.push([a, end, '']);
-    } else if (valueAt < 0) edits.push([nameTo, nameTo, '="' + escapeAttr(value) + '"']);
+    } else if (!first) continue;
+    else if (valueAt < 0) edits.push([nameTo, end, '="' + escapeAttr(value) + '"']);
     else if (src[valueAt] === "'") edits.push([valueAt, valueTo, "'" + escapeAttr(value).replace(/&quot;/g, '"').replace(/'/g, '&#39;') + "'"]);
     else edits.push([valueAt, valueTo, '"' + escapeAttr(value) + '"']);
   }
