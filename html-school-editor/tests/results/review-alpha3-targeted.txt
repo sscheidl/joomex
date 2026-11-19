@@ -1,0 +1,14 @@
+artefact 160302 bytes sha256 2c85f25d11fe0d1207f3e7655334dcbdd6f7b058dad66e0c6a9c9aeb09629244
+
+edge: Edg/157.0.4341.60
+PASS  RV-01  review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)  (19 checks, 1 part(s) NOT MEASURED, 2697 ms)
+        · timing: completion of File.arrayBuffer() is held by the test; bytes, file input, buttons and keys are real
+        · the same schedules with the native file picker (showOpenFilePicker, getFile): NOT MEASURED: cannot be driven by this harness; the picker path shares the ticket logic exercised here
+PASS  RV-02  review finding: "tidy up" never changes how the page looks (S-05, T-07)  (43 checks, 2941 ms)
+PASS  RV-03  review finding: list commands keep attributes (S-05, T-05)  (10 checks, 1523 ms)
+PASS  RV-04  review finding: whatever is switched off in the page pane is announced (S-04, X-03)  (25 checks, 5359 ms)
+PASS  F-01  images are addressed by file name: folder, width, optional description; files next to the editor are never read  (25 checks, 1868 ms)
+PASS  F-02  existing images and links are changed through the dialogs; only the changed attribute is rewritten  (19 checks, 2223 ms)
+PASS  F-03  alignment left, centre, right, justified for text and pictures; the only style the editor writes  (21 checks, 2301 ms)
+        · alignment of the paragraph made by Enter: continues the alignment (browser behaviour)
+edge: 7 passed, 0 not passed, 162 checks, 1 part(s) NOT MEASURED

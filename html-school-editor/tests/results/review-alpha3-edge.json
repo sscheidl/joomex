@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-19T08:05:48.257Z",
+  "reviewedCommit": "c3d3770",
+  "node": "v24.22.1",
+  "os": "Windows_NT 10.0.26300",
+  "bytes": 160302,
+  "sha256": "2c85f25d11fe0d1207f3e7655334dcbdd6f7b058dad66e0c6a9c9aeb09629244",
+  "probes": [
+    {
+      "id": "A3-01-css-string",
+      "expectation": "Alignment preserves other CSS declarations and their string values",
+      "productPass": false,
+      "source": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><style>p::before{content:var(--label)}</style><p style='--label:\"A;text-align: left;B\"; color:red'>Alpha</p></body></html>",
+      "before": "\"A;text-align: left;B\"",
+      "after": "\"A;B\"",
+      "saved": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><style>p::before{content:var(--label)}</style><p style='--label:\"A;B\"; color:red; text-align: center'>Alpha</p></body></html>"
+    },
+    {
+      "id": "A3-02-duplicate-removal",
+      "expectation": "Removing image width/height leaves neither effective attribute",
+      "productPass": false,
+      "source": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><p>Image <img src=\"a.png\" alt=\"x\" width=\"80\" WIDTH=\"160\" height=\"40\" HEIGHT=\"90\"></p></body></html>",
+      "saved": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><p>Image <img src=\"a.png\" alt=\"x\" WIDTH=\"160\" HEIGHT=\"90\"></p></body></html>",
+      "effectiveAttributes": {
+        "width": "160",
+        "height": "90"
+      }
+    },
+    {
+      "id": "A3-02-empty-value",
+      "expectation": "Changing an explicitly empty attribute value introduces no extra attribute",
+      "productPass": false,
+      "source": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><p>Image <img src=\"a.png\" alt= ></p></body></html>",
+      "saved": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><p>Image <img src=\"a.png\" alt=\"Changed\"= ></p></body></html>",
+      "attributes": [
+        [
+          "src",
+          "a.png"
+        ],
+        [
+          "alt",
+          "Changed"
+        ],
+        [
+          "=",
+          ""
+        ]
+      ]
+    },
+    {
+      "id": "A3-02-helper-empty-value",
+      "expectation": "Single-attribute edit has its intended effective meaning",
+      "productPass": false,
+      "source": "<img alt= >",
+      "changes": {
+        "alt": "Changed"
+      },
+      "expected": "<img alt=\"Changed\" >",
+      "actual": "<img alt=\"Changed\"= >"
+    },
+    {
+      "id": "A3-02-helper-duplicate",
+      "expectation": "Single-attribute edit has its intended effective meaning",
+      "productPass": false,
+      "source": "<img width=80 WIDTH=160>",
+      "changes": {
+        "width": null
+      },
+      "expected": "<img>",
+      "actual": "<img WIDTH=160>"
+    },
+    {
+      "id": "A3-03-other-width",
+      "expectation": "Formatting preserves rendered word spacing at another desktop width",
+      "productPass": false,
+      "source": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Review sample</title></head><body><style>@media(min-width:1500px){p{display:inline}}</style><p>Alpha</p><p>Beta</p></body></html>",
+      "saved": "<!doctype html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>Review sample</title>\n</head>\n<body>\n  <style>@media(min-width:1500px){p{display:inline}}</style>\n  <p>Alpha</p>\n  <p>Beta</p>\n</body>\n</html>\n",
+      "outcome": {
+        "outcome": "applied",
+        "text": "Der Code wurde aufgeräumt."
+      },
+      "previewWidth": 679,
+      "before": {
+        "gap": 0,
+        "display": "inline",
+        "width": 1800
+      },
+      "after": {
+        "gap": 4,
+        "display": "inline",
+        "width": 1800
+      }
+    },
+    {
+      "id": "A3-C-layout-frame",
+      "expectation": "The temporary format frame remains passive, hidden and unfocused and is removed",
+      "productPass": true,
+      "activeBefore": "pv",
+      "facts": {
+        "sandbox": "allow-same-origin",
+        "url": "about:srcdoc",
+        "policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:",
+        "visibility": "hidden",
+        "active": "pv",
+        "scripts": 0,
+        "marker": ""
+      },
+      "removed": true
+    },
+    {
+      "id": "A3-04-cancelled-image",
+      "expectation": "An earlier cancelled image selection cannot replace the later chosen file",
+      "productPass": false,
+      "timing": "createImageBitmap completion held after decoding a real selected file; file inputs and buttons are real",
+      "afterCancel": "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n",
+      "latestName": "a3r-fast.png (30 × 15 Pixel)",
+      "completedName": "a3r-slow.png (20 × 10 Pixel)",
+      "saved": "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.<img src=\"a3r-slow.png\" alt=\"\"></p>\n</body>\n</html>\n"
+    },
+    {
+      "id": "A3-05-inactive-notice",
+      "expectation": "A blocked resource with a short path is announced",
+      "productPass": false,
+      "fixture": "escaped CSS url() to controlled local counter, path /a",
+      "sourceUnchanged": true,
+      "attempts": [
+        "/a"
+      ],
+      "cspIssues": 2,
+      "hits": [],
+      "note": ""
+    },
+    {
+      "id": "A3-C-resource-containment",
+      "expectation": "The additional resource probe delivers no request",
+      "productPass": true,
+      "hits": []
+    },
+    {
+      "id": "A3-T-same-name",
+      "scope": "test-harness",
+      "expectation": "Editor.openFile waits for the chosen file even when its basename is unchanged",
+      "testPass": false,
+      "sourceWhenHelperReturned": "<p>OLD BYTES</p>",
+      "sourceAfterRelease": "<p>NEW BYTES</p>",
+      "timing": "File.arrayBuffer completion held for second read; real bytes and file input"
+    }
+  ],
+  "browser": "Edg/157.0.4341.60",
+  "mode": "headless"
+}
