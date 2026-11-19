@@ -26,16 +26,31 @@ Du kannst auf beiden Seiten schreiben. Die andere Seite ändert sich mit.
 | x² | hochgestellt, zum Beispiel m² | `<sup>` |
 | x₂ | tiefgestellt, zum Beispiel H₂O | `<sub>` |
 | Marker | markiert wie mit einem Textmarker | `<mark>` |
+| Farbe | färbt den markierten Text. Wähle eine der acht Farben. „Farbe entfernen“ nimmt die Farbe wieder weg. | `<span style="color: red">` |
 | • Liste | Liste mit Punkten | `<ul>` und `<li>` |
 | 1. Liste | Liste mit Nummern | `<ol>` und `<li>` |
 | Links, Mitte, Rechts, Block | richtet den Absatz aus (oder das angeklickte Bild): linksbündig, zentriert, rechtsbündig, Blocksatz | `style="text-align: …"` |
 | Link | macht aus dem markierten Text oder dem angeklickten Bild einen Link. Steht der Cursor in einem Link, änderst du seine Adresse. Mit dem Häkchen „In neuem Tab öffnen“ öffnet sich der Link später in einem neuen Tab. | `<a href="…">`, `target="_blank"` |
 | Link entfernen | macht aus dem Link wieder normalen Text | |
 | Bild | fügt ein Bild von deinem Computer ein. Ist ein Bild angeklickt, änderst du es. | `<img src="…">` |
+| Tabelle | fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, fügst du Zeilen und Spalten ein oder löschst sie. | `<table>`, `<tr>`, `<th>`, `<td>` |
 
 Tipp: Klicke rechts in einen Text. Links wird der passende Code gelb markiert. So siehst du, welches Tag was bewirkt.
 
 Hochgestellt und tiefgestellt gehen nicht gleichzeitig: Drückst du x², wird aus tiefgestelltem Text hochgestellter.
+
+## Farbe
+
+Markiere Text und drücke **Farbe**. Markierst du einen ganzen Absatz, bekommt der Absatz die Farbe: `<p style="color: red">`. Sonst steht um den Text ein `<span>`. Um eine Farbe wieder zu entfernen, markiere denselben Text und drücke „Farbe entfernen“.
+
+## Tabellen
+
+1. Setze den Cursor in den Absatz, hinter dem die Tabelle stehen soll, und drücke **Tabelle**.
+2. Gib an, wie viele Zeilen und Spalten du brauchst. Mit „Erste Zeile als Überschrift“ wird die erste Zeile fett (`<th>`). „Mit Rahmenlinien“ zeichnet Linien um die Zellen (`border="1"`).
+3. Mit der **Tab-Taste** springst du in die nächste Zelle, mit Umschalt+Tab zurück.
+4. Fehlt eine Zeile oder Spalte? Setze den Cursor in eine Zelle und drücke wieder **Tabelle**. Dann kannst du Zeilen und Spalten einfügen oder löschen.
+
+Eine ganze Tabelle löschst du links im Code: von `<table` bis `</table>`.
 
 ## Titel der Seite
 
@@ -103,4 +118,5 @@ Skripte, Formulare, Videos und Bilder aus dem Internet sind im Editor ausgeschal
 | Strg+B | fett |
 | Strg+I | kursiv |
 | Strg+U | unterstrichen |
+| Tab (in einer Tabelle) | nächste Zelle, mit Umschalt zurück |
 | Tab (links im Code) | zwei Leerzeichen einrücken |

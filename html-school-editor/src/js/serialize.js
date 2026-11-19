@@ -4,7 +4,7 @@
 // body, every node that still looks exactly as it was rendered is copied verbatim from the source text
 // (including inactive scripts, attributes, comments and character references). Only edited text and new
 // elements are written fresh, with a small fixed vocabulary of plain tags.
-import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl, fileOfSrc, onlyAlign, patchAttrs } from './util.js';
+import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl, fileOfSrc, plainStyle, patchAttrs } from './util.js';
 import { VOID_TAGS } from './tokenizer.js';
 import { HTML_NS, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER, rawPos, srcOffsetOf, decodeText } from './project.js';
 
@@ -243,13 +243,15 @@ function emitNew(ctx, c, indent) {
       else if (n === TARGET_HOLDER) { if (name !== 'a' || !/^[A-Za-z0-9_-]{1,40}$/.test(value)) continue; outName = 'target'; }
       else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
       else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
-      else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }
+      else if (n === 'style' && !copy) { value = plainStyle(value); if (!value) continue; }     // alignment and palette colour only
       else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'id' || n === 'href' || n === 'contenteditable') continue;
       else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
       attrs += ' ' + outName + '="' + escapeAttr(value) + '"';
     }
   }
   if (!known || (name === 'span' && !attrs)) { emitInner(ctx, c, indent); return false; }
+  // the rows of a new table are written directly in it: the browser adds the <tbody> when it reads them
+  if (name === 'tbody' && !attrs && c.parentNode && c.parentNode.localName === 'table') { emitInner(ctx, c, indent); return true; }
   if (name === 'div' && !attrs && !Array.from(c.children).some((k) => BLOCKS.has(k.localName))) name = 'p';
   const block = BLOCKS.has(name);
   if (block) freshLine(ctx, indent);

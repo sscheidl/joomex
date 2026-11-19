@@ -168,9 +168,9 @@ export const features5 = [
       await withEditor(browser, {}, async (ed) => {
         await ed.click('bHelp');
         const first = await rect(ed, 'dlgHelp');
-        await dragBy(ed, 'document.querySelector("#dlgHelp h3")', -150, -60);
+        await dragBy(ed, 'document.querySelector("#dlgHelp h3")', -150, -30);
         const moved = await rect(ed, 'dlgHelp');
-        c.eq((moved.left - first.left) + ',' + (moved.top - first.top), '-150,-60', 'dragging the heading moves the help dialog by the same distance');
+        c.eq((moved.left - first.left) + ',' + (moved.top - first.top), '-150,-30', 'dragging the heading moves the help dialog by the same distance');
         c.eq(moved.width + 'x' + moved.height, first.width + 'x' + first.height, 'and keeps its size');
         await dragBy(ed, 'document.querySelector("#dlgHelp h3")', -3000, -3000);
         const corner = await rect(ed, 'dlgHelp');

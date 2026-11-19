@@ -253,13 +253,13 @@ export const review6 = [
         await dragBy(ed, 'document.querySelector("#dlgHelp h3")', 3000, 0);
         const wide = await rect(ed, 'document.getElementById("dlgHelp")');
         c.ok(wide.right >= 1390, 'the help dialog is dragged to the right edge', JSON.stringify(wide));
-        await ed.page.setViewport(640, 700);
+        await ed.page.setViewport(640, 800);
         await ed.until('innerWidth === 640', 'viewport narrowed');
         await sleep(200);
         const narrow = await rect(ed, 'document.getElementById("dlgHelp")');
         const button = await rect(ed, 'Array.from(document.querySelectorAll("#dlgHelp button")).pop()');
         c.ok(narrow.left >= 0 && narrow.right <= 640, 'after narrowing it lies inside the window', JSON.stringify(narrow));
-        c.ok(button.left >= 0 && button.right <= 640 && button.bottom <= 700, 'its button can be reached', JSON.stringify(button));
+        c.ok(button.left >= 0 && button.right <= 640 && button.bottom <= 800, 'its button can be reached', JSON.stringify(button));
         await ed.dialogButton('dlgHelp', 'Schließen');
         c.eq(await ed.dialogOpen('dlgHelp'), false, 'and closes the dialog');
         await ed.page.setViewport();

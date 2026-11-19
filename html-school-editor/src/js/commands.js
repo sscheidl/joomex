@@ -1,7 +1,7 @@
 // Editing commands on the preview document. Block structure (paragraph, headings, lists), links and images
 // are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
 // italic use the browser's own editing command. Every command works on the current selection of the preview.
-import { words, withAlign } from './util.js';
+import { words, withAlign, withDecl, styleDeclarations } from './util.js';
 import { HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
 import { BLOCKS } from './serialize.js';
 
@@ -273,7 +273,7 @@ function textNodesIn(doc, range) {
 }
 
 // Moves a text node out of a formatting element by splitting that element around it.
-function liftOut(env, node, fmt, names) {
+function liftOut(env, node, fmt, names, only) {
   const doc = env.doc;
   const parent = fmt.parentNode, ref = fmt.nextSibling;
   let r = doc.createRange();
@@ -286,7 +286,7 @@ function liftOut(env, node, fmt, names) {
   const mid = r.extractContents();
   // Elements cut in two are copied by the range; a copy writes the attributes of its original
   for (const part of [tail, mid]) for (const el of part.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });
-  for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) unwrap(el);
+  for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) if (!only || only(el)) unwrap(el);
   for (const el of Array.from(tail.children)) if (isEmptyInline(el)) el.remove();
   parent.insertBefore(mid, ref);
   parent.insertBefore(tail, ref);
@@ -501,6 +501,191 @@ export function setAlign(env, value) {
   }
   restoreSel(doc, keep);
   return changed ? 'ok' : odd ? 'odd' : 'same';
+}
+
+// ---------------------------------------------------------------- text colour
+
+const COLOR_BLOCKS = words('p h1 h2 h3 h4 h5 h6 li');
+const COLOR_INLINE = words('span b i u s sub sup mark a em strong small code');
+const hasColor = (el) => { const s = el.getAttribute('style'), d = s ? styleDeclarations(s) : null; return !!d && d.some((x) => x.name === 'color'); };
+// a span that carries nothing but a colour: it goes when its colour goes
+const colorSpan = (el) => el.localName === 'span' && el.attributes.length === 1 && hasColor(el) && withDecl(el.getAttribute('style'), 'color', '') === '';
+
+// Sets the colour declaration of an element ('' removes it) through the CSS reader; a span left without any
+// attribute is taken out. false if the style text cannot be read with certainty (then it stays as it is).
+function putColor(env, el, color) {
+  const old = el.getAttribute('style') || '', next = withDecl(old, 'color', color);
+  if (next === null) return false;
+  if (next === old) return true;
+  if (next) el.setAttribute('style', next); else el.removeAttribute('style');
+  if (!next && el.localName === 'span' && !el.attributes.length) { unwrap(el); return true; }
+  record(env, el, { style: next || null });
+  return true;
+}
+
+// Text colour from the palette ('' removes it). A whole paragraph, heading or list item gets the colour on its
+// own tag, exactly one whole inline element on its tag; only otherwise the text is wrapped in
+// <span style="color: …">. Colours inside the part that is coloured go, so that the new one is seen.
+// Returns 'ok', 'none', 'odd' (a style text that cannot be read) or 'part' (when removing: the colour comes
+// from a larger part than the selection and stays).
+export function setColor(env, color) {
+  const doc = env.doc, body = doc.body, live = getRange(doc);
+  if (!live) return 'none';
+  const range = live.cloneRange();
+  const caretOnly = range.collapsed, caretAt = range.startOffset;
+  if (caretOnly && !expandToWord(range)) return 'none';
+  const caretInWord = caretAt - range.startOffset;
+  const nodes = textNodesIn(doc, range);
+  if (!nodes.length) return 'none';
+  const inside = new Set(nodes);
+  const whole = (el) => { const w = doc.createTreeWalker(el, 4); for (let n = w.nextNode(); n; n = w.nextNode()) if (/\S/.test(n.data) && !inside.has(n)) return false; return true; };
+  let odd = false;
+  const put = (el, c) => { if (!putColor(env, el, c)) odd = true; };
+  const clearInside = (el) => { for (const k of Array.from(el.querySelectorAll('[style]'))) if (hasColor(k)) put(k, ''); };
+  let targets = null;
+  const blocks = Array.from(new Set(nodes.map((n) => closestTag(n, body, COLOR_BLOCKS))));
+  if (blocks.every((b) => b && whole(b))) targets = blocks;
+  else {
+    // the outermost inline element that holds exactly the selected text
+    let one = null;
+    for (let el = nodes[0].parentElement; el && el !== body && !BLOCKS.has(el.localName); el = el.parentElement) {
+      if (COLOR_INLINE.has(el.localName) && nodes.every((n) => el.contains(n)) && whole(el)) one = el;
+    }
+    if (one) targets = [one];
+  }
+  if (targets) for (const el of targets) { clearInside(el); put(el, color); }
+  else {
+    // the text comes out of the colour spans around it; a colour span that is selected entirely goes
+    for (const n of nodes) {
+      for (let f = n.parentElement; f && f !== body && !BLOCKS.has(f.localName); f = f.parentElement) {
+        if (!colorSpan(f)) continue;
+        if (whole(f)) unwrap(f); else liftOut(env, n, f, words('span'), colorSpan);
+        f = n;
+      }
+      if (!color) for (let f = n.parentElement; f && f !== body && !BLOCKS.has(f.localName); f = f.parentElement) if (hasColor(f) && whole(f)) put(f, '');
+    }
+    if (color) {
+      let made = null;
+      for (const n of nodes) {
+        if (made && made.nextSibling === n) { made.appendChild(n); continue; }
+        made = doc.createElement('span');
+        made.setAttribute('style', 'color: ' + color);
+        n.parentNode.insertBefore(made, n);
+        made.appendChild(n);
+      }
+    }
+  }
+  const first = nodes[0], last = nodes[nodes.length - 1];
+  try {
+    if (caretOnly) doc.getSelection().collapse(first, Math.min(caretInWord, first.data.length));
+    else doc.getSelection().setBaseAndExtent(first, 0, last, last.data.length);
+  } catch (e) { /* keep the browser's selection */ }
+  const coloured = (n) => { for (let f = n.parentElement; f && f !== body; f = f.parentElement) if (hasColor(f)) return true; return false; };
+  return odd ? 'odd' : !color && nodes.some(coloured) ? 'part' : 'ok';
+}
+
+// ---------------------------------------------------------------- tables
+
+const CELL = words('td th');
+const TABLE = words('table');
+
+// The cell with the caret, its row and its table, or null.
+export function tableAt(doc) {
+  const range = getRange(doc);
+  const cell = range && closestTag(range.startContainer, doc.body, CELL);
+  const table = cell && closestTag(cell, doc.body, TABLE);
+  return table && cell.parentNode.localName === 'tr' ? { cell, row: cell.parentNode, table } : null;
+}
+
+const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
+const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
+
+// Takes an element out together with the line break in front of it (behind it, if it is the first child).
+function takeOut(env, el) {
+  const before = el.previousSibling;
+  if (before && before.previousSibling) dropSpace(env, before); else dropSpace(env, el.nextSibling);
+  el.remove();
+}
+
+// A new table with `rows` × `cols` empty cells behind the block with the caret; the first row with <th> if
+// `head`, border="1" if `border`. Returns 'ok' or 'intable' (no table inside a table).
+export function insertTable(env, range, { rows, cols, head, border }) {
+  const doc = env.doc, body = doc.body;
+  if (closestTag(range.startContainer, body, TABLE)) return 'intable';
+  const table = doc.createElement('table');
+  if (border) table.setAttribute('border', '1');
+  const tbody = table.appendChild(doc.createElement('tbody'));
+  for (let r = 0; r < rows; r++) {
+    const tr = tbody.appendChild(doc.createElement('tr'));
+    for (let c = 0; c < cols; c++) tr.appendChild(doc.createElement(head && r === 0 ? 'th' : 'td'));
+  }
+  let at = blockOf(range.startContainer, body);
+  if (at.localName === 'li' || at.localName === 'dt' || at.localName === 'dd') at = at.parentElement;
+  if (at === body) {
+    let top = range.startContainer;
+    while (top !== body && top.parentNode !== body) top = top.parentNode;
+    body.insertBefore(table, top === body ? body.childNodes[range.startOffset] || null : top.nextSibling);
+  } else at.parentNode.insertBefore(table, at.nextSibling);
+  placeCaretIn(doc, table.rows[0].cells[0]);
+  return 'ok';
+}
+
+// "Zeile darunter einfügen" (add) or "Zeile löschen". Returns 'ok', 'none', 'merged' or 'last'.
+export function tableRow(env, add) {
+  const doc = env.doc, at = tableAt(doc);
+  if (!at) return 'none';
+  if (merged(at.table)) return 'merged';
+  const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
+  if (add) {
+    const tr = doc.createElement('tr');
+    for (let k = 0; k < at.row.cells.length; k++) tr.appendChild(doc.createElement('td'));
+    at.row.parentNode.insertBefore(tr, at.row.nextSibling);
+    placeCaretIn(doc, tr.cells[i]);
+    return 'ok';
+  }
+  if (rows.length < 2) return 'last';
+  const r = rows.indexOf(at.row), next = rows[r + 1] || rows[r - 1];
+  takeOut(env, at.row);
+  placeCaretIn(doc, next.cells[Math.min(i, next.cells.length - 1)] || next);
+  return 'ok';
+}
+
+// "Spalte rechts einfügen" (add) or "Spalte löschen". Returns 'ok', 'none', 'merged' or 'last'.
+export function tableColumn(env, add) {
+  const doc = env.doc, at = tableAt(doc);
+  if (!at) return 'none';
+  if (merged(at.table)) return 'merged';
+  const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
+  if (add) {
+    let mine = null;
+    for (const tr of rows) {
+      const ref = tr.cells[Math.min(i, tr.cells.length - 1)] || null;
+      const cell = doc.createElement(ref ? ref.localName : 'td');
+      tr.insertBefore(cell, ref ? ref.nextSibling : null);
+      if (tr === at.row) mine = cell;
+    }
+    placeCaretIn(doc, mine);
+    return 'ok';
+  }
+  if (at.row.cells.length < 2) return 'last';
+  for (const tr of rows) if (tr.cells[i] && tr.cells.length > 1) takeOut(env, tr.cells[i]);
+  placeCaretIn(doc, at.row.cells[Math.max(0, i - 1)]);
+  return 'ok';
+}
+
+// Tab and Shift+Tab in a table: the next or previous cell, its content selected. false at the end of the table
+// (the key then does what it always does).
+export function stepCell(doc, back) {
+  const at = tableAt(doc);
+  if (!at) return false;
+  const cells = cellsOf(at.table), next = cells[cells.indexOf(at.cell) + (back ? -1 : 1)];
+  if (!next) return false;
+  const r = doc.createRange();
+  r.selectNodeContents(next);
+  const sel = doc.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  return true;
 }
 
 // Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.

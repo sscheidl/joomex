@@ -138,18 +138,43 @@ export function onlyAlign(style) {
   return m && ALIGN_VALUES.has(m[1].toLowerCase()) ? m[1].toLowerCase() : '';
 }
 
-// Returns the style text with its text-align declaration replaced by `value` ('' removes it). Every other
-// declaration stays exactly as written, and adding and removing again gives back the text that was there.
+// The colours of the palette: CSS colour names, no colour codes (owner's decision).
+export const COLORS = words('red orange green blue navy purple brown gray');
+
+// The style text of a new element if it holds nothing but what the editor writes itself (an alignment, a
+// colour of the palette), written the editor's way; otherwise ''.
+export function plainStyle(style) {
+  const text = String(style), decls = styleDeclarations(text);
+  if (!decls) return '';
+  const out = [];
+  for (const d of decls) {
+    const piece = text.slice(d.start, d.end);
+    if (!piece.trim()) continue;
+    const m = /^\s*([a-z-]+)\s*:\s*([a-z]+)\s*$/i.exec(piece);
+    const name = m ? m[1].toLowerCase() : '', v = m ? m[2].toLowerCase() : '';
+    if (!(name === 'text-align' ? ALIGN_VALUES : name === 'color' ? COLORS : new Set()).has(v)) return '';
+    out.push(name + ': ' + v);
+  }
+  return out.join('; ');
+}
+
+// The style text with its text-align declaration replaced by `value` ('' removes it); see withDecl.
+export function withAlign(style, value) {
+  return withDecl(style, 'text-align', value);
+}
+
+// Returns the style text with its declaration of the property `prop` replaced by `value` ('' removes it). Every
+// other declaration stays exactly as written, and adding and removing again gives back the text that was there.
 // Declarations are found by reading the text as CSS (strings, comments, escapes and brackets are respected),
 // never by searching for the word. Returns null if the text cannot be split into declarations with certainty;
 // the caller then leaves the attribute alone.
-export function withAlign(style, value) {
+export function withDecl(style, prop, value) {
   const text = String(style), decls = styleDeclarations(text);
   if (!decls) return null;
   let rest = text;
   for (let k = decls.length - 1; k >= 0; k--) {
     const d = decls[k];
-    if (d.name !== 'text-align') continue;
+    if (d.name !== prop) continue;
     // a declaration at the end goes together with the semicolon in front of it, any other with its own
     rest = k === decls.length - 1 ? rest.slice(0, k ? d.start - 1 : d.start) + rest.slice(d.end) : rest.slice(0, d.start) + rest.slice(d.end + 1);
   }
@@ -157,8 +182,9 @@ export function withAlign(style, value) {
   const lead = /^[ \t\n\f\r]*/.exec(text)[0], trail = text.length > lead.length ? /[ \t\n\f\r]*$/.exec(text)[0] : '';
   rest = rest.trim();
   if (!value) return rest ? lead + rest + trail : '';
-  if (!rest) return 'text-align: ' + value;
-  return lead + (/;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value) + trail;
+  const decl = prop + ': ' + value;
+  if (!rest) return decl;
+  return lead + (/;$/.test(rest) ? rest + ' ' + decl + ';' : rest + '; ' + decl) + trail;
 }
 
 // ---------------------------------------------------------------- reading CSS text

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenize } from '../../src/js/tokenizer.js';
 import { parseHtml } from '../../src/js/tree.js';
-import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl, moveSrc } from '../../src/js/util.js';
+import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl, moveSrc, withDecl, plainStyle } from '../../src/js/util.js';
 import { withTitle } from '../../src/js/format.js';
 
 test('page title: only the text of <title> changes; a missing title is added at the start of the head', () => {
@@ -178,4 +178,17 @@ test('review findings of alpha.4 and alpha.5: attributes, addresses, alignment, 
   assert.equal(cssRisks('p{display:inline}', {}, true).conditional, true);
   assert.equal(!!cssRisks('p{display:inline}', {}, false).conditional, false);
   assert.equal(!!cssRisks('p{color:red}', {}, true).conditional, false, 'a colour does not move white space');
+});
+
+test('text colour: one declaration is set and removed through the CSS reader; new elements get only alignment and palette colours', () => {
+  assert.equal(withDecl('', 'color', 'red'), 'color: red');
+  assert.equal(withDecl('text-align: center', 'color', 'green'), 'text-align: center; color: green');
+  assert.equal(withDecl('color: red', 'color', 'blue'), 'color: blue');
+  assert.equal(withDecl('color: red; text-align: center', 'color', ''), 'text-align: center');
+  assert.equal(withDecl('--x:"color: red"; color: red', 'color', ''), '--x:"color: red"', 'a string that mentions color is not a declaration');
+  assert.equal(withDecl('background-color: yellow', 'color', 'red'), 'background-color: yellow; color: red', 'background-color is another property');
+  assert.equal(withDecl('x:"a', 'color', 'red'), null);
+  assert.equal(plainStyle('color: red'), 'color: red');
+  assert.equal(plainStyle(' COLOR : Navy ; text-align:center; '), 'color: navy; text-align: center');
+  for (const style of ['color: #f00', 'color: rgb(1,2,3)', 'color: pink', 'color: red; font-size: 40px', 'color: red !important', 'color: var(--c)', 'background: red', 'text-align: start']) assert.equal(plainStyle(style), '', style);
 });

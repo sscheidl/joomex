@@ -28,6 +28,11 @@ function bundle() {
         if (!/;\s*$/.test(line)) throw new Error(`${name}.js:${i + 1}: an import must fit on one line`);
         continue;
       }
+      // Lines that are only a comment are left out of the delivered file (owner's decision for 0.1.0-alpha.7).
+      // They cannot be part of a string: no template literal spans lines (checked here), and other strings
+      // end on their line.
+      if ((line.replace(/\\`/g, '').match(/`/g) || []).length % 2) throw new Error(`${name}.js:${i + 1}: a template literal must not span lines`);
+      if (/^\s*\/\//.test(line)) continue;
       line = line.replace(/^export\s+/, '');
       const m = /^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)/.exec(line);
       if (m) {

@@ -60,6 +60,7 @@ __CSS__
         <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
         <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
         <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
+        <button id="bColor" type="button" class="c" title="Textfarbe &lt;span style=&quot;color: …&quot;&gt;">Farbe</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
@@ -75,6 +76,7 @@ __CSS__
         <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
         <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
         <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
+        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
       </span>
     </div>
     <div id="lockNote" class="note warn" hidden></div>
@@ -120,6 +122,42 @@ __CSS__
   <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
 </dialog>
 
+<dialog id="dlgColor">
+  <h3>Textfarbe</h3>
+  <p>Die Farbe gilt für den markierten Text. Ist ein ganzer Absatz markiert, bekommt der Absatz die Farbe.</p>
+  <div class="swatches">
+    <button type="button" data-close="red" style="color: red">Rot</button>
+    <button type="button" data-close="orange" style="color: orange">Orange</button>
+    <button type="button" data-close="green" style="color: green">Grün</button>
+    <button type="button" data-close="blue" style="color: blue">Blau</button>
+    <button type="button" data-close="navy" style="color: navy">Dunkelblau</button>
+    <button type="button" data-close="purple" style="color: purple">Lila</button>
+    <button type="button" data-close="brown" style="color: brown">Braun</button>
+    <button type="button" data-close="gray" style="color: gray">Grau</button>
+  </div>
+  <div class="row"><button type="button" data-close="none">Farbe entfernen</button><button type="button" class="primary" data-close="cancel">Abbrechen</button></div>
+</dialog>
+
+<dialog id="dlgTable">
+  <h3 id="tblTitle">Tabelle einfügen</h3>
+  <div id="tblNew">
+    <label for="tblRows">Zeilen (1 bis 20)</label>
+    <input id="tblRows" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label for="tblCols">Spalten (1 bis 10)</label>
+    <input id="tblCols" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label class="check"><input id="tblHead" type="checkbox" checked> Erste Zeile als Überschrift</label>
+    <label class="check"><input id="tblBorder" type="checkbox" checked> Mit Rahmenlinien</label>
+  </div>
+  <div id="tblEdit" class="grid">
+    <button type="button" data-close="rowAdd">Zeile darunter einfügen</button>
+    <button type="button" data-close="colAdd">Spalte rechts einfügen</button>
+    <button type="button" data-close="rowDel">Zeile löschen</button>
+    <button type="button" data-close="colDel">Spalte löschen</button>
+  </div>
+  <p id="tblErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="tblOk">Einfügen</button></div>
+</dialog>
+
 <dialog id="dlgHelp">
   <h3>Kurze Hilfe</h3>
   <ul>
@@ -129,6 +167,7 @@ __CSS__
     <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
+    <li><b>Farbe</b> färbt den markierten Text. <b>Tabelle</b> fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, kannst du damit Zeilen und Spalten einfügen oder löschen. Mit der Tab-Taste springst du in die nächste Zelle.</li>
     <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
     <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>

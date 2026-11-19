@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CN6bbMjmfvmATrJnWmDR5DsY9I02TJSnrVSHuhZyOZ4='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Mhv5jbAjnzVjAViOOgylhWJOKs7NcM3AerXTDv7AgFM='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.6">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.7">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -67,6 +67,9 @@ section { display: flex; flex-direction: column; min-width: 0; min-height: 0; ba
 #fmt .u { text-decoration: underline; min-width: 34px; } #fmt .m { background: #fff3bf; }
 #pvTitle { flex: 1; min-width: 8em; max-width: 40em; font: inherit; font-size: 13px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 5px; }
 dialog label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+dialog .swatches, dialog .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+dialog .swatches button { font-weight: 700; text-align: left; }
+#fmt .c { color: #c92a2a; font-weight: 700; }
 dialog h3, #infoText, #confirmText { cursor: move; user-select: none; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }
@@ -110,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.6</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.7</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -157,6 +160,7 @@ dialog .found:empty { display: none; }
         <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
         <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
         <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
+        <button id="bColor" type="button" class="c" title="Textfarbe &lt;span style=&quot;color: …&quot;&gt;">Farbe</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
@@ -172,6 +176,7 @@ dialog .found:empty { display: none; }
         <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
         <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
         <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
+        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
       </span>
     </div>
     <div id="lockNote" class="note warn" hidden></div>
@@ -181,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.6</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.7</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -217,6 +222,42 @@ dialog .found:empty { display: none; }
   <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
 </dialog>
 
+<dialog id="dlgColor">
+  <h3>Textfarbe</h3>
+  <p>Die Farbe gilt für den markierten Text. Ist ein ganzer Absatz markiert, bekommt der Absatz die Farbe.</p>
+  <div class="swatches">
+    <button type="button" data-close="red" style="color: red">Rot</button>
+    <button type="button" data-close="orange" style="color: orange">Orange</button>
+    <button type="button" data-close="green" style="color: green">Grün</button>
+    <button type="button" data-close="blue" style="color: blue">Blau</button>
+    <button type="button" data-close="navy" style="color: navy">Dunkelblau</button>
+    <button type="button" data-close="purple" style="color: purple">Lila</button>
+    <button type="button" data-close="brown" style="color: brown">Braun</button>
+    <button type="button" data-close="gray" style="color: gray">Grau</button>
+  </div>
+  <div class="row"><button type="button" data-close="none">Farbe entfernen</button><button type="button" class="primary" data-close="cancel">Abbrechen</button></div>
+</dialog>
+
+<dialog id="dlgTable">
+  <h3 id="tblTitle">Tabelle einfügen</h3>
+  <div id="tblNew">
+    <label for="tblRows">Zeilen (1 bis 20)</label>
+    <input id="tblRows" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label for="tblCols">Spalten (1 bis 10)</label>
+    <input id="tblCols" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label class="check"><input id="tblHead" type="checkbox" checked> Erste Zeile als Überschrift</label>
+    <label class="check"><input id="tblBorder" type="checkbox" checked> Mit Rahmenlinien</label>
+  </div>
+  <div id="tblEdit" class="grid">
+    <button type="button" data-close="rowAdd">Zeile darunter einfügen</button>
+    <button type="button" data-close="colAdd">Spalte rechts einfügen</button>
+    <button type="button" data-close="rowDel">Zeile löschen</button>
+    <button type="button" data-close="colDel">Spalte löschen</button>
+  </div>
+  <p id="tblErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="tblOk">Einfügen</button></div>
+</dialog>
+
 <dialog id="dlgHelp">
   <h3>Kurze Hilfe</h3>
   <ul>
@@ -226,6 +267,7 @@ dialog .found:empty { display: none; }
     <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
+    <li><b>Farbe</b> färbt den markierten Text. <b>Tabelle</b> fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, kannst du damit Zeilen und Spalten einfügen oder löschen. Mit der Tab-Taste springst du in die nächste Zelle.</li>
     <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
     <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>
@@ -238,8 +280,6 @@ dialog .found:empty { display: none; }
 (function () {
 'use strict';
 // ---- util.js
-// Small pure helpers shared by all modules (no DOM access).
-
 const words = (s) => new Set(s.split(' '));
 
 function escapeText(s) {
@@ -264,8 +304,6 @@ function commonSuffix(a, b, skip) {
   return i;
 }
 
-// Maps a caret offset in `oldText` to the matching offset in `newText` by keeping the unchanged
-// prefix and suffix fixed. An offset inside the changed region lands at the end of the new region.
 function mapOffset(oldText, newText, pos) {
   if (oldText === newText) return pos;
   const p = commonPrefix(oldText, newText);
@@ -275,24 +313,18 @@ function mapOffset(oldText, newText, pos) {
   return newText.length - s;
 }
 
-// End of the region that differs between two texts, as an offset in `newText`.
 function changeEnd(oldText, newText) {
   const p = commonPrefix(oldText, newText);
   return newText.length - commonSuffix(oldText, newText, p);
 }
 
-// ---------------------------------------------------------------- link addresses
 
 const SAFE_SCHEMES = words('http https mailto tel');
 
-// Validates an address typed into the link dialog. Input is plain text and is only ever stored as an
-// attribute value; this check additionally refuses schemes that would run code when the saved page is used.
-// Returns { ok: true, url } or { ok: false, reason }.
 function checkLinkUrl(input) {
   let url = String(input).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, '').trim();
   if (!url) return { ok: false, reason: 'empty' };
   if (url.length > 2000) return { ok: false, reason: 'long' };
-  // A scheme may be disguised with whitespace, control characters or character references.
   const squeezed = url.replace(/\s+/g, '');
   const decoded = squeezed.replace(/&#x([0-9a-f]+);?/gi, (m, h) => safeChar(parseInt(h, 16)))
     .replace(/&#([0-9]+);?/g, (m, d) => safeChar(parseInt(d, 10)))
@@ -310,7 +342,6 @@ function safeChar(code) {
   return code > 32 && code < 0x10ffff ? String.fromCodePoint(code) : '';
 }
 
-// True for addresses that stay inert as an href in a saved page (used for links cloned inside the preview).
 function isSafeHref(value) {
   return checkLinkUrl(value).ok;
 }
@@ -319,10 +350,7 @@ function isRasterDataUrl(value) {
   return /^\s*data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=\s]*$/i.test(value);
 }
 
-// ---------------------------------------------------------------- images by file name
 
-// File name that an image address points to, if the address is a plain relative one ('' for addresses with a
-// scheme, a host or a drive letter). "bilder/Meine%20Katze.jpg?x#y" gives "Meine Katze.jpg".
 function fileOfSrc(value) {
   const v = String(value).trim();
   if (!v || v.length > 600 || /^[a-z][a-z0-9+.\-]*:|^[\/\\]{2}/i.test(v) || /[\x00-\x1f]/.test(v)) return '';
@@ -331,8 +359,6 @@ function fileOfSrc(value) {
   return name;
 }
 
-// Address written into the source for a chosen image file: optional folder plus file name.
-// Returns { ok: true, src } or { ok: false }.
 function imagePath(folder, fileName) {
   const dir = String(folder).trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '');
   if (dir.length > 200 || /[:?#"<>|*\x00-\x1f]/.test(dir) || /^\s|\s$/.test(dir)) return { ok: false };
@@ -341,24 +367,17 @@ function imagePath(folder, fileName) {
   return { ok: true, src: dir ? dir + '/' + name : name };
 }
 
-// The address with its folder replaced by `folder` (an address from imagePath): the file name, the query and
-// the fragment stay exactly as written. Slashes behind '?' or '#' are not folders.
 function moveSrc(value, folder) {
   const v = String(value).trim(), cut = v.search(/[?#]/), path = (cut < 0 ? v : v.slice(0, cut)).replace(/\\/g, '/');
   return folder + path.slice(path.lastIndexOf('/') + 1) + (cut < 0 ? '' : v.slice(cut));
 }
 
-// Folder part of a relative image address ('' if there is none).
 function folderOfSrc(value) {
   const path = String(value).trim().split(/[?#]/)[0].replace(/\\/g, '/');
   const cut = path.lastIndexOf('/');
   return cut < 0 ? '' : path.slice(0, cut);
 }
 
-// The file that a plain relative image address names, seen from the editor's own file `base` (a URL): the
-// editor lies in the folder of the pupil's pages, so the address means the same file from both. Returns the
-// file address, or '' if the address is not a plain relative one, the editor was not opened as a file, or the
-// result would lie on another computer.
 function localFileUrl(value, base) {
   if (!fileOfSrc(value) || !base || base.protocol !== 'file:') return '';
   let url;
@@ -368,43 +387,53 @@ function localFileUrl(value, base) {
   return url.href;
 }
 
-// ---------------------------------------------------------------- alignment in a style attribute
 
 const ALIGN_VALUES = words('left right center justify');
 
-// The alignment if the style consists of nothing but one text-align declaration, otherwise ''.
 function onlyAlign(style) {
   const m = /^\s*text-align\s*:\s*([a-z]+)\s*;?\s*$/i.exec(style);
   return m && ALIGN_VALUES.has(m[1].toLowerCase()) ? m[1].toLowerCase() : '';
 }
 
-// Returns the style text with its text-align declaration replaced by `value` ('' removes it). Every other
-// declaration stays exactly as written, and adding and removing again gives back the text that was there.
-// Declarations are found by reading the text as CSS (strings, comments, escapes and brackets are respected),
-// never by searching for the word. Returns null if the text cannot be split into declarations with certainty;
-// the caller then leaves the attribute alone.
+const COLORS = words('red orange green blue navy purple brown gray');
+
+function plainStyle(style) {
+  const text = String(style), decls = styleDeclarations(text);
+  if (!decls) return '';
+  const out = [];
+  for (const d of decls) {
+    const piece = text.slice(d.start, d.end);
+    if (!piece.trim()) continue;
+    const m = /^\s*([a-z-]+)\s*:\s*([a-z]+)\s*$/i.exec(piece);
+    const name = m ? m[1].toLowerCase() : '', v = m ? m[2].toLowerCase() : '';
+    if (!(name === 'text-align' ? ALIGN_VALUES : name === 'color' ? COLORS : new Set()).has(v)) return '';
+    out.push(name + ': ' + v);
+  }
+  return out.join('; ');
+}
+
 function withAlign(style, value) {
+  return withDecl(style, 'text-align', value);
+}
+
+function withDecl(style, prop, value) {
   const text = String(style), decls = styleDeclarations(text);
   if (!decls) return null;
   let rest = text;
   for (let k = decls.length - 1; k >= 0; k--) {
     const d = decls[k];
-    if (d.name !== 'text-align') continue;
-    // a declaration at the end goes together with the semicolon in front of it, any other with its own
+    if (d.name !== prop) continue;
     rest = k === decls.length - 1 ? rest.slice(0, k ? d.start - 1 : d.start) + rest.slice(d.end) : rest.slice(0, d.start) + rest.slice(d.end + 1);
   }
-  // white space in front of and behind the whole text stays as written
   const lead = /^[ \t\n\f\r]*/.exec(text)[0], trail = text.length > lead.length ? /[ \t\n\f\r]*$/.exec(text)[0] : '';
   rest = rest.trim();
   if (!value) return rest ? lead + rest + trail : '';
-  if (!rest) return 'text-align: ' + value;
-  return lead + (/;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value) + trail;
+  const decl = prop + ': ' + value;
+  if (!rest) return decl;
+  return lead + (/;$/.test(rest) ? rest + ' ' + decl + ';' : rest + '; ' + decl) + trail;
 }
 
-// ---------------------------------------------------------------- reading CSS text
 
-// Position behind the piece of CSS that starts at `i`: a string, a comment, an escaped character, or one
-// other character. -1 if a string or comment is not closed (the browser then reads the rest differently).
 function cssSkip(css, i) {
   const ch = css[i];
   if (ch === '\\') return Math.min(i + 2, css.length);
@@ -420,7 +449,6 @@ function cssSkip(css, i) {
   return i + 1;
 }
 
-// CSS text as the browser understands its names: comments removed, escapes resolved, lower case.
 function cssPlain(text) {
   let out = '';
   for (let i = 0; i < text.length;) {
@@ -435,9 +463,6 @@ function cssPlain(text) {
   return out.toLowerCase();
 }
 
-// Splits the text of a style attribute into its declarations: [{ start, end, name }], `end` in front of the
-// semicolon, `name` the property name as the browser reads it. null if a string, comment or bracket is left
-// open, because then the borders between the declarations are not certain.
 function styleDeclarations(style) {
   const out = [];
   let depth = 0, start = 0;
@@ -464,15 +489,6 @@ const LAYOUT_PROPS = words('display content all');
 const PLAIN_AT = words('font-face counter-style property namespace charset layer page font-feature-values font-palette-values color-profile');
 const STATE = /:(?:hover|active|focus|focus-within|focus-visible|target|target-within|checked|indeterminate|default|enabled|disabled|read-only|read-write|placeholder-shown|valid|invalid|in-range|out-of-range|required|optional|user-valid|user-invalid|open|popover-open|modal|fullscreen|picture-in-picture|playing|paused|seeking|buffering|stalled|muted|volume-locked|autofill|current|past|future|state)(?![a-z0-9-])|\[\s*open(?![a-z0-9-])/;
 
-// What a piece of CSS says that matters for moving white space in the HTML source ("tidy up"):
-//   spaces       a rule may make every space count (white-space with a value outside the collapsing ones)
-//   external     rules come from a file (@import)
-//   conditional  a rule that holds only sometimes (other window width, print, pointer over an element, a
-//                moment of an animation …) changes the kind of box, generated content or a custom property;
-//                or such a property takes its value from a custom property. The layout comparison sees one
-//                state of the page and cannot answer for the others.
-//   unclear      a string or comment is not closed
-// The text may be a style sheet or the content of a style attribute. `facts` collects the answers.
 function cssRisks(css, facts, sometimes0) {
   const declaration = (piece, conditional) => {
     const plain = cssPlain(piece).trim();
@@ -490,7 +506,6 @@ function cssRisks(css, facts, sometimes0) {
     const m = /^@([a-z-]+)/.exec(plain);
     return !(m && PLAIN_AT.has(m[1]));
   };
-  // Reads declarations and rules up to the closing brace of the block that starts at `i`.
   const block = (i, conditional) => {
     let start = i, depth = 0;
     while (i < css.length) {
@@ -514,11 +529,7 @@ function cssRisks(css, facts, sometimes0) {
   return facts;
 }
 
-// ---------------------------------------------------------------- single attributes of a start tag
 
-// Rewrites single attributes of a start tag and leaves every other character of it as written. `from`..`to`
-// is the tag text behind the tag name up to and including '>', `attrs` the tokenizer's offsets
-// [nameAt, nameTo, valueAt, valueTo, ...], `changes` maps lower-case names to the new value or null (remove).
 function patchAttrs(src, from, to, attrs, changes, decode) {
   const ws = (ch) => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\r';
   const has = (name) => Object.prototype.hasOwnProperty.call(changes, name);
@@ -529,7 +540,6 @@ function patchAttrs(src, from, to, attrs, changes, decode) {
     const nameAt = attrs[i], nameTo = attrs[i + 1], valueAt = attrs[i + 2], valueTo = attrs[i + 3];
     let end = valueTo >= 0 ? valueTo : nameTo;
     if (valueTo < 0) {
-      // "name=" with nothing behind the equals sign is an empty value, not a bare name: the sign belongs to it
       let j = nameTo;
       while (j < to && ws(src[j])) j++;
       if (src[j] === '=') end = j + 1;
@@ -541,9 +551,6 @@ function patchAttrs(src, from, to, attrs, changes, decode) {
     if (!has(name)) continue;
     const value = changes[name];
     if (value === null) {
-      // every spelling of the name goes; otherwise a later one, ignored until now, would take effect
-      // with the white space in front of it, unless the neighbours would then join: `width="20"alt=x` must not
-      // make `src=a.png alt=x` one attribute, and `src=a.png width=1 />` not `src=a.png/>`
       let a = nameAt;
       while (a > from && ws(src[a - 1])) a--;
       const next = src[end];
@@ -566,9 +573,6 @@ function patchAttrs(src, from, to, attrs, changes, decode) {
   return out + src.slice(at, to);
 }
 
-// The new value of an attribute written as `raw` (without its quote `q`, '' if unquoted): the part in front of
-// and the part behind the change keep their spelling, character references included. Raw text is only kept
-// where `decode` can read it with certainty (no reference without a semicolon), otherwise all is written anew.
 function keepRaw(raw, q, value, decode) {
   const esc = (v) => (q === "'" ? escapeAttr(v).replace(/&quot;/g, '"').replace(/'/g, '&#39;') : escapeAttr(v));
   const quote = q || '"';
@@ -584,13 +588,9 @@ function keepRaw(raw, q, value, decode) {
   return quote + pieces.slice(0, i).join('') + esc(value.slice(a, value.length - b)) + pieces.slice(j).join('') + quote;
 }
 
-// ---------------------------------------------------------------- file bytes <-> text
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-// Decodes the bytes of an opened file. Internally the editor always uses LF line ends; the original
-// convention (and a UTF-8 byte order mark) is remembered and restored when the file is written.
-// Returns { text, bom, eol, mixedEol } or { error: 'binary' | 'utf16' | 'encoding' }.
 function decodeFileBytes(bytes, allowLegacy) {
   let bom = false;
   if (bytes.length >= 2 && ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff))) return { error: 'utf16' };
@@ -613,17 +613,11 @@ function decodeFileBytes(bytes, allowLegacy) {
   return { text: text.replace(/\r\n?/g, '\n'), bom, eol, mixedEol, legacy };
 }
 
-// Text that is written to disk for the given document settings.
 function encodeFileText(text, bom, eol) {
   return (bom ? '\ufeff' : '') + (eol === '\r\n' ? text.replace(/\n/g, '\r\n') : text);
 }
 
 // ---- tokenizer.js
-// HTML tokenizer with source offsets. It follows the tokenization rules of the HTML standard closely enough
-// to find the exact extent of tags, comments and raw-text content. It never changes the text and it is never
-// trusted on its own: every structure derived from these tokens is compared with the browser's own parser
-// before it is used for editing (see project.js).
-
 const VOID_TAGS = words('area base basefont bgsound br col embed frame hr img input keygen link meta param source track wbr');
 const LITERAL_TEXT = words('script style xmp iframe noembed noframes');   // content is plain text, no character references
 const RCDATA_TEXT = words('textarea title');                              // content is text with character references
@@ -639,8 +633,6 @@ function findRawEnd(src, from, name) {
   return m ? m.index : src.length;
 }
 
-// Reads a start or end tag beginning at `start`. A tag that is cut off by the end of the text yields a
-// 'bogus' token, because the browser emits nothing for it.
 function readTag(src, start, nameStart, isEnd) {
   const n = src.length;
   let j = nameStart;
@@ -679,7 +671,6 @@ function readTag(src, start, nameStart, isEnd) {
   }
 }
 
-// Token types: text, start, end, comment, doctype, bogus. Tokens cover the whole text without gaps.
 function tokenize(src) {
   const toks = [];
   const n = src.length;
@@ -734,12 +725,6 @@ function tokenize(src) {
 }
 
 // ---- tree.js
-// Builds a source-position tree from the tokens. The nesting rules are a deliberately small subset of the
-// HTML tree-construction rules (void elements, optional end tags, implied tbody, stray end tags). The tree is
-// only used where project.js has confirmed that the browser's parser produced the same structure; everything
-// else stays read-only in the preview. Node ranges tile their parent completely, so re-emitting all children
-// of a node reproduces its inner source text byte for byte.
-
 const SPECIAL = words('address applet area article aside base basefont bgsound blockquote body br button caption center col colgroup dd details dir div dl dt embed fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html iframe img input keygen li link listing main marquee menu meta nav noembed noframes noscript object ol p param plaintext pre script search section select source style summary table tbody td template textarea tfoot th thead title tr track ul wbr xmp');
 const SCOPE = words('applet caption html table td th marquee object template');
 const BUTTON_SCOPE = words('applet caption html table td th marquee object template button');
@@ -760,7 +745,6 @@ const P = words('p');
 const MAX_DEPTH = 400;
 const HEAD_ONLY = words('title meta link style script base template noscript');
 
-// `quirks`: the document is rendered in quirks mode (no doctype), where a table does not close a paragraph.
 function parseHtml(src, quirks, tokens) {
   if (!tokens) tokens = tokenize(src);
   const root = { type: 'root', name: '#root', start: 0, tagEnd: 0, closeStart: src.length, end: src.length, children: [], parent: null };
@@ -826,8 +810,6 @@ function parseHtml(src, quirks, tokens) {
     }
     const node = add(element(name, tok));
     if (foreign ? tok.selfClosing : VOID_TAGS.has(name)) return;
-    // Browsers limit the nesting depth of their parser as well. Deeper elements are kept as leaves here; the
-    // comparison with the browser's tree then marks that part as not editable.
     if (stack.length >= MAX_DEPTH) return;
     stack.push(node);
     if (name === 'svg' || name === 'math') foreign++;
@@ -848,7 +830,6 @@ function parseHtml(src, quirks, tokens) {
       if (barriers.has(nm)) break;
     }
     if ((name === 'p' || name === 'br') && !foreign) {
-      // The browser turns a stray </p> into an empty paragraph and a stray </br> into a line break.
       add({ type: 'el', name, synthetic: true, explicitEnd: name === 'p', start: tok.start, nameEnd: tok.start, tagEnd: tok.start, closeStart: tok.start, end: tok.end, children: [] });
     } else {
       add({ type: 'junk', start: tok.start, end: tok.end });
@@ -868,8 +849,6 @@ function parseHtml(src, quirks, tokens) {
   return { src, tokens, root };
 }
 
-// Sets `kids` (children without junk), `lead` (start including junk directly in front of a node) and `tail`
-// (start of junk behind the last child).
 function finish(node) {
   node.kids = [];
   let junkAt = -1;
@@ -885,8 +864,6 @@ function finish(node) {
 
 const isBlank = (src, node) => node.type === 'text' && !/[^ \t\n\f\r]/.test(src.slice(node.start, node.end));
 
-// Finds the node whose children are the body content. Without a <body> tag a virtual body is returned that
-// covers the content the browser would place into the implied body element.
 function locateBody(root, src) {
   const html = root.kids.find((k) => k.type === 'el' && k.name === 'html');
   const container = html || root;
@@ -908,14 +885,6 @@ function locateBody(root, src) {
 }
 
 // ---- project.js
-// Source text -> safe visual projection.
-//
-// analyze()    parses the text twice: with the browser's own parser (inert document, nothing runs or loads) and
-//              with the position tree from tree.js. Only where both agree is a part of the page editable.
-// renderView() brings the preview document in line with that analysis by changing as little as possible, so
-//              caret, selection and scroll position survive. Dangerous or network-bound content is never
-//              created in the preview; it stays untouched in the source text.
-
 const HTML_NS = 'http://www.w3.org/1999/xhtml';
 const HREF_HOLDER = 'data-se-href';
 const FILE_HOLDER = 'data-se-file';      // address of an image as written in the source
@@ -927,10 +896,8 @@ const LOCKED = words('svg math select textarea input button canvas style');
 const DROP_ATTRS = words('contenteditable autofocus srcdoc formaction action ping background poster data manifest http-equiv target sandbox integrity nonce srcset imagesrcset imagesizes sizes lowsrc dynsrc codebase archive classid code is');
 const LEADING_LF = words('pre textarea listing');
 const NAMED = words('img form embed object iframe');
-// SVG animation can assign an address to an attribute after the attributes were filtered, so it is not shown.
 const ANIM = words('set animate animatemotion animatetransform animatecolor discard');
 const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import|image-set\s*\(/i;
-// What an image that is not shown says on its box (IMG_BOX) and when the mouse rests on it (IMG_HELP).
 const IMG_BOX = { lost: 'Bild nicht gefunden: ', file: 'Bild: ', net: 'Bild aus dem Internet', other: 'Bild wird im Editor nicht angezeigt' };
 const IMG_HELP = {
   lost: 'Unter dieser Adresse liegt keine Bilddatei. Lege das Bild an diese Stelle im Ordner deiner Seite oder ändere die Adresse. Deine Seite muss im selben Ordner liegen wie der Editor.',
@@ -941,8 +908,6 @@ const IMG_HELP = {
 
 const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
 
-// Inside a form, controls named like DOM properties (name="childNodes") shadow those properties on the form
-// element. Nodes of an opened document are therefore read through the original accessors only.
 const accessor = (proto, name) => { const get = Object.getOwnPropertyDescriptor(proto, name).get; return (node) => get.call(node); };
 const typeOf = accessor(Node.prototype, 'nodeType');
 const rawChildren = accessor(Node.prototype, 'childNodes');
@@ -961,7 +926,6 @@ const docMode = accessor(Document.prototype, 'compatMode');
 const docType = accessor(Document.prototype, 'doctype');
 const bodyOf = (dom) => { const b = docBody(dom); return b && nameOf(b) === 'body' ? b : null; };
 
-// ---------------------------------------------------------------- character references
 
 let decoderEl = null;
 function decodeText(raw) {
@@ -978,8 +942,6 @@ function refValue(ref) {
   return v;
 }
 
-// Converts an offset in the decoded text of a text node into [source offset, decoded offset]. An offset inside
-// a character reference snaps to its start (or to its end with `up`).
 function rawPos(src, t, dec, up) {
   const base = t.start + (t.skip || 0);
   if (t.raw === 'literal') return [base + dec, dec];
@@ -999,7 +961,6 @@ function rawPos(src, t, dec, up) {
   return [base + ri + (dec - di), dec];
 }
 
-// ---------------------------------------------------------------- analysis
 
 function analyze(src, tokens) {
   const dom = new DOMParser().parseFromString(src, 'text/html');
@@ -1011,10 +972,6 @@ function analyze(src, tokens) {
   return view;
 }
 
-// Compares the children of position-tree node `t` with DOM element `d`. On success `t.mk` / `t.dk` hold the
-// aligned child lists. A difference inside a child element only marks that child as not editable (`ok`).
-// `isTail`: the element is still open where the body ends, so the browser appends the white space that follows
-// the body's end tag to its last text.
 function matchKids(src, t, d, isTail) {
   const dk = childrenOf(d);
   const mk = [];
@@ -1027,7 +984,6 @@ function matchKids(src, t, d, isTail) {
     }
     mk.push(k);
   }
-  // Whitespace written behind </body> ends up at the end of the body element.
   if (isTail && dk.length === mk.length + 1 && typeOf(dk[dk.length - 1]) === 3 && isWsOnly(dk[dk.length - 1].data)) dk.pop();
   if (mk.length !== dk.length) return false;
   for (let i = 0; i < mk.length; i++) {
@@ -1047,7 +1003,6 @@ function matchKids(src, t, d, isTail) {
   return true;
 }
 
-// ---------------------------------------------------------------- inactive content report
 
 function newReport() {
   return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0, files: 0, lost: [] };
@@ -1068,10 +1023,7 @@ function reportText(r) {
   return parts.join(', ');
 }
 
-// ---------------------------------------------------------------- projection
 
-// A picture that says in words why the image is not shown. It is an SVG image in a data address: the page
-// pane's policy allows data images, and an SVG shown as an image never runs anything.
 function boxPicture(text) {
   const t = text.length > 70 ? text.slice(0, 67) + '…' : text;
   const w = Math.min(560, 24 + Math.ceil(t.length * 7.2));
@@ -1079,10 +1031,6 @@ function boxPicture(text) {
   return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="40"><rect x="1" y="1" width="' + (w - 2) + '" height="38" rx="6" fill="#f1f3f5" stroke="#adb5bd" stroke-width="2" stroke-dasharray="6 4"/><text x="12" y="25" font-family="sans-serif" font-size="13" fill="#495057">' + xml + '</text></svg>');
 }
 
-// `local`: how the page pane finds picture files, or null. `local.url(address)` gives the file address of a
-// plain relative address (see localFileUrl in util.js) or ''; `local.missing` holds the file addresses that
-// could not be loaded. An image whose file is there is shown from it. Any other image becomes a picture that
-// names the reason; a missing file is also listed in `rep.lost`.
 function safeAttrs(d, name, html, rep, local) {
   const out = [];
   let blockedImage = null, hasTitle = false, why = '';
@@ -1145,8 +1093,6 @@ function describe(d, t, st) {
   } else if (LOCKED.has(name)) attrs.push(['contenteditable', 'false']);
   if (name === 'style' && CSS_FETCH.test(textOf(d))) rep.css++;
   if (html && name === 'form') {
-    // A real form element would let its controls shadow DOM properties and could be submitted; a plain block
-    // stands in for it. The source keeps the form unchanged.
     rep.forms++;
     attrs.push(['data-se-form', '']);
     return { k: 1, name: 'div', ns: HTML_NS, attrs, kids: true };
@@ -1172,14 +1118,10 @@ function make(desc, st) {
   try { return st.doc.createElementNS(desc.ns, desc.name); } catch (e) { return st.doc.createElement('span'); }
 }
 
-// Makes the children of preview node `pv` equal to the projection of `dNodes`. `tKids` is the aligned list of
-// position-tree nodes, or null inside a part that is not editable.
 function syncKids(pv, tKids, dNodes, st) {
   const old = Array.from(pv.childNodes), n = dNodes.length;
   const descs = new Array(n);
   for (let i = 0; i < n; i++) descs[i] = describe(dNodes[i], tKids ? tKids[i] : null, st);
-  // An existing node is kept if it has the right kind. A <br> must also be one of our own: in an empty page
-  // some browsers (Firefox) keep a line break of their own there, which they remove again when they like.
   const keep = (node, desc) => fits(node, desc) && (desc.k !== 1 || desc.name !== 'br' || st.info.has(node));
   let a = 0;
   while (a < old.length && a < n && keep(old[a], descs[a])) a++;
@@ -1205,7 +1147,6 @@ function syncKids(pv, tKids, dNodes, st) {
     }
     if (t) {
       t.pv = node;
-      // no visible counterpart: comments, stand-ins, style elements, line breaks between elements
       t.hidden = desc.k === 8 || (desc.k === 1 && desc.name === 'style') || (desc.k === 3 && pv.localName !== 'pre' && pv.localName !== 'textarea' && /^[ \t\f\r]*\n[ \t\n\f\r]*$/.test(desc.data));
     }
   };
@@ -1213,8 +1154,6 @@ function syncKids(pv, tKids, dNodes, st) {
   for (let j = bn; j < n; j++) update(old[bo + j - bn], j);
   for (let i = a; i < bo; i++) {
     pv.removeChild(old[i]);
-    // A line break that the browser put into the page for itself is not part of the projection: taking it out
-    // (the browser may put it back) does not count as a change of the page.
     if (!(pv === st.doc.body && old[i].nodeType === 1 && old[i].localName === 'br' && !st.info.has(old[i]))) st.changed = true;
   }
   const ref = bo < old.length ? old[bo] : null;
@@ -1252,8 +1191,6 @@ function syncHead(view, st) {
   });
 }
 
-// Updates the preview document `doc`. `info` (WeakMap) receives, for every preview node, its source node and a
-// snapshot of its rendered state; the serializer uses the snapshot to tell edited parts from untouched ones.
 function renderView(view, doc, info, local) {
   const st = { doc, info, local: local || null, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
@@ -1271,7 +1208,6 @@ function renderView(view, doc, info, local) {
   return { changed: st.changed, report: st.report, title: docTitle(dom) };
 }
 
-// ---------------------------------------------------------------- position mapping (preview in sync with the text)
 
 function srcOffsetOf(view, info, node, offset) {
   const inf = info.get(node);
@@ -1287,7 +1223,6 @@ function srcOffsetOf(view, info, node, offset) {
   return offset >= node.childNodes.length ? t.tail : t.tagEnd;
 }
 
-// Source range of the element around a preview node (not the body itself), or null.
 function srcElementRange(info, body, node) {
   for (let p = node; p && p !== body; p = p.parentNode) {
     const inf = info.get(p);
@@ -1298,7 +1233,6 @@ function srcElementRange(info, body, node) {
 
 const isLeafPv = (pv) => !pv || pv.nodeType !== 1 || pv.hasAttribute('data-se-box');
 
-// Preview position { node, offset } for a source offset inside the body.
 function previewPosOf(view, off) {
   if (!view.ok) return null;
   const src = view.src;
@@ -1323,7 +1257,6 @@ function previewPosOf(view, off) {
   }
 }
 
-// Deepest editable element of the position tree whose source range contains `off`, or null.
 function srcElementAt(view, off) {
   if (!view.ok) return null;
   let t = view.body, found = null;
@@ -1337,10 +1270,7 @@ function srcElementAt(view, off) {
   }
 }
 
-// ---------------------------------------------------------------- formatter verification
 
-// Canonical description of a parsed document that ignores exactly the white-space differences the formatter
-// is allowed to introduce (see format.js). Two documents with the same canonical form render the same.
 function canonDom(doc, blockNames, keepNames) {
   const toks = [];
   const walk = (node, keep) => {
@@ -1385,9 +1315,6 @@ function canonDom(doc, blockNames, keepNames) {
   return out;
 }
 
-// What the style rules of a parsed document say that matters for moving white space (see cssRisks in util.js):
-// `spaces`, `conditional`, `unclear`, and `external` if rules come from a file the editor does not read. Every
-// style element and every style attribute is read as CSS, with comments, strings and escapes respected.
 function cssFacts(dom) {
   const facts = { spaces: false, external: false, conditional: false, unclear: false };
   const walk = (node) => {
@@ -1408,10 +1335,6 @@ function cssFacts(dom) {
   return facts;
 }
 
-// True if a part of the laid-out page that is not shown at the moment (hidden attribute, closed details,
-// display: none of an ancestor) would not follow the default display of its elements once it is shown: a
-// block element displayed inline, or generated content at its edge. Such a part has no boxes, so the layout
-// comparison cannot answer for it.
 function hiddenLayoutRisk(doc, blockNames) {
   const view = doc.defaultView;
   const walker = doc.createTreeWalker(doc.body, 1);
@@ -1428,10 +1351,6 @@ function hiddenLayoutRisk(doc, blockNames) {
   return false;
 }
 
-// Where every element box and every rendered piece of text of a laid-out document lies, in quarter pixels.
-// Two versions of a page that differ only in white space look the same exactly if these lists are equal: white
-// space that is not rendered has no width, white space that is rendered moves something or has a width itself.
-// (For white space between blocks Firefox reports a box with a height and no width; that is not a rendering.)
 function layoutPrint(doc) {
   const out = [];
   const add = (r) => { out.push(Math.round(r.left * 4), Math.round(r.top * 4), Math.round(r.width * 4), Math.round(r.height * 4)); };
@@ -1448,17 +1367,9 @@ function layoutPrint(doc) {
 }
 
 // ---- serialize.js
-// Preview DOM -> source text.
-//
-// Only the body content is rewritten; everything else in the document stays byte for byte as it is. Inside the
-// body, every node that still looks exactly as it was rendered is copied verbatim from the source text
-// (including inactive scripts, attributes, comments and character references). Only edited text and new
-// elements are written fresh, with a small fixed vocabulary of plain tags.
-
 const NEW_OK = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd b i strong em u s sub sup code kbd mark small span a img br hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
 const BLOCKS = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
 
-// White space in front of `pos` if `pos` is the first thing on its line, otherwise null.
 function lineIndentAt(src, pos) {
   const nl = src.lastIndexOf('\n', pos - 1);
   const lead = src.slice(nl + 1, pos);
@@ -1481,14 +1392,12 @@ function isClean(ctx, node) {
 }
 
 const mappedT = (ctx, node) => { const inf = ctx.info.get(node); return inf ? inf.t : null; };
-// True if source node `t` still sits in the element it was written in (`pt`: source node of its parent now).
 const inPlace = (t, pt) => !!pt && (t.parent === pt || (!!pt.virtual && t.parent === pt.parent));
 
 function mark(ctx, el, i, atEnd) {
   for (const p of ctx.points) if (p.out == null && p.node === el && (atEnd ? p.offset >= i : p.offset === i)) p.out = ctx.s.length;
 }
 
-// Starts a new line for a freshly created block element unless the output already is at the start of a line.
 function freshLine(ctx, indent) {
   const tail = (ctx.before + ctx.s).slice(-200);
   if (!tail) return;
@@ -1509,9 +1418,6 @@ function childIndent(ctx, el, t, parentIndent) {
   return t && t.virtual ? '' : parentIndent + '  ';
 }
 
-// True if the loose run kids[i..j) directly in the page is nothing but one <br>. That is the line break a
-// browser keeps for itself in a page without visible content (Firefox), or what is left when everything was
-// deleted. It is not content of the document and is not written.
 function paddingBreak(ctx, kids, i, j) {
   let breaks = 0;
   for (let k = i; k < j; k++) {
@@ -1529,7 +1435,6 @@ function emitKids(ctx, el, t, parentIndent) {
   let newBlockLast = false;
   for (let i = 0; i < kids.length; i++) {
     mark(ctx, el, i);
-    // New text typed directly into the body becomes a paragraph.
     if (el === ctx.top && isLoose(ctx, kids[i])) {
       let j = i, solid = false;
       while (j < kids.length && isLoose(ctx, kids[j])) { if (kids[j].nodeType === 1 || /\S/.test(kids[j].data)) solid = true; j++; }
@@ -1544,8 +1449,6 @@ function emitKids(ctx, el, t, parentIndent) {
         continue;
       }
     }
-    // A block that was changed itself (a list that lost its first item) and now follows a new block starts on
-    // its own line. An untouched neighbour keeps the exact text around it.
     if (newBlockLast && kids[i].nodeType === 1 && BLOCKS.has(kids[i].localName) && mappedT(ctx, kids[i]) && !isClean(ctx, kids[i])) freshLine(ctx, indent);
     newBlockLast = emitNode(ctx, kids[i], indent);
   }
@@ -1554,7 +1457,6 @@ function emitKids(ctx, el, t, parentIndent) {
   if (newBlockLast) ctx.s += '\n' + parentIndent;
 }
 
-// An element whose end tag is omitted in the source must get one when what follows it has changed.
 function needsEndTag(ctx, c, t) {
   if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
   const sibs = t.parent ? t.parent.kids : [];
@@ -1565,23 +1467,15 @@ function needsEndTag(ctx, c, t) {
 
 const WS_ONLY = /^[ \t\n\f\r]*$/;
 
-// True if white space at this edge of text node `c` cannot be seen: what stands next to it in the same line
-// ends with white space, or nothing stands there (edge of the block, a line break). Comments are looked through.
 function unseenEdge(c, before) {
   for (let n = before ? c.previousSibling : c.nextSibling; ; n = before ? n.previousSibling : n.nextSibling) {
     if (!n) { const p = c.parentNode; return !!p && (p.localName === 'body' || BLOCKS.has(p.localName)); }
     if (n.nodeType === 8 || (n.nodeType === 3 && !n.data)) continue;
-    // While typing, the engine writes the space it keeps as a no-break space; the writer turns it back.
     if (n.nodeType === 3) { const ch = before ? n.data[n.data.length - 1] : n.data[0]; return ch === NBSP || WS_ONLY.test(ch); }
     return n.nodeType === 1 && (n.localName === 'br' || BLOCKS.has(n.localName));
   }
 }
 
-// The browser's editing engine tidies white space that cannot be seen. While the pupil types somewhere else,
-// it may empty a text that only holds line breaks and indentation, and it may drop a space at the edge of a
-// neighbouring text when another space stands next to it (Firefox does both). Such a change of a text that
-// was not edited is not an edit. `typing`: the pending input consisted of insertions only; after a deletion a
-// missing space counts as deleted.
 function engineTidied(ctx, c, old, now, t) {
   if (t.hidden) return WS_ONLY.test(now);           // line breaks and indentation between elements: never an edit
   if (!ctx.typing || !/^(?:normal|nowrap)$/.test(c.ownerDocument.defaultView.getComputedStyle(c.parentNode).whiteSpace)) return false;
@@ -1595,7 +1489,6 @@ function engineTidied(ctx, c, old, now, t) {
 const NBSP = String.fromCharCode(160);
 const isSolid = (ch) => !!ch && ch !== ' ' && ch !== NBSP && ch !== '\n' && ch !== '\t' && ch !== '\r' && ch !== '\f';
 
-// Character next to a text node within the same line of text ('' at a block boundary or line break).
 function neighbourChar(c, before) {
   const sib = before ? c.previousSibling : c.nextSibling;
   if (!sib) return '';
@@ -1603,8 +1496,6 @@ function neighbourChar(c, before) {
   return sib.nodeType === 1 && !BLOCKS.has(sib.localName) && sib.localName !== 'br' ? 'x' : '';
 }
 
-// In typed text the browser stores some spaces as no-break spaces. Between two visible characters that makes
-// no visible difference, so an ordinary space is written there; at the edges of a line it is kept.
 function tidySpaces(text, from, to, before, after) {
   if (text.indexOf(NBSP, from) < 0) return text;
   let out = text.slice(0, from);
@@ -1627,7 +1518,6 @@ function emitText(ctx, c, inf) {
     ctx.s += esc(data);
     return;
   }
-  // Mapped text that was edited: keep the unchanged beginning and end exactly as written in the source.
   const old = inf.data;
   if (engineTidied(ctx, c, old, data, t)) {
     const at = ctx.s.length;
@@ -1635,8 +1525,6 @@ function emitText(ctx, c, inf) {
     for (const p of mine) p.out = at + (t.start - t.lead) + rawPos(src, t, Math.min(old.length, p.offset + (old.length - data.length)), false)[0] - t.start;
     return;
   }
-  // The browser's editing engine drops line breaks at the edges of a text and swaps ordinary spaces for
-  // no-break spaces around the caret. Both are side effects, not edits: the source formatting is kept.
   let lead = '';
   const same = (o, n) => o === n || (o === 32 && n === 160);
   const edges = (now) => {
@@ -1690,13 +1578,14 @@ function emitNew(ctx, c, indent) {
       else if (n === TARGET_HOLDER) { if (name !== 'a' || !/^[A-Za-z0-9_-]{1,40}$/.test(value)) continue; outName = 'target'; }
       else if (n === FILE_HOLDER) { if (name !== 'img' || !fileOfSrc(value)) continue; outName = 'src'; }       // image by file name
       else if (n === 'src') { if (name !== 'img' || c.hasAttribute(FILE_HOLDER) || !isRasterDataUrl(value)) continue; }
-      else if (n === 'style' && !copy) { const align = onlyAlign(value); if (!align) continue; value = 'text-align: ' + align; }
+      else if (n === 'style' && !copy) { value = plainStyle(value); if (!value) continue; }     // alignment and palette colour only
       else if (n.startsWith('on') || n.startsWith('data-se-') || n === 'id' || n === 'href' || n === 'contenteditable') continue;
       else if (!/^[a-z][a-z0-9_:.\-]*$/.test(n)) continue;
       attrs += ' ' + outName + '="' + escapeAttr(value) + '"';
     }
   }
   if (!known || (name === 'span' && !attrs)) { emitInner(ctx, c, indent); return false; }
+  if (name === 'tbody' && !attrs && c.parentNode && c.parentNode.localName === 'table') { emitInner(ctx, c, indent); return true; }
   if (name === 'div' && !attrs && !Array.from(c.children).some((k) => BLOCKS.has(k.localName))) name = 'p';
   const block = BLOCKS.has(name);
   if (block) freshLine(ctx, indent);
@@ -1705,14 +1594,12 @@ function emitNew(ctx, c, indent) {
   return block;
 }
 
-// Children of an element that is itself not written (decorative wrappers the browser may create).
 function emitInner(ctx, c, indent) {
   const kids = Array.from(c.childNodes);
   for (let i = 0; i < kids.length; i++) { mark(ctx, c, i); emitNode(ctx, kids[i], indent); }
   mark(ctx, c, kids.length, true);
 }
 
-// Writes one preview node. Returns true if it produced a new block element.
 function emitNode(ctx, c, indent) {
   const src = ctx.src;
   const inf = ctx.info.get(c), t = inf && inf.t;
@@ -1727,15 +1614,11 @@ function emitNode(ctx, c, indent) {
   if (c.nodeType === 3) { emitText(ctx, c, inf); return false; }
   if (c.nodeType !== 1) { if (t) ctx.s += src.slice(t.lead, t.end); return false; }
   if (!t) return emitNew(ctx, c, indent);
-  // Element from the source whose content (or tag name) was changed: keep its tags, rewrite the inside.
   ctx.s += src.slice(t.lead, t.start);
   if (t.implied) { emitKids(ctx, c, t, indent); return false; }
   const name = inf.rename || t.name;
-  // A renamed element that was moved (paragraph into a new list, list item out of its list) starts on a line
-  // of its own, like a new block. Renamed in place, the white space around it stays as written.
   const moved = !!inf.rename && BLOCKS.has(name) && !inPlace(t, mappedT(ctx, c.parentNode));
   if (moved) freshLine(ctx, indent);
-  // The start tag stays as written; a renamed element gets the new name, changed attributes are patched in.
   if (t.synthetic) {
     ctx.s += '<' + name;
     for (const key of Object.keys(inf.attrs || {})) if (inf.attrs[key] !== null) ctx.s += ' ' + key + '="' + escapeAttr(inf.attrs[key]) + '"';
@@ -1752,15 +1635,8 @@ function emitNode(ctx, c, indent) {
   return moved;
 }
 
-// Content without a visible counterpart (comments, scripts, style and similar elements) must not disappear from
-// the source just because the browser's editing engine dropped its invisible stand-in while joining or deleting
-// text. Such stand-ins are put back next to their surviving neighbours before the text is written.
-// `typing`: every pending input was an insertion. Then a space between two elements that the engine took out
-// is put back as well, if it could not be seen (another space or the edge of the block is next to it); after a
-// deletion such a space counts as deleted.
 function rescueHidden(view, typing) {
   let moved = false;
-  // `lost`: the element of `t` itself is gone, its content is looked at from the surviving parent.
   const walk = (t, pvParent, cursor, lost) => {
     for (const k of t.mk || []) {
       const pv = k.pv;
@@ -1796,9 +1672,6 @@ function rescueHidden(view, typing) {
   return moved;
 }
 
-// Returns the new document text for the current state of the preview body. `points` is an optional list of
-// { node, offset } preview positions; `sel` holds their offsets in the new text (or null).
-// `typing`: every pending input was an insertion (see engineTidied).
 function serializeBody(view, info, pvBody, points, typing) {
   const src = view.src, body = view.body;
   const ctx = { view, src, info, typing: !!typing, s: '', before: src.slice(Math.max(0, body.tagEnd - 200), body.tagEnd), points: points || [], memo: new Map(), top: pvBody };
@@ -1811,13 +1684,6 @@ function serializeBody(view, info, pvBody, points, typing) {
 }
 
 // ---- format.js
-// Explicit "tidy up" of the whole source text: one block element per line, two spaces per level.
-//
-// The formatter only moves white space that the HTML rules treat as insignificant for the default display of
-// the elements involved. Tags, attributes, comments, character references and the content of pre, textarea,
-// script, style and similar elements are copied verbatim. The result is never applied unchecked: the caller
-// parses both versions with the browser and compares them with canonDom() (project.js).
-
 const FMT_BLOCK = words('html head body address article aside blockquote center details dialog dir div dl dd dt fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr li main menu nav ol p section summary table thead tbody tfoot tr td th caption colgroup col ul title meta link base script style noscript template pre listing xmp plaintext');
 const FMT_KEEP = words('pre listing xmp plaintext script style textarea svg math select template noscript iframe noembed noframes object');
 
@@ -1831,7 +1697,6 @@ function formatSource(src, root) {
   const isBlock = (n) => n.type === 'doctype' || (n.type === 'el' && FMT_BLOCK.has(n.name));
   const hasBlockInside = (n) => n.type === 'el' && n.children.some((c) => isBlock(c) || hasBlockInside(c));
 
-  // Inline content as one string. White space inside ordinary text collapses to single spaces.
   function inline(n) {
     if (n.type === 'text') return n.raw ? text(n) : text(n).replace(WS, ' ');
     if (n.type !== 'el' || FMT_KEEP.has(n.name) || n.implied || hasBlockInside(n)) return text(n);
@@ -1840,7 +1705,6 @@ function formatSource(src, root) {
     return s + src.slice(n.closeStart, n.end);
   }
 
-  // A run of inline nodes on one line; a line break in the source follows every <br>.
   function runText(nodes, depth) {
     let s = '';
     let afterBreak = false;
@@ -1893,10 +1757,6 @@ function formatSource(src, root) {
   return out.length ? out.join('\n') + '\n' : '';
 }
 
-// The source text with the page title set to `value`: the text inside the first <title> outside SVG and
-// MathML is replaced; a page without a title gets one new line with a title element right after <head>
-// (else after <html>, else after the doctype, else at the start). Everything else stays byte for byte.
-// Returns null if the title element is not closed. The caller checks the result with the browser's parser.
 function withTitle(src, tokens, value) {
   const text = String(value).replace(/[\t\n\f\r]+/g, ' ').replace(/&/g, '&amp;').replace(/</g, '&lt;');
   let foreign = 0, head = null, html = null, doctype = null;
@@ -1931,13 +1791,8 @@ function withTitle(src, tokens, value) {
 }
 
 // ---- highlight.js
-// Syntax colouring for the source pane: tokens -> one HTML string per source line. The strings only ever
-// contain escaped source text inside <span class="…"> elements with fixed class names.
-
 const ENTITY = /&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
 
-// Very long lines (embedded images, minified pages) are shown without colours: thousands of elements in one
-// line would make every keystroke slow.
 const LONG_LINE = 4000;
 
 function highlightLines(src, tokens) {
@@ -1996,7 +1851,6 @@ function highlightLines(src, tokens) {
   return lines;
 }
 
-// Replaces only the line elements whose content changed. `state` keeps the previous strings.
 function patchLines(container, state, lines) {
   const old = state.lines || [];
   const max = Math.min(old.length, lines.length);
@@ -2018,7 +1872,6 @@ function patchLines(container, state, lines) {
   state.lines = lines;
 }
 
-// DOM position inside the line elements for a source offset (for range highlights in the source pane).
 function linePoint(container, lineStarts, offset) {
   let lo = 0, hi = lineStarts.length - 1;
   while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lineStarts[mid] <= offset) lo = mid; else hi = mid - 1; }
@@ -2036,8 +1889,6 @@ function linePoint(container, lineStarts, offset) {
 }
 
 // ---- history.js
-// One undo/redo history for the whole document, shared by both panes. Entries are complete text states.
-// Typing in one pane is grouped into steps (a pause of one second or four seconds of typing start a new step).
 function createHistory(limitChars) {
   let entries = [], index = -1, size = 0;
   return {
@@ -2069,10 +1920,6 @@ function createHistory(limitChars) {
 }
 
 // ---- images.js
-// Local raster images. The source text refers to an image by its address relative to the page, and the page
-// pane shows the file that lies there (see localFileUrl in util.js). A file chosen in the image dialog is only
-// looked at: its name goes into the address, its signature says whether it is a picture, its size is shown.
-// It is never copied or kept.
 const LARGE_IMAGE = 2 * 1024 * 1024;
 const MAX_IMAGE = 20 * 1024 * 1024;
 
@@ -2084,8 +1931,6 @@ function sniffImage(b) {
   return null;
 }
 
-// Checks a chosen file and returns { name, width, height, large } or { error: 'big' | 'type' | 'decode' }.
-// The type comes from the file signature, not from the name or the type the system reports.
 async function readImage(file) {
   let type, bitmap;
   if (file.size > MAX_IMAGE) return { error: 'big' };
@@ -2102,10 +1947,6 @@ async function readImage(file) {
 }
 
 // ---- commands.js
-// Editing commands on the preview document. Block structure (paragraph, headings, lists), links and images
-// are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
-// italic use the browser's own editing command. Every command works on the current selection of the preview.
-
 const PARA = words('p h1 h2 h3 h4 h5 h6');
 
 function getRange(doc) {
@@ -2142,8 +1983,6 @@ function restoreSel(doc, keep) {
   try { doc.getSelection().setBaseAndExtent(keep.an, clamp(keep.an, keep.ao), keep.fn, clamp(keep.fn, keep.fo)); } catch (e) { /* keep the browser's selection */ }
 }
 
-// True if the selection really covers part of `el` (a selection that merely ends at the very start of the
-// next block, as after a triple click, does not count).
 function covers(doc, range, el) {
   if (!range.intersectsNode(el)) return false;
   if (range.collapsed || !el.textContent) return true;
@@ -2161,8 +2000,6 @@ function elementsInRange(doc, range, names) {
   return found;
 }
 
-// The inline content around `node` that is not inside a paragraph or heading yet (for example text directly
-// in the body or in a list item).
 function looseRun(doc, node) {
   const body = doc.body;
   let top = node;
@@ -2191,9 +2028,6 @@ function wrapRun(doc, run, tag) {
   return el;
 }
 
-// Replaces an element by one with another tag name. Children are moved, not copied. If the element came from
-// the source text, the mapping keeps pointing at it so its attributes are written back unchanged, also when
-// the renamed element is moved to another place afterwards.
 function rename(env, el, tag, keep) {
   const fresh = env.doc.createElement(tag);
   for (const a of Array.from(el.attributes)) { try { fresh.setAttribute(a.name, a.value); } catch (e) { /* skip */ } }
@@ -2205,9 +2039,6 @@ function rename(env, el, tag, keep) {
   return fresh;
 }
 
-// Notes changed attributes of an element that came from the source (null removes one). The writer then
-// rewrites exactly these attributes of its start tag and leaves the rest of the tag as written. An element
-// created in this session needs no note: it is written from the page itself.
 function record(env, el, changes) {
   const inf = env.info.get(el);
   if (inf && inf.t && inf.t.type === 'el' && !inf.t.implied) inf.attrs = Object.assign(inf.attrs || {}, changes);
@@ -2217,7 +2048,6 @@ function placeCaretIn(doc, el) {
   try { doc.getSelection().collapse(el, 0); } catch (e) { /* ignore */ }
 }
 
-// Paragraph / heading. Returns 'ok', 'same' or 'none'.
 function setBlock(env, tag) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -2236,7 +2066,6 @@ function setBlock(env, tag) {
   return changed ? 'ok' : 'same';
 }
 
-// Removes a white-space text between blocks for good (rescueHidden() in serialize.js would put it back).
 function dropSpace(env, n) {
   if (!n || n.nodeType !== 3 || /[^ \t\n\f\r]/.test(n.data)) return false;       // HTML white space only, not a no-break space
   const inf = env.info.get(n);
@@ -2245,17 +2074,12 @@ function dropSpace(env, n) {
   return true;
 }
 
-// True if the element carries attributes: in the page, or only in the source text (some are not shown).
 function hasAttrs(env, el) {
   if (el.attributes.length) return true;
   const inf = env.info.get(el), t = inf && inf.t;
   return !!t && !t.synthetic && !t.implied && /[^ \t\n\f\r\/]/.test(env.src.slice(t.nameEnd, t.tagEnd - 1));
 }
 
-// List items back to paragraphs. Attributes are never dropped: an item is renamed (rename() keeps its start
-// tag as written), an item that holds blocks and has attributes becomes a div, and a list with attributes
-// that loses all its items stays as a div around the paragraphs. If items remain, the original list element
-// keeps them where possible: in front of the paragraphs, or behind them when the first item was taken out.
 function unlist(env, items, keep) {
   const doc = env.doc, list = items[0].parentNode, parent = list.parentNode;
   const holdsBlocks = (li) => Array.from(li.children).some((k) => BLOCKS.has(k.localName));
@@ -2267,7 +2091,6 @@ function unlist(env, items, keep) {
     const rest = [];
     for (let n = items[items.length - 1].nextSibling; n; n = n.nextSibling) rest.push(n);
     if (rest.some((n) => n.nodeType === 1)) {
-      // The items behind the selection continue in a list of their own with the same attributes (an id exists once).
       second = doc.createElement(list.localName);
       for (const a of Array.from(list.attributes)) if (a.name !== 'id') { try { second.setAttribute(a.name, a.value); } catch (e) { /* skip */ } }
       env.info.set(second, { t: null, copy: true });
@@ -2291,7 +2114,6 @@ function unlist(env, items, keep) {
   if (!list.children.length) list.remove();
 }
 
-// Bulleted ('ul') or numbered ('ol') list: create, switch kind, or turn list items back into paragraphs.
 function toggleList(env, type) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -2316,8 +2138,6 @@ function toggleList(env, type) {
   }
   const parent = targets[0].parentNode;
   targets = targets.filter((el) => el.parentNode === parent);
-  // Paragraphs with something else between them (a line, a picture, a comment) get a list each, so that
-  // everything stays in its order.
   const between = (a, b) => { for (let n = a.nextSibling; n && n !== b; n = n.nextSibling) if (n.nodeType !== 3 || /[^ \t\n\f\r]/.test(n.data)) return true; return false; };
   let list = null, lastLi = null;
   for (const el of targets) {
@@ -2337,7 +2157,6 @@ const INLINE_NOT = { sup: 'sub', sub: 'sup' };      // superscript and subscript
 const STRUCTURE = words('body ul ol dl table thead tbody tfoot tr div section article header footer main nav aside blockquote figure');
 const isEmptyInline = (el) => !el.textContent && !el.querySelector('img, br, input');
 
-// Extends a collapsed range to the word around the caret. Returns false if there is no word.
 function expandToWord(range) {
   const node = range.startContainer;
   if (node.nodeType !== 3) return false;
@@ -2351,7 +2170,6 @@ function expandToWord(range) {
   return true;
 }
 
-// Splits the text nodes at the range boundaries and returns the text nodes the range covers.
 function textNodesIn(doc, range) {
   let sc = range.startContainer, so = range.startOffset, ec = range.endContainer, eo = range.endOffset;
   if (ec.nodeType === 3) { if (eo < ec.data.length) ec.splitText(eo); }
@@ -2373,8 +2191,7 @@ function textNodesIn(doc, range) {
   return found;
 }
 
-// Moves a text node out of a formatting element by splitting that element around it.
-function liftOut(env, node, fmt, names) {
+function liftOut(env, node, fmt, names, only) {
   const doc = env.doc;
   const parent = fmt.parentNode, ref = fmt.nextSibling;
   let r = doc.createRange();
@@ -2385,19 +2202,14 @@ function liftOut(env, node, fmt, names) {
   r.setStartBefore(node);
   r.setEndAfter(fmt);
   const mid = r.extractContents();
-  // Elements cut in two are copied by the range; a copy writes the attributes of its original
   for (const part of [tail, mid]) for (const el of part.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });
-  for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) unwrap(el);
+  for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) if (!only || only(el)) unwrap(el);
   for (const el of Array.from(tail.children)) if (isEmptyInline(el)) el.remove();
   parent.insertBefore(mid, ref);
   parent.insertBefore(tail, ref);
   if (isEmptyInline(fmt)) fmt.remove();
 }
 
-// Bold, italic, underline, superscript, subscript, highlight: wraps the selected text in <b>, <i>, <u>, <sup>,
-// <sub> or <mark>, or removes that formatting if all of it has it already. Superscript takes subscript away
-// from the text it is given to, and the other way round. Works on the document structure only, so the result
-// does not depend on the page's style sheet.
 function toggleInline(env, command) {
   const doc = env.doc, body = doc.body, names = INLINE_ON[command], tag = INLINE_TAG[command];
   const live = getRange(doc);
@@ -2449,7 +2261,6 @@ function unwrap(el) {
 
 const LINK = words('a');
 
-// Why a link cannot be created for this range, or '' if it can.
 function linkProblem(doc, range) {
   if (closestTag(range.startContainer, doc.body, LINK) || closestTag(range.endContainer, doc.body, LINK)) return 'inlink';
   if (!range.collapsed && blockOf(range.startContainer, doc.body) !== blockOf(range.endContainer, doc.body)) return 'multi';
@@ -2493,7 +2304,6 @@ function removeLinks(env) {
   return 'ok';
 }
 
-// The image if the selection is exactly one image (set by a click on it), otherwise null.
 function selectedImage(doc) {
   const range = getRange(doc);
   if (!range || range.collapsed || range.startContainer !== range.endContainer || range.startContainer.nodeType !== 1 || range.endOffset - range.startOffset !== 1) return null;
@@ -2501,8 +2311,6 @@ function selectedImage(doc) {
   return node && node.nodeType === 1 && node.localName === 'img' && isEditableAt(node.parentNode) ? node : null;
 }
 
-// Inserts an image. `image`: { src, url, alt, width }: `src` is the address written into the source, `url`
-// the file address under which the page pane finds the file ('' if it cannot look for it).
 function insertImage(env, range, image) {
   const doc = env.doc;
   const img = doc.createElement('img');
@@ -2516,9 +2324,6 @@ function insertImage(env, range, image) {
   return 'ok';
 }
 
-// Changes an existing image. `changes` may hold src (with url for the page pane), alt and width ('' removes
-// the width); a key that is missing leaves that attribute alone. A new width removes a height attribute, so
-// that the picture keeps its proportions.
 function changeImage(env, img, changes) {
   const set = {};
   if (changes.src !== undefined && changes.src !== img.getAttribute(FILE_HOLDER)) {
@@ -2537,17 +2342,13 @@ function changeImage(env, img, changes) {
   return 'ok';
 }
 
-// The link that holds the whole selection, or null.
 function linkAround(doc, range) {
   const a = closestTag(range.startContainer, doc.body, LINK);
   return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
 }
 
-// True if a link of the page pane opens in a new tab (the browser reads "_BLANK" like "_blank").
 const opensNewTab = (a) => (a.getAttribute(TARGET_HOLDER) || '').toLowerCase() === '_blank';
 
-// Changes the address of a link and whether it opens in a new tab. Only these two attributes are rewritten
-// in the source. Unticking "new tab" removes a target only if it is _blank; any other target stays.
 function changeLink(env, a, url, newTab) {
   const set = {};
   if (a.getAttribute(HREF_HOLDER) !== url) { set.href = url; a.setAttribute(HREF_HOLDER, url); }
@@ -2561,17 +2362,11 @@ function changeLink(env, a, url, newTab) {
 
 const ALIGNABLE = words('p h1 h2 h3 h4 h5 h6 li td th blockquote div');
 
-// How the text of an element is aligned in the page, whatever rule says so: 'left', 'center', 'right', 'justify'.
 function alignOf(el) {
   const v = el.ownerDocument.defaultView.getComputedStyle(el).textAlign;
   return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
 }
 
-// Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
-// the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
-// style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
-// align the block differently. Returns 'odd' if nothing could be done because a style attribute is written in
-// a way that cannot be read with certainty (an open string, comment or bracket).
 function setAlign(env, value) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -2604,7 +2399,171 @@ function setAlign(env, value) {
   return changed ? 'ok' : odd ? 'odd' : 'same';
 }
 
-// Inserts clipboard text as plain text. Line breaks become new paragraphs or lines, never markup.
+
+const COLOR_BLOCKS = words('p h1 h2 h3 h4 h5 h6 li');
+const COLOR_INLINE = words('span b i u s sub sup mark a em strong small code');
+const hasColor = (el) => { const s = el.getAttribute('style'), d = s ? styleDeclarations(s) : null; return !!d && d.some((x) => x.name === 'color'); };
+const colorSpan = (el) => el.localName === 'span' && el.attributes.length === 1 && hasColor(el) && withDecl(el.getAttribute('style'), 'color', '') === '';
+
+function putColor(env, el, color) {
+  const old = el.getAttribute('style') || '', next = withDecl(old, 'color', color);
+  if (next === null) return false;
+  if (next === old) return true;
+  if (next) el.setAttribute('style', next); else el.removeAttribute('style');
+  if (!next && el.localName === 'span' && !el.attributes.length) { unwrap(el); return true; }
+  record(env, el, { style: next || null });
+  return true;
+}
+
+function setColor(env, color) {
+  const doc = env.doc, body = doc.body, live = getRange(doc);
+  if (!live) return 'none';
+  const range = live.cloneRange();
+  const caretOnly = range.collapsed, caretAt = range.startOffset;
+  if (caretOnly && !expandToWord(range)) return 'none';
+  const caretInWord = caretAt - range.startOffset;
+  const nodes = textNodesIn(doc, range);
+  if (!nodes.length) return 'none';
+  const inside = new Set(nodes);
+  const whole = (el) => { const w = doc.createTreeWalker(el, 4); for (let n = w.nextNode(); n; n = w.nextNode()) if (/\S/.test(n.data) && !inside.has(n)) return false; return true; };
+  let odd = false;
+  const put = (el, c) => { if (!putColor(env, el, c)) odd = true; };
+  const clearInside = (el) => { for (const k of Array.from(el.querySelectorAll('[style]'))) if (hasColor(k)) put(k, ''); };
+  let targets = null;
+  const blocks = Array.from(new Set(nodes.map((n) => closestTag(n, body, COLOR_BLOCKS))));
+  if (blocks.every((b) => b && whole(b))) targets = blocks;
+  else {
+    let one = null;
+    for (let el = nodes[0].parentElement; el && el !== body && !BLOCKS.has(el.localName); el = el.parentElement) {
+      if (COLOR_INLINE.has(el.localName) && nodes.every((n) => el.contains(n)) && whole(el)) one = el;
+    }
+    if (one) targets = [one];
+  }
+  if (targets) for (const el of targets) { clearInside(el); put(el, color); }
+  else {
+    for (const n of nodes) {
+      for (let f = n.parentElement; f && f !== body && !BLOCKS.has(f.localName); f = f.parentElement) {
+        if (!colorSpan(f)) continue;
+        if (whole(f)) unwrap(f); else liftOut(env, n, f, words('span'), colorSpan);
+        f = n;
+      }
+      if (!color) for (let f = n.parentElement; f && f !== body && !BLOCKS.has(f.localName); f = f.parentElement) if (hasColor(f) && whole(f)) put(f, '');
+    }
+    if (color) {
+      let made = null;
+      for (const n of nodes) {
+        if (made && made.nextSibling === n) { made.appendChild(n); continue; }
+        made = doc.createElement('span');
+        made.setAttribute('style', 'color: ' + color);
+        n.parentNode.insertBefore(made, n);
+        made.appendChild(n);
+      }
+    }
+  }
+  const first = nodes[0], last = nodes[nodes.length - 1];
+  try {
+    if (caretOnly) doc.getSelection().collapse(first, Math.min(caretInWord, first.data.length));
+    else doc.getSelection().setBaseAndExtent(first, 0, last, last.data.length);
+  } catch (e) { /* keep the browser's selection */ }
+  const coloured = (n) => { for (let f = n.parentElement; f && f !== body; f = f.parentElement) if (hasColor(f)) return true; return false; };
+  return odd ? 'odd' : !color && nodes.some(coloured) ? 'part' : 'ok';
+}
+
+
+const CELL = words('td th');
+const TABLE = words('table');
+
+function tableAt(doc) {
+  const range = getRange(doc);
+  const cell = range && closestTag(range.startContainer, doc.body, CELL);
+  const table = cell && closestTag(cell, doc.body, TABLE);
+  return table && cell.parentNode.localName === 'tr' ? { cell, row: cell.parentNode, table } : null;
+}
+
+const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
+const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
+
+function takeOut(env, el) {
+  const before = el.previousSibling;
+  if (before && before.previousSibling) dropSpace(env, before); else dropSpace(env, el.nextSibling);
+  el.remove();
+}
+
+function insertTable(env, range, { rows, cols, head, border }) {
+  const doc = env.doc, body = doc.body;
+  if (closestTag(range.startContainer, body, TABLE)) return 'intable';
+  const table = doc.createElement('table');
+  if (border) table.setAttribute('border', '1');
+  const tbody = table.appendChild(doc.createElement('tbody'));
+  for (let r = 0; r < rows; r++) {
+    const tr = tbody.appendChild(doc.createElement('tr'));
+    for (let c = 0; c < cols; c++) tr.appendChild(doc.createElement(head && r === 0 ? 'th' : 'td'));
+  }
+  let at = blockOf(range.startContainer, body);
+  if (at.localName === 'li' || at.localName === 'dt' || at.localName === 'dd') at = at.parentElement;
+  if (at === body) {
+    let top = range.startContainer;
+    while (top !== body && top.parentNode !== body) top = top.parentNode;
+    body.insertBefore(table, top === body ? body.childNodes[range.startOffset] || null : top.nextSibling);
+  } else at.parentNode.insertBefore(table, at.nextSibling);
+  placeCaretIn(doc, table.rows[0].cells[0]);
+  return 'ok';
+}
+
+function tableRow(env, add) {
+  const doc = env.doc, at = tableAt(doc);
+  if (!at) return 'none';
+  if (merged(at.table)) return 'merged';
+  const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
+  if (add) {
+    const tr = doc.createElement('tr');
+    for (let k = 0; k < at.row.cells.length; k++) tr.appendChild(doc.createElement('td'));
+    at.row.parentNode.insertBefore(tr, at.row.nextSibling);
+    placeCaretIn(doc, tr.cells[i]);
+    return 'ok';
+  }
+  if (rows.length < 2) return 'last';
+  const r = rows.indexOf(at.row), next = rows[r + 1] || rows[r - 1];
+  takeOut(env, at.row);
+  placeCaretIn(doc, next.cells[Math.min(i, next.cells.length - 1)] || next);
+  return 'ok';
+}
+
+function tableColumn(env, add) {
+  const doc = env.doc, at = tableAt(doc);
+  if (!at) return 'none';
+  if (merged(at.table)) return 'merged';
+  const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
+  if (add) {
+    let mine = null;
+    for (const tr of rows) {
+      const ref = tr.cells[Math.min(i, tr.cells.length - 1)] || null;
+      const cell = doc.createElement(ref ? ref.localName : 'td');
+      tr.insertBefore(cell, ref ? ref.nextSibling : null);
+      if (tr === at.row) mine = cell;
+    }
+    placeCaretIn(doc, mine);
+    return 'ok';
+  }
+  if (at.row.cells.length < 2) return 'last';
+  for (const tr of rows) if (tr.cells[i] && tr.cells.length > 1) takeOut(env, tr.cells[i]);
+  placeCaretIn(doc, at.row.cells[Math.max(0, i - 1)]);
+  return 'ok';
+}
+
+function stepCell(doc, back) {
+  const at = tableAt(doc);
+  if (!at) return false;
+  const cells = cellsOf(at.table), next = cells[cells.indexOf(at.cell) + (back ? -1 : 1)];
+  if (!next) return false;
+  const r = doc.createRange();
+  r.selectNodeContents(next);
+  const sel = doc.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  return true;
+}
+
 function insertPlainText(env, text) {
   const doc = env.doc;
   let done = false;
@@ -2621,7 +2580,6 @@ function insertPlainText(env, text) {
   return 'ok';
 }
 
-// What the toolbar should show as active for the current caret position.
 function caretState(doc) {
   const range = getRange(doc);
   const state = { block: '', list: '', link: false, editable: false, align: '', image: false };
@@ -2642,23 +2600,13 @@ function caretState(doc) {
 }
 
 // ---- app.js
-// Application shell: document state, synchronisation between the two panes, files, dialogs.
-//
-// Data model. `state.text` is the one authoritative document (always complete HTML source, LF line ends) and
-// `state.rev` counts its changes. The source pane shows exactly that text. The preview is a projection of
-// revision `state.pvRev`. Edits flow in one of two directions:
-//   source -> preview: the text changes first; the preview is brought up to date later (render), at the
-//                      latest before anything in the preview can be edited;
-//   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
-//                      new text revision, at the latest before the text is used for anything else.
-// Timers only decide how early these steps happen while the user pauses, never what is kept.
-
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
   ':where(a[data-se-href]){color:#0000ee;text-decoration:underline}' +
   '[data-se-box]{display:inline-block;padding:8px 12px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif;user-select:none}' +
   '[data-se-opaque]{outline:2px dashed #f59f00;outline-offset:2px}' +
   ':where(input,select,textarea,button){pointer-events:none}' +
+  ':where(td,th):empty::after{content:"\\a0"}' +
   '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
 const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
   '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: \'self\'">' +
@@ -2684,8 +2632,6 @@ const state = {
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
-// Pictures are shown from the folder of the editor, which is the folder of the pupil's pages (localFileUrl).
-// `missing` holds the file addresses that could not be loaded; their images are shown as a box that says so.
 const missing = new Set();
 const local = { url: (value) => localFileUrl(value, location), missing };
 const els = {};
@@ -2699,7 +2645,6 @@ function tokensFor(text) {
   return tokenCache.tokens;
 }
 
-// ---------------------------------------------------------------- status line and dialogs
 
 function setStatus(message, kind) {
   els.msg.textContent = message;
@@ -2729,8 +2674,6 @@ async function confirmBox(message, okLabel) {
   return (await openDialog(els.dlgConfirm)) === 'ok';
 }
 
-// Every dialog can be moved by its heading (or by its text, if it has none), never out of the window. The next
-// time it opens it is centred again.
 function wireDrag(dialog) {
   dialog.addEventListener('pointerdown', (e) => {
     const grip = e.target && e.target.closest ? e.target.closest('h3, #infoText, #confirmText') : null;
@@ -2750,7 +2693,6 @@ function wireDrag(dialog) {
     grip.addEventListener('pointercancel', stop);
   });
   dialog.addEventListener('close', () => { const s = dialog.style; s.margin = s.left = s.top = s.right = s.bottom = ''; });
-  // a moved dialog stays inside the window when the window becomes smaller
   addEventListener('resize', () => {
     if (!dialog.open || !dialog.style.left) return;
     const r = dialog.getBoundingClientRect(), s = dialog.style;
@@ -2759,7 +2701,6 @@ function wireDrag(dialog) {
   });
 }
 
-// ---------------------------------------------------------------- source pane
 
 function syncSourceScroll() {
   const x = els.src.scrollLeft, y = els.src.scrollTop;
@@ -2785,7 +2726,6 @@ function updateSourceView() {
   applySourceMark(false);
 }
 
-// Writes a new text into the source field while keeping its caret and scroll position.
 function writeSource(oldText, newText) {
   const ta = els.src;
   const a = ta.selectionStart, b = ta.selectionEnd, top = ta.scrollTop, left = ta.scrollLeft;
@@ -2802,7 +2742,6 @@ function showCaretPosition() {
   els.pos.textContent = 'Zeile ' + (lo + 1) + ', Spalte ' + (pos - starts[lo] + 1);
 }
 
-// Marks a source range without moving the keyboard focus (used to show where the preview caret is).
 function applySourceMark(reveal) {
   if (!window.CSS || !CSS.highlights) return;
   const mark = state.srcMark;
@@ -2821,9 +2760,7 @@ function applySourceMark(reveal) {
   }
 }
 
-// ---------------------------------------------------------------- shared state updates
 
-// a title typed into the field and not yet taken over counts as a change as well
 const isDirty = () => state.text !== state.savedText || els.pvTitle.value.replace(/\s+/g, ' ').trim() !== state.title;
 const previewFocused = () => document.activeElement === els.pv;
 
@@ -2836,7 +2773,6 @@ function updateChrome() {
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
 }
 
-// Installs a new text revision that did not come from typing in the source field.
 function applyText(newText, kind) {
   const old = state.text;
   if (newText === old) return false;
@@ -2848,7 +2784,6 @@ function applyText(newText, kind) {
   return true;
 }
 
-// ---------------------------------------------------------------- source -> preview
 
 function scheduleRender() {
   clearTimeout(renderTimer);
@@ -2866,8 +2801,6 @@ function setPreviewSelection(offsets) {
   try { pvDoc.getSelection().setBaseAndExtent(a.node, a.offset, f.node, f.offset); } catch (e) { /* position no longer exists */ }
 }
 
-// Brings the preview in line with state.text. `restore` (source offsets) repositions the preview selection
-// when the update had to replace nodes.
 function render(restore) {
   clearTimeout(renderTimer);
   const t0 = now();
@@ -2876,7 +2809,6 @@ function render(restore) {
     view = analyze(state.text, tokensFor(state.text));
     res = renderView(view, pvDoc, info, local);
   } catch (e) {
-    // Last line of defence: show nothing editable rather than a page that does not match the text.
     view = { ok: false, failed: true };
     res = { changed: true, report: { lost: [] }, title: '' };
     pvDoc.body.textContent = '';
@@ -2900,10 +2832,6 @@ function render(restore) {
   scheduleMarks();
 }
 
-// The note above the page lists what the editor found and left out. Whatever the browser's content policy
-// had to stop in the page pane is announced as well, so that nothing is switched off without a note. A stop
-// by the policy is remembered for the document until another one is opened: the editor cannot tell which
-// part of the text caused it, and a note that stays too long is better than a stop without a note.
 function showInactive() {
   const text = state.report || (state.blocked ? 'Inhalte von außerhalb der Seite (vom Browser blockiert)' : '');
   els.inactive.hidden = !text;
@@ -2913,19 +2841,16 @@ function showInactive() {
   els.lostNote.textContent = lost ? 'Nicht gefunden: ' + lost + '. Lege die Bilddatei an diese Stelle im Ordner deiner Seite oder ändere die Adresse.' : '';
 }
 
-// ---------------------------------------------------------------- preview -> source
 
 function scheduleCommit() {
   clearTimeout(commitTimer);
   commitTimer = setTimeout(() => { if (!state.composing) commitVisual('vis-type'); }, clamp(commitCost * 3, 90, 500));
 }
 
-// Turns pending edits of the preview into a new text revision. Safe to call at any time.
 function commitVisual(kind) {
   clearTimeout(commitTimer);
   if (!state.visualDirty) return false;
   if (state.pvRev !== state.rev || !state.view || !state.view.ok) {
-    // Cannot happen through the guarded input paths; never let an outdated preview overwrite newer text.
     render(null);
     setStatus('Die Vorschau war nicht aktuell und wurde neu aufgebaut.', 'warn');
     return false;
@@ -2948,7 +2873,6 @@ function markVisualDirty() {
   updateChrome();
 }
 
-// ---------------------------------------------------------------- selection links between the panes
 
 function scheduleMarks() {
   if (markFrame) return;
@@ -3014,7 +2938,6 @@ function updateToolbar() {
   els.bUnlink.disabled = !s.link && !(pvDoc.getSelection() && !pvDoc.getSelection().isCollapsed);
 }
 
-// ---------------------------------------------------------------- history
 
 function stepHistory(entry) {
   if (!entry) return;
@@ -3040,9 +2963,7 @@ function redo() {
   stepHistory(history.redo());
 }
 
-// ---------------------------------------------------------------- toolbar commands
 
-// Keyboard input needs the editable body itself to be focused, not just the frame window.
 function focusPreview() {
   pvWin.focus();
   if (pvDoc.body.isContentEditable) pvDoc.body.focus({ preventScroll: true });
@@ -3050,7 +2971,6 @@ function focusPreview() {
 
 const env = { get doc() { return pvDoc; }, get src() { return state.view ? state.view.src : ''; }, info };
 
-// Makes sure the preview is current and has an editable selection.
 function readyToEdit() {
   commitVisual('vis-type');
   renderIfStale();
@@ -3082,7 +3002,6 @@ function restoreRange(range) {
   try { const sel = pvDoc.getSelection(); sel.removeAllRanges(); sel.addRange(range); } catch (e) { /* ignore */ }
 }
 
-// "Link": with the caret or the selection inside one link, its address is changed; otherwise a link is made.
 async function linkFlow() {
   const live = readyToEdit();
   if (!live) return;
@@ -3124,10 +3043,6 @@ function validateLinkDialog() {
   return true;
 }
 
-// ---------------------------------------------------------------- images
-//
-// The source names an image by its file name (with an optional folder). The file itself is never copied into
-// the document; the page pane shows the file that lies at this address next to the editor.
 
 let picked = null;          // file chosen in the open dialog, not yet accepted
 let imageEdit = null;       // image that the open dialog changes, or null when it inserts
@@ -3139,9 +3054,6 @@ let pickBusy = 0;           // the choice whose check is still running (0: none)
 
 function dropPicked() { picked = null; }
 
-// A missing picture file reports an error on its image element (the event does not bubble). Its address is
-// remembered and the page pane shows a box instead. Shortly afterwards, not inside the error event: pending
-// edits of the page pane are kept first.
 let lostTimer = 0;
 function onImageError(e) {
   const img = e.target, url = img && img.localName === 'img' && img.hasAttribute(FILE_HOLDER) ? img.getAttribute('src') : '';
@@ -3156,8 +3068,6 @@ function showLost() {
   render(null);
 }
 
-// Looks again for the files that were missing: when the pupil comes back to the editor (perhaps after copying
-// the file into the folder) and after the image dialog. Never by itself, so nothing is loaded over and over.
 function retryLost() {
   if (!missing.size) return;
   missing.clear();
@@ -3166,7 +3076,6 @@ function retryLost() {
   render(null);
 }
 
-// "Bild": with an image selected (a click selects it) the image is changed, otherwise one is inserted.
 async function imageFlow(dropped) {
   const live = readyToEdit();
   if (!live) return;
@@ -3219,8 +3128,6 @@ async function pickImage(file) {
   pickBusy = seq;
   const result = await readImage(file);
   if (pickBusy === seq) pickBusy = 0;
-  // Only the latest choice of the dialog that is open now counts. A check that was started for an earlier
-  // choice or for a dialog that has been closed since is dropped.
   if (seq !== pickSeq || !els.dlgImage.open) return;
   if (result.error) {
     els.imgName.textContent = picked ? picked.name : imageEdit ? 'Das bisherige Bild bleibt.' : 'Noch kein Bild ausgewählt.';
@@ -3235,28 +3142,20 @@ async function pickImage(file) {
   showAddress();
 }
 
-// The address the image dialog would write into the code with its present fields: a text; `undefined` if the
-// address is not touched (no picture chosen yet, or a picture embedded in the code or from the network that
-// keeps its address); null if the folder name is not allowed. The browser does not tell from which folder a
-// file was chosen, so the folder comes from the field alone.
 function dialogAddress() {
   const address = imageEdit ? imageEdit.getAttribute(FILE_HOLDER) : null;
   const folder = els.imgDir.value;
   if (picked) {
     const made = imagePath(folder, picked.name);
     if (!made.ok) return null;
-    // the same file in the same folder keeps the address exactly as it is written in the code
     return address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
   }
   if (!address || !fileOfSrc(address)) return undefined;
   if (folder.trim() === folderOfSrc(address)) return address;           // nothing changed: the address stays as written
-  // same file in another folder: the file name, '?…' and '#…' stay exactly as they are written in the code
   const made = imagePath(folder, 'x');
   return made.ok ? moveSrc(address, made.src.slice(0, -1)) : null;
 }
 
-// Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen, and
-// whether the file is there: the dialog looks for it at once and shows it.
 function showAddress() {
   const src = dialogAddress();
   els.imgCode.textContent = typeof src === 'string' ? 'Im Code steht dann: <' + 'img src="' + src + '">' : '';
@@ -3279,7 +3178,6 @@ function showAddress() {
   probe.src = url;
 }
 
-// Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
 function validateImageDialog() {
   const fail = (message) => { els.imgErr.textContent = message; return false; };
   if (pickBusy && pickBusy === pickSeq) return fail('Das Bild wird noch geprüft. Warte einen Moment.');
@@ -3294,11 +3192,53 @@ function validateImageDialog() {
   return true;
 }
 
-// ---------------------------------------------------------------- formatting the source
+async function colorFlow() {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange(), rev = state.rev, docId = state.docId;
+  const answer = await openDialog(els.dlgColor);
+  if (state.rev !== rev || state.docId !== docId) return;      // the page changed meanwhile: nothing happens
+  restoreRange(range);
+  if (answer !== 'none' && !COLORS.has(answer)) return;
+  const said = { part: 'Die Farbe kommt von einem größeren Teil, zum Beispiel vom ganzen Absatz. Markiere ihn ganz und entferne dann die Farbe.' };
+  runCommand(() => { const r = setColor(env, answer === 'none' ? '' : answer); if (said[r]) setStatus(said[r], 'warn'); return r; },
+    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann. Ändere die Farbe links im Code.');
+}
 
-// Lays out both texts in a hidden frame that is built exactly like the page pane (same width, same filter,
-// same policy) and compares where every element and every piece of text ends up. Animations are stopped so
-// that both measurements see the page at rest.
+let tableResult = null;
+async function tableFlow() {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange(), rev = state.rev, docId = state.docId, inTable = !!tableAt(pvDoc);
+  els.tblTitle.textContent = inTable ? 'Tabelle ändern' : 'Tabelle einfügen';
+  els.tblNew.hidden = els.tblOk.hidden = inTable;
+  els.tblEdit.hidden = !inTable;
+  els.tblErr.textContent = '';
+  els.tblRows.value = els.tblCols.value = '3';
+  els.tblHead.checked = els.tblBorder.checked = true;
+  tableResult = null;
+  const answer = await openDialog(els.dlgTable);
+  if (state.rev !== rev || state.docId !== docId) return;
+  restoreRange(range);
+  const said = { intable: 'In eine Tabelle kann keine weitere Tabelle eingefügt werden.', merged: 'Diese Tabelle hat verbundene Zellen. Ändere sie links im Code.',
+    last: 'Die letzte Zeile oder Spalte bleibt stehen. Eine ganze Tabelle löschst du links im Code.' };
+  const run = (fn) => runCommand(() => { const r = fn(); if (said[r]) setStatus(said[r], 'warn'); return r; }, 'Setze den Cursor in eine Zelle der Tabelle.');
+  if (answer === 'ok' && tableResult) { const t = tableResult; run(() => insertTable(env, getRange(pvDoc) || range, t)); }
+  else if (answer === 'rowAdd') run(() => tableRow(env, true));
+  else if (answer === 'rowDel') run(() => tableRow(env, false));
+  else if (answer === 'colAdd') run(() => tableColumn(env, true));
+  else if (answer === 'colDel') run(() => tableColumn(env, false));
+}
+
+function validateTable() {
+  const rows = els.tblRows.value.trim(), cols = els.tblCols.value.trim();
+  const ok = (v, max) => /^[1-9][0-9]?$/.test(v) && Number(v) <= max;
+  if (!ok(rows, 20) || !ok(cols, 10)) { els.tblErr.textContent = 'Zeilen: eine Zahl von 1 bis 20. Spalten: eine Zahl von 1 bis 10.'; return false; }
+  tableResult = { rows: Number(rows), cols: Number(cols), head: els.tblHead.checked, border: els.tblBorder.checked };
+  return true;
+}
+
+
 async function sameLayout(a, b) {
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', 'allow-same-origin');
@@ -3336,9 +3276,6 @@ const FORMAT_NO = {
   unclear: 'Im CSS dieser Seite ist etwas nicht abgeschlossen, zum Beispiel fehlt ein Anführungszeichen oder das Ende eines Kommentars. Deshalb wird der Code nicht automatisch aufgeräumt.',
 };
 
-// "Tidy up" is applied only if three independent checks agree that nothing but insignificant white space
-// changes: the style rules do not make spaces count, both texts parse to the same tree, and both texts are
-// laid out identically in the page pane's own rendering.
 let formatting = false;
 
 async function formatDoc() {
@@ -3376,7 +3313,6 @@ async function formatDoc() {
   setStatus('Der Code wurde aufgeräumt.');
 }
 
-// ---------------------------------------------------------------- files
 
 function replaceDocument(text, meta) {
   state.docId++;
@@ -3406,9 +3342,6 @@ function replaceDocument(text, meta) {
   try { pvDoc.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
 }
 
-// New, Open and a dropped file replace the whole document and its history. Each such operation takes a
-// ticket. Only the newest ticket may complete, and only for the document state whose loss the pupil has
-// accepted: if the text changed while a file was being chosen or read, the question is asked again.
 function beginReplace() {
   return { seq: ++state.opSeq, docId: -1, rev: -1 };
 }
@@ -3457,7 +3390,6 @@ async function loadFile(file, handle, op) {
       : 'Die Datei „' + file.name + '“ ist keine Textdatei. Deine aktuelle Seite bleibt unverändert.');
     return false;
   }
-  // Last step before the document is replaced; nothing is awaited between this check and the replacement.
   if (!(await mayReplace(op, file.name))) {
     setStatus(op.seq !== state.opSeq ? '„' + file.name + '“ wurde nicht geöffnet, weil du inzwischen etwas anderes begonnen hast.'
       : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
@@ -3526,8 +3458,6 @@ function downloadDoc(given) {
   return true;
 }
 
-// One save at a time: a save waits until the one before it is finished, so the file is written in the order
-// of the requests and the newest text is the last one written.
 let saving = Promise.resolve(true);
 function saveDoc() {
   const run = saving.then(saveNow, saveNow);
@@ -3557,9 +3487,6 @@ async function saveNow() {
   return true;
 }
 
-// "Im Browser öffnen": the saved file in a new tab, as a real page with its scripts and links, so that pupils
-// can test their links. It is addressed by its name next to the editor; the tab has no connection back to the
-// editor (noopener). A page that does not lie in the folder of the editor gives "file not found" there.
 async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
@@ -3576,9 +3503,6 @@ async function browseDoc() {
   setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
 }
 
-// The title field above the page pane changes the content of <title> in the source, or adds a title at the
-// start of the head. It is the one edit of the head. The result is checked with the browser's parser: the new
-// title must be the page's title and the body must be exactly what it was; otherwise nothing changes.
 function commitTitle() {
   const value = els.pvTitle.value.replace(/\s+/g, ' ').trim();
   if (value === state.title) { els.pvTitle.value = state.title; return; }
@@ -3606,13 +3530,10 @@ async function handleDroppedFile(file) {
   loadFile(file, null, op);
 }
 
-// ---------------------------------------------------------------- event wiring
 
 function onSourceInput(e) {
   const ta = els.src;
   if (state.visualDirty) {
-    // Both panes changed at once (not reachable through the guarded focus paths). Keep both: the preview edit
-    // becomes its own history step, the source edit stays the current text.
     const mine = ta.value;
     commitVisual('vis-type');
     history.seal();
@@ -3680,8 +3601,6 @@ function wirePreview() {
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
   });
   pvDoc.addEventListener('input', (e) => {
-    // Remembered for the writer: after a deletion, a space that is gone was deleted; while only typing, the
-    // browser may have tidied it away next door (see engineTidied in serialize.js).
     if (!/^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/.test(e.inputType || '')) state.onlyInserts = false;
     markVisualDirty();
     if (!state.composing) scheduleCommit();
@@ -3700,7 +3619,6 @@ function wirePreview() {
     const target = e.target;
     if (!target || !target.closest) return;
     if (target.closest('a')) e.preventDefault();
-    // A click on an image selects it, so that "Bild" and the alignment buttons know which one is meant.
     if (target.localName === 'img' && target.parentNode && target.parentNode.isContentEditable) {
       const range = pvDoc.createRange();
       range.selectNode(target);
@@ -3717,6 +3635,7 @@ function wirePreview() {
       else if (key === 'i') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
       else if (key === 'u') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     }
+    if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && stepCell(pvDoc, e.shiftKey)) e.preventDefault();
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
   pvDoc.addEventListener('error', onImageError, true);
@@ -3725,8 +3644,6 @@ function wirePreview() {
   pvDoc.addEventListener('securitypolicyviolation', () => { if (!state.blocked) { state.blocked = true; showInactive(); } });
 }
 
-// True while the pupil works in another program. Moving between the panes of the editor does not count:
-// the document still has the focus then.
 let away = false;
 function leftEditor() { setTimeout(() => { if (!document.hasFocus()) away = true; }, 0); }
 function cameBack() { if (away) { away = false; retryLost(); } }
@@ -3765,6 +3682,10 @@ function wireChrome() {
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));
+  tool(els.bColor, colorFlow);
+  tool(els.bTable, tableFlow);
+  els.tblOk.addEventListener('click', () => { if (validateTable()) els.dlgTable.close('ok'); });
+  for (const field of [els.tblRows, els.tblCols]) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.tblOk.click(); } });
 
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('click', (e) => { const v = e.target && e.target.dataset ? e.target.dataset.close : undefined; if (v !== undefined) dialog.close(v); });

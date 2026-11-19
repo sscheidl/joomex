@@ -8,7 +8,7 @@
 //   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
 //                      new text revision, at the latest before the text is used for anything else.
 // Timers only decide how early these steps happen while the user pauses, never what is kept.
-import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl, moveSrc } from './util.js';
+import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl, moveSrc, COLORS } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
 import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
@@ -17,7 +17,7 @@ import { formatSource, withTitle, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
 import { createHistory } from './history.js';
 import { readImage } from './images.js';
-import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink, opensNewTab } from './commands.js';
+import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink, opensNewTab, setColor, tableAt, insertTable, tableRow, tableColumn, stepCell } from './commands.js';
 
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
@@ -25,6 +25,7 @@ const PREVIEW_CSS = 'html{background:#fff}' +
   '[data-se-box]{display:inline-block;padding:8px 12px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif;user-select:none}' +
   '[data-se-opaque]{outline:2px dashed #f59f00;outline-offset:2px}' +
   ':where(input,select,textarea,button){pointer-events:none}' +
+  ':where(td,th):empty::after{content:"\\a0"}' +
   '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
 const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
   '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: \'self\'">' +
@@ -660,6 +661,55 @@ function validateImageDialog() {
   return true;
 }
 
+// "Farbe": a colour of the palette for the selected text, or "Farbe entfernen".
+async function colorFlow() {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange(), rev = state.rev, docId = state.docId;
+  const answer = await openDialog(els.dlgColor);
+  if (state.rev !== rev || state.docId !== docId) return;      // the page changed meanwhile: nothing happens
+  restoreRange(range);
+  if (answer !== 'none' && !COLORS.has(answer)) return;
+  const said = { part: 'Die Farbe kommt von einem größeren Teil, zum Beispiel vom ganzen Absatz. Markiere ihn ganz und entferne dann die Farbe.' };
+  runCommand(() => { const r = setColor(env, answer === 'none' ? '' : answer); if (said[r]) setStatus(said[r], 'warn'); return r; },
+    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann. Ändere die Farbe links im Code.');
+}
+
+// "Tabelle": a new table, or, with the caret in a table, a row or column more or less.
+let tableResult = null;
+async function tableFlow() {
+  const live = readyToEdit();
+  if (!live) return;
+  const range = live.cloneRange(), rev = state.rev, docId = state.docId, inTable = !!tableAt(pvDoc);
+  els.tblTitle.textContent = inTable ? 'Tabelle ändern' : 'Tabelle einfügen';
+  els.tblNew.hidden = els.tblOk.hidden = inTable;
+  els.tblEdit.hidden = !inTable;
+  els.tblErr.textContent = '';
+  // every new table starts from the same proposal: 3 × 3, header row, border lines
+  els.tblRows.value = els.tblCols.value = '3';
+  els.tblHead.checked = els.tblBorder.checked = true;
+  tableResult = null;
+  const answer = await openDialog(els.dlgTable);
+  if (state.rev !== rev || state.docId !== docId) return;
+  restoreRange(range);
+  const said = { intable: 'In eine Tabelle kann keine weitere Tabelle eingefügt werden.', merged: 'Diese Tabelle hat verbundene Zellen. Ändere sie links im Code.',
+    last: 'Die letzte Zeile oder Spalte bleibt stehen. Eine ganze Tabelle löschst du links im Code.' };
+  const run = (fn) => runCommand(() => { const r = fn(); if (said[r]) setStatus(said[r], 'warn'); return r; }, 'Setze den Cursor in eine Zelle der Tabelle.');
+  if (answer === 'ok' && tableResult) { const t = tableResult; run(() => insertTable(env, getRange(pvDoc) || range, t)); }
+  else if (answer === 'rowAdd') run(() => tableRow(env, true));
+  else if (answer === 'rowDel') run(() => tableRow(env, false));
+  else if (answer === 'colAdd') run(() => tableColumn(env, true));
+  else if (answer === 'colDel') run(() => tableColumn(env, false));
+}
+
+function validateTable() {
+  const rows = els.tblRows.value.trim(), cols = els.tblCols.value.trim();
+  const ok = (v, max) => /^[1-9][0-9]?$/.test(v) && Number(v) <= max;
+  if (!ok(rows, 20) || !ok(cols, 10)) { els.tblErr.textContent = 'Zeilen: eine Zahl von 1 bis 20. Spalten: eine Zahl von 1 bis 10.'; return false; }
+  tableResult = { rows: Number(rows), cols: Number(cols), head: els.tblHead.checked, border: els.tblBorder.checked };
+  return true;
+}
+
 // ---------------------------------------------------------------- formatting the source
 
 // Lays out both texts in a hidden frame that is built exactly like the page pane (same width, same filter,
@@ -1083,6 +1133,7 @@ function wirePreview() {
       else if (key === 'i') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
       else if (key === 'u') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     }
+    if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && stepCell(pvDoc, e.shiftKey)) e.preventDefault();
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
   pvDoc.addEventListener('error', onImageError, true);
@@ -1131,6 +1182,10 @@ function wireChrome() {
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));
+  tool(els.bColor, colorFlow);
+  tool(els.bTable, tableFlow);
+  els.tblOk.addEventListener('click', () => { if (validateTable()) els.dlgTable.close('ok'); });
+  for (const field of [els.tblRows, els.tblCols]) field.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.tblOk.click(); } });
 
   for (const dialog of document.querySelectorAll('dialog')) {
     dialog.addEventListener('click', (e) => { const v = e.target && e.target.dataset ? e.target.dataset.close : undefined; if (v !== undefined) dialog.close(v); });
