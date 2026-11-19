@@ -17,7 +17,8 @@ button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); 
 
 #top { display: flex; align-items: center; gap: 14px; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: 4px; }
-.brand strong { font-size: 17px; color: var(--accent); }
+.brand strong { font-size: 17px; color: var(--accent); white-space: nowrap; }
+.brand small { font-size: 11px; font-weight: 400; color: var(--soft); }
 .brand span { font-size: 12px; color: var(--soft); }
 .group { display: inline-flex; gap: 5px; }
 .doc { margin-left: auto; display: flex; gap: 10px; align-items: baseline; min-width: 0; }
@@ -79,6 +80,10 @@ dialog .pick { display: flex; align-items: center; gap: 10px; }
 dialog .hint { margin: 6px 0 0; font-size: 13px; color: #495057; }
 dialog .code { margin: 8px 0 0; padding: 6px 9px; border-radius: 6px; background: #f1f3f5; font-family: Consolas, "Courier New", monospace; font-size: 13px; overflow-wrap: anywhere; }
 dialog .code:empty { display: none; }
+dialog .found { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: #495057; }
+dialog .found.yes { color: #2b8a3e; }
+dialog .found.no { color: #c92a2a; }
+dialog .found:empty { display: none; }
 #imgPrev { display: block; max-width: 100%; max-height: 160px; margin-top: 10px; border: 1px solid var(--line); border-radius: 6px; }
 .err { min-height: 1.2em; margin: 8px 0 0; color: #c92a2a; font-size: 14px; }
 

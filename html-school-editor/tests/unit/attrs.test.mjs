@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenize } from '../../src/js/tokenizer.js';
 import { parseHtml } from '../../src/js/tree.js';
-import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks } from '../../src/js/util.js';
+import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl } from '../../src/js/util.js';
 
 // Applies `changes` to the first tag of `tag` the way the writer does.
 function patched(tag, changes) {
@@ -66,6 +66,24 @@ test('images: address made from folder and file name', () => {
   assert.equal(fileOfSrc(imagePath('x', 'mein bild #1 100%?.png').src), 'mein bild #1 100%?.png', 'the address leads back to the file name');
   for (const folder of ['a:b', 'https://x', 'a?b', 'a#b', 'a"b', 'a<b', 'C:\\Bilder']) assert.equal(imagePath(folder, 'a.png').ok, false, folder);
   assert.equal(imagePath('', '').ok, false);
+});
+
+test('images: the file a relative address names, seen from the editor; nothing on another computer or the network', () => {
+  const editor = new URL('file:///X:/work/site/schuleditor-kopie.html');
+  assert.equal(localFileUrl('katze.jpg', editor), 'file:///X:/work/site/katze.jpg');
+  assert.equal(localFileUrl(' bilder/Meine Katze.jpg ', editor), 'file:///X:/work/site/bilder/Meine%20Katze.jpg');
+  assert.equal(localFileUrl('bilder\\katze.jpg#oben', editor), 'file:///X:/work/site/bilder/katze.jpg');
+  assert.equal(localFileUrl('../katze.jpg', editor), 'file:///X:/work/katze.jpg');
+  assert.equal(localFileUrl('f01 mein bild %231 100%25.png', editor), 'file:///X:/work/site/f01%20mein%20bild%20%231%20100%25.png');
+  for (const other of ['https://example.org/k.jpg', '//rechner/freigabe/k.jpg', '\\\\rechner\\freigabe\\k.jpg', 'file://rechner/k.jpg', 'C:/k.jpg', 'data:image/png;base64,AAAA', '', 'bilder/']) {
+    assert.equal(localFileUrl(other, editor), '', 'not looked for: ' + JSON.stringify(other));
+  }
+  // an editor on a shared folder looks only on that computer
+  const shared = new URL('file://server/share/schuleditor-kopie.html');
+  assert.equal(localFileUrl('bilder/k.png', shared), 'file://server/share/bilder/k.png');
+  // an editor that was not opened as a file does not look at all
+  assert.equal(localFileUrl('k.png', new URL('http://127.0.0.1/schuleditor-kopie.html')), '');
+  assert.equal(localFileUrl('k.png', null), '');
 });
 
 test('alignment: the declaration is added, replaced and removed without touching the rest', () => {

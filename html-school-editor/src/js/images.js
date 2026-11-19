@@ -1,6 +1,7 @@
-// Local raster images. The source text refers to an image by its file name; the editor never reads the folder
-// of a page. To show an image in the page pane anyway, the file the pupil has chosen is kept in memory and
-// addressed by an object URL. Nothing is read without an explicit file selection.
+// Local raster images. The source text refers to an image by its address relative to the page, and the page
+// pane shows the file that lies there (see localFileUrl in util.js). A file chosen in the image dialog is only
+// looked at: its name goes into the address, its signature says whether it is a picture, its size is shown.
+// It is never copied or kept.
 export const LARGE_IMAGE = 2 * 1024 * 1024;
 export const MAX_IMAGE = 20 * 1024 * 1024;
 
@@ -12,9 +13,8 @@ export function sniffImage(b) {
   return null;
 }
 
-// Checks a chosen file and returns { name, url, width, height, large } or { error: 'big' | 'type' | 'decode' }.
-// The type comes from the file signature, not from the name or the type the system reports, and the object
-// URL is created for a copy labelled with that type.
+// Checks a chosen file and returns { name, width, height, large } or { error: 'big' | 'type' | 'decode' }.
+// The type comes from the file signature, not from the name or the type the system reports.
 export async function readImage(file) {
   let type, bitmap;
   if (file.size > MAX_IMAGE) return { error: 'big' };
@@ -27,5 +27,5 @@ export async function readImage(file) {
   }
   const size = { width: bitmap.width, height: bitmap.height };
   if (bitmap.close) bitmap.close();
-  return { name: file.name, url: URL.createObjectURL(new Blob([file], { type })), width: size.width, height: size.height, large: file.size > LARGE_IMAGE };
+  return { name: file.name, width: size.width, height: size.height, large: file.size > LARGE_IMAGE };
 }

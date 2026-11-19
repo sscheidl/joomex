@@ -4,7 +4,7 @@
 
 ## Verdict: HOLD
 
-Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04) and of alpha.2 with alpha.3 together ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md), findings A3-01 to A3-05 and one about the test helper). The second review confirmed RV-01 and RV-03 as corrected and found RV-02 and RV-04 corrected only for the reported examples. The reviewer then measured alpha.3 in Firefox ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)) and found three differences. Version 0.1.0-alpha.4 corrects the five findings and the three Firefox differences, and makes the image dialog show the address it will write, after a report of the owner. It adds no other function. None of this has been reviewed; the implementer's tests are not a review, and twice they passed over defects that a review then found.
+Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04) and of alpha.2 with alpha.3 together ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md), findings A3-01 to A3-05 and one about the test helper). The second review confirmed RV-01 and RV-03 as corrected and found RV-02 and RV-04 corrected only for the reported examples. The reviewer then measured alpha.3 in Firefox ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)) and found three differences. Version 0.1.0-alpha.4 corrects the five findings and the three Firefox differences, and makes the image dialog show the address it will write, after a report of the owner. After trying it, the owner asked for three more changes, which are in this version too: pictures are shown from the folder of the editor (this widens the content policy, see below), the version number stands in the top bar, and the box of a picture from the network says what to do. None of this has been reviewed; the implementer's tests are not a review, and twice they passed over defects that a review then found.
 
 Open before a release:
 
@@ -19,10 +19,10 @@ There is no known failing check and no known rights problem in the delivered fil
 
 | Finding | Correction in alpha.2 | Code | Regression |
 | --- | --- | --- | --- |
-| **RV-01** (high): a file read that finishes late replaces newer work and erases its undo history | Every operation that replaces the document takes a ticket. Only the newest ticket can complete, and only for the document state whose loss the pupil accepted; if the text changed meanwhile, the editor asks again. The ticket is taken before the file chooser opens. New cancels a pending read | `src/js/app.js:691–715`, `:717`, `:754`, `:828`, `:990` | RV-01 (6 schedules), T-15 |
-| **RV-02** (high): the formatter's check accepts visible changes | Formatting is applied only if (1) no style rule can make spaces count, judged after resolving CSS comments and escapes and for any value outside the collapsing ones, (2) both texts parse to the same document, (3) both texts are laid out identically in a hidden copy of the page pane. Documents with a style sheet file are not formatted | `src/js/app.js:583`, `:625`; `src/js/project.js:461`, `:502` | RV-02 (11 refused, 3 applied and compared in an ordinary page), T-07 |
+| **RV-01** (high): a file read that finishes late replaces newer work and erases its undo history | Every operation that replaces the document takes a ticket. Only the newest ticket can complete, and only for the document state whose loss the pupil accepted; if the text changed meanwhile, the editor asks again. The ticket is taken before the file chooser opens. New cancels a pending read | `src/js/app.js:735–759`, `:761`, `:798`, `:872`, `:1043` | RV-01 (6 schedules), T-15 |
+| **RV-02** (high): the formatter's check accepts visible changes | Formatting is applied only if (1) no style rule can make spaces count, judged after resolving CSS comments and escapes and for any value outside the collapsing ones, (2) both texts parse to the same document, (3) both texts are laid out identically in a hidden copy of the page pane. Documents with a style sheet file are not formatted | `src/js/app.js:626`, `:668`; `src/js/project.js:481`, `:522` | RV-02 (11 refused, 3 applied and compared in an ordinary page), T-07 |
 | **RV-03** (medium): creating a list deletes paragraph attributes | List commands rename the element and keep its start tag as written, in both directions; a list or item that cannot keep its role keeps its attributes on a `div` | `src/js/commands.js:96`, `:158`, `:194`; `src/js/serialize.js:288` | RV-03, T-05 |
-| **RV-04** (medium): a resource stopped by the policy is not announced | SVG animation elements are no longer shown and are named in the note. Whatever the browser's policy stops is announced even if the editor's own list did not name it | `src/js/project.js:22`, `:206`; `src/js/app.js:238`, `:946` | RV-04 (6 samples) |
+| **RV-04** (medium): a resource stopped by the policy is not announced | SVG animation elements are no longer shown and are named in the note. Whatever the browser's policy stops is announced even if the editor's own list did not name it | `src/js/project.js:22`, `:226`; `src/js/app.js:241`, `:993` | RV-04 (6 samples) |
 
 Changed along the way:
 
@@ -41,26 +41,26 @@ The owner tried alpha.2 on 2026-11-19 and asked for the following. Regression ca
 
 | Request | What alpha.3 does | Code |
 | --- | --- | --- |
-| Images should not be embedded as data; the long line in the code is hard to read | An image is written as its file name, with an optional folder: `<img src="bilder/katze.jpg" alt="">`. The picture file has to lie next to the page; the editor says so after inserting. The page pane shows the picture from the file the pupil chose. Scaling of large pictures is gone | `src/js/images.js:18`, `src/js/project.js:158`, `src/js/app.js:467` |
-| Subfolders for pictures | A folder field in the image dialog; the last folder is suggested again | `src/js/util.js:96`, `src/js/app.js:564` |
-| The description of a picture should be optional | The field is optional; without text the editor writes `alt=""` | `src/js/app.js:564` |
-| An inserted picture could not be changed by clicking it | A click selects the picture; "Bild" then opens the dialog with its values (description, width, folder, another file). The same for links: with the caret in a link, "Link" changes its address. Only the attribute concerned is rewritten in the source | `src/js/commands.js:110`, `:406`, `:430`; `src/js/util.js:260` |
+| Images should not be embedded as data; the long line in the code is hard to read | An image is written as its file name, with an optional folder: `<img src="bilder/katze.jpg" alt="">`. The picture file has to lie next to the page; the editor says so after inserting. The page pane shows the picture from the file the pupil chose. Scaling of large pictures is gone | `src/js/images.js:18`, `src/js/project.js:166`, `src/js/app.js:498` |
+| Subfolders for pictures | A folder field in the image dialog; the last folder is suggested again | `src/js/util.js:96`, `src/js/app.js:608` |
+| The description of a picture should be optional | The field is optional; without text the editor writes `alt=""` | `src/js/app.js:608` |
+| An inserted picture could not be changed by clicking it | A click selects the picture; "Bild" then opens the dialog with its values (description, width, folder, another file). The same for links: with the caret in a link, "Link" changes its address. Only the attribute concerned is rewritten in the source | `src/js/commands.js:110`, `:406`, `:430`; `src/js/util.js:273` |
 | Size of pictures | A width in pixels in the image dialog, written as `width="…"` | `src/js/commands.js:390`, `:406` |
-| Position: left, right, centre, and justified for text | Four alignment buttons for paragraphs, headings, list items, table cells and the paragraph of a selected picture, written as `style="text-align: …"` | `src/js/commands.js:450`, `src/js/util.js:126` |
+| Position: left, right, centre, and justified for text | Four alignment buttons for paragraphs, headings, list items, table cells and the paragraph of a selected picture, written as `style="text-align: …"` | `src/js/commands.js:450`, `src/js/util.js:139` |
 
 Decisions of the owner that go with it: the description of a picture is optional and pictures are no longer embedded (both change the wording of P-04 in the task brief); alignment is written as a style attribute (P-05 forbids inline CSS for basic text formatting; alignment has no tag); bold and italic stay `<b>` and `<i>`.
 
-Consequences to know: both content policies now allow `img-src blob:` for the chosen picture files ([SECURITY.md](SECURITY.md)); after reopening a page its pictures are boxes until the pupil chooses the files again; the editor cannot check that a picture file lies where the address says.
+Consequences in alpha.3: both content policies allowed `img-src blob:` for the chosen picture files, and after reopening a page its pictures were boxes until the pupil chose the files again. Both are replaced in alpha.4, see [Pictures from the folder of the editor](#pictures-from-the-folder-of-the-editor).
 
 ## Findings of the review of alpha.2 and alpha.3 and their corrections
 
 | Finding | Correction in alpha.4 | Code | Regression |
 | --- | --- | --- | --- |
-| **A3-01** (high): alignment rewrites text inside a CSS string of the same style attribute | The style attribute is read as CSS: strings, comments, escapes and brackets are respected and only a real `text-align` declaration is replaced. A text that cannot be split with certainty is left alone, with a message | `src/js/util.js:126`, `:179`; `src/js/commands.js:470` | A3-01, unit "alignment" |
-| **A3-03** (high): "tidy up" can insert a visible gap at another window width | Rules that hold only sometimes are found by reading the style sheets as CSS, and the page is not formatted if such a rule changes the kind of box, generated content or a custom property. Parts that are hidden at the moment are checked for the same risk | `src/js/util.js:214`; `src/js/project.js:461`, `:482`; `src/js/app.js:625` | A3-03, unit "style rules" |
-| **A3-02** (medium): attribute edits change the meaning of badly written tags | Removing an attribute removes every occurrence of the name; a name followed by `=` without a value is handled as an empty value | `src/js/util.js:260` | A3-02, unit "badly written tags" |
-| **A3-04** (medium): an image from a cancelled dialog replaces a later choice | Every image check belongs to one choice in one dialog; a result for an older one is dropped and its object URL released | `src/js/app.js:459`, `:515` | A3-04 |
-| **A3-05** (medium): a stop by the policy for a short address is not announced | Every stop the browser reports is remembered for the document and announced, whatever the address looks like. The note stays until another document is opened | `src/js/app.js:238`, `:946` | A3-05, RV-04 |
+| **A3-01** (high): alignment rewrites text inside a CSS string of the same style attribute | The style attribute is read as CSS: strings, comments, escapes and brackets are respected and only a real `text-align` declaration is replaced. A text that cannot be split with certainty is left alone, with a message | `src/js/util.js:139`, `:192`; `src/js/commands.js:470` | A3-01, unit "alignment" |
+| **A3-03** (high): "tidy up" can insert a visible gap at another window width | Rules that hold only sometimes are found by reading the style sheets as CSS, and the page is not formatted if such a rule changes the kind of box, generated content or a custom property. Parts that are hidden at the moment are checked for the same risk | `src/js/util.js:227`; `src/js/project.js:481`, `:502`; `src/js/app.js:668` | A3-03, unit "style rules" |
+| **A3-02** (medium): attribute edits change the meaning of badly written tags | Removing an attribute removes every occurrence of the name; a name followed by `=` without a value is handled as an empty value | `src/js/util.js:273` | A3-02, unit "badly written tags" |
+| **A3-04** (medium): an image from a cancelled dialog replaces a later choice | Every image check belongs to one choice in one dialog; a result for an older one is dropped | `src/js/app.js:465`, `:543` | A3-04 |
+| **A3-05** (medium): a stop by the policy for a short address is not announced | Every stop the browser reports is remembered for the document and announced, whatever the address looks like. The note stays until another document is opened | `src/js/app.js:241`, `:993` | A3-05, RV-04 |
 | **A3-T**: the test helper for opening a file could return before the new file was loaded | The helper waits for the editor's own message of this load instead of the file name | `tests/lib/harness.mjs` | A3-T |
 
 Changed along the way, following remarks of the review that were not findings: a second question no longer overwrites the text of an open dialog; a no-break space is no longer treated as removable white space between list items; picture files above 20 MB are refused, so that the size of a chosen file is bounded again.
@@ -73,27 +73,46 @@ The owner asked the reviewer to measure Firefox, which the task brief does not n
 
 | Difference | Cause in Firefox | Correction in alpha.4 | Code | Regression |
 | --- | --- | --- | --- | --- |
-| **FF-01**: typing next to a comment removes a space in the following text; a line break behind an unknown element disappears | While the pupil types, Firefox tidies white space that cannot be seen, also in neighbouring text nodes | Such a change of a text that was not edited is written as it stands in the source. This holds only while the pending input is typing; after a deletion the space counts as deleted | `src/js/serialize.js:123`, `:138`, `:313`; `src/js/app.js:907` | FF-01, R-01 |
-| **FF-02**: a document that starts with `<br>` is written back with the line break wrapped in a paragraph | Firefox keeps a line break of its own in a page without visible content; the projection took that node over and Firefox removed it again | A `<br>` is only reused if the projection created it; a single line break standing alone directly in the page is never written | `src/js/project.js:253`, `src/js/serialize.js:68` | FF-02, R-02 |
-| **FF-03**: "Code aufräumen" is refused although nothing would change | Firefox reports a box with a height and no width for white space between blocks | White space counts in the layout comparison only if it has a width | `src/js/project.js:502` | T-07 in Firefox |
+| **FF-01**: typing next to a comment removes a space in the following text; a line break behind an unknown element disappears | While the pupil types, Firefox tidies white space that cannot be seen, also in neighbouring text nodes | Such a change of a text that was not edited is written as it stands in the source. This holds only while the pending input is typing; after a deletion the space counts as deleted | `src/js/serialize.js:123`, `:138`, `:313`; `src/js/app.js:951` | FF-01, R-01 |
+| **FF-02**: a document that starts with `<br>` is written back with the line break wrapped in a paragraph | Firefox keeps a line break of its own in a page without visible content; the projection took that node over and Firefox removed it again | A `<br>` is only reused if the projection created it; a single line break standing alone directly in the page is never written | `src/js/project.js:273`, `src/js/serialize.js:68` | FF-02, R-02 |
+| **FF-03**: "Code aufräumen" is refused although nothing would change | Firefox reports a box with a height and no width for white space between blocks | White space counts in the layout comparison only if it has a width | `src/js/project.js:522` | T-07 in Firefox |
 | **T-03**: a double click marks the word with the following space | Firefox selects a word together with the space behind it | No product change. The test now expects the same in every browser: what is marked in the source is what is selected in the page | `tests/browser/functional.mjs` | T-03 |
 
 The suite now runs in Firefox too (`node tests/run.mjs --browser firefox`), with the driver the reviewer wrote. Firefox has no file access API: Save is always a download there.
 
 ## Report of the owner about image folders
 
-The owner chose a picture again, with the same file name, from another folder and expected the address in the code to change. It did not: the browser does not tell from which folder a file is chosen, in Edge as in Firefox, and the folder comes from the folder field only. That part works as specified, but the dialog did not make it visible. Now the dialog says so and shows the address that will stand in the code, updating while the pupil types (`dialogAddress`, `src/js/app.js:542`; `showAddress`, `:558`; F-02). Finding the folder automatically needs access to the page's folder, which is the postponed "open folder" function.
+The owner chose a picture again, with the same file name, from another folder and expected the address in the code to change. It did not: the browser does not tell from which folder a file is chosen, in Edge as in Firefox, and the folder comes from the folder field only. That part works as specified, but the dialog did not make it visible. Now the dialog says so and shows the address that will stand in the code, updating while the pupil types (`dialogAddress`, `src/js/app.js:568`; `showAddress`, `:585`; F-02). Finding the folder automatically needs access to the page's folder, which is the postponed "open folder" function.
+
+## Pictures from the folder of the editor
+
+Requested by the owner after trying alpha.4: pupils who reopen a page a week later saw every picture as a dashed box and read it as a broken link. Decision of the owner: each pupil keeps the editor file in the project folder with pages and pictures, so a relative address means the same file from the editor and from the page.
+
+| Request | What alpha.4 does | Code | Regression |
+| --- | --- | --- | --- |
+| Show the pictures of a reopened page | The page pane loads a picture from the file its relative address names, seen from the editor. Only plain relative addresses are resolved, and only to a `file:` address on the editor's own computer. Both content policies say `img-src data: 'self'`; object URLs are gone | `src/js/util.js:115`, `src/js/project.js:192`, `src/js/app.js:56`, `tools/build.mjs:59` | F-01, T-06, X-06, unit |
+| A missing picture must not look like a broken link | It becomes a box with the text "Bild nicht gefunden: …", and a note above the page lists the missing addresses. The editor looks again when the pupil comes back from another program, opens another page or closes the image dialog | `src/js/project.js:166`, `src/js/app.js:474–495`, `:241` | F-01 |
+| The dialog should tell whether the picture is there | Below the address the dialog says "Gefunden" (and shows the picture) or "Nicht gefunden" | `src/js/app.js:585` | F-01, T-06 |
+| Pictures from the network: what should the pupil do? | Their box says "Bild aus dem Internet"; the tooltip asks the pupil to download it, mind the copyright, put it into the folder and link it by file name. Pictures from the network stay blocked (owner's decision) | `src/js/project.js:25` | F-01 |
+| Version number in the top bar | Small and grey next to the name, it does not wrap | `src/app.html`, `src/style.css` | F-04 |
+
+Consequences to know:
+
+* **Condition:** pictures are found only if the opened page lies in the same folder as the editor. The editor cannot tell where a page was opened from. The help and the pupil guide say so.
+* **Residual risk accepted by the owner:** the policy source `'self'` also applies to pictures named in the CSS of an opened page. Such a page can show picture files of this computer outside the project folder, and in Edge a file address of another computer is attempted. Nothing is loaded from the network. See [SECURITY.md](SECURITY.md#pictures-from-the-folder-of-the-editor) and X-08.
+* The note "Im Editor ausgeschaltet" still counts addresses in the CSS of a page, also those of pictures that are now shown.
+* Not built: the owner's own note before the browser's permission question on saving (item 5.3 of the plan); the owner decided against it.
 
 ## Artefact
 
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **176,008 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
-| SHA-256 | `e9ad516a91fbe632353908271dc6f37236e75ab80734b30fbd336e90402e9f49` |
+| Size | **182,038 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| SHA-256 | `72715e6199f19dd92163d3f399e9180b1ed8d0e192b50970b1676ffad54e5af6` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
-The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes. About 24,000 bytes are left below the limit.
+The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 before the owner's requests of step 0 176,008 bytes. About 18,000 bytes are left below the limit.
 
 ## Measurements
 
@@ -101,21 +120,21 @@ MEASURED 2026-11-19 · Windows 11 Pro (10.0.26300) · Node v24.22.1.
 
 | Suite | Environment | Result |
 | --- | --- | --- |
-| Unit tests (`node --test tests/unit/*.test.mjs`) | Node | 21 of 21 pass |
-| Acceptance T-01…T-17, X-01…X-07 | Edge 157.0.4341.60, headless, artefact from `file://` | 24 of 24 cases pass |
+| Unit tests (`node --test tests/unit/*.test.mjs`) | Node | 22 of 22 pass |
+| Acceptance T-01…T-17, X-01…X-08 | Edge 157.0.4341.60, headless, artefact from `file://` | 25 of 25 cases pass |
 | Robustness R-01, R-02 | same | 2 of 2 pass (R-02 runs the source modules in a test page, not the single file) |
 | Regressions for the review findings RV-01…RV-04 | same | 4 of 4 pass |
-| Functions asked for by the owner F-01…F-03 | same | 3 of 3 pass |
+| Functions asked for by the owner F-01…F-04 | same | 4 of 4 pass |
 | Regressions for the second review A3-01…A3-05, A3-T | same | 6 of 6 pass |
 | Regressions for the Firefox measurement FF-01, FF-02 | same | 2 of 2 pass |
-| All 41 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 35 cases pass, 5 partial, 1 not measured, none failed; 467 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
-| Reviewer's Firefox diagnostics `tests/firefox-diagnostics.mjs`, unchanged, against this version | Firefox/160.0.1 | comment sample exact, T-07 fixture formatted, three module round trips exact |
-| Reviewer's probe script `docs/reviews/review-alpha3.mjs`, unchanged, against this version | Edge 157.0.4341.60 | its probes for A3-01, A3-02, A3-03 and the frame check pass; it then stops in the A3-04 probe with a timeout, because that probe waits for the defect to show; A3-05 and A3-T do not run in that script |
+| All 43 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 37 cases pass, 5 partial, 1 not measured, none failed; 492 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
+| Reviewer's Firefox diagnostics `tests/firefox-diagnostics.mjs`, unchanged, against the committed alpha.4 build (176,008 bytes, `e9ad516a…`); not re-run for this build | Firefox/160.0.1 | comment sample exact, T-07 fixture formatted, three module round trips exact |
+| Reviewer's probe script `docs/reviews/review-alpha3.mjs`, unchanged, against the committed alpha.4 build; not re-run for this build | Edge 157.0.4341.60 | its probes for A3-01, A3-02, A3-03 and the frame check pass; it then stops in the A3-04 probe with a timeout, because that probe waits for the defect to show; A3-05 and A3-T do not run in that script |
 | All of the above | Chrome | **NOT MEASURED** (not installed) |
-| Reviewer's probe script `docs/reviews/review-alpha1.mjs`, unchanged, against this version | Edge 157.0.4341.60 | stops in its first probe with a timeout: it waits for the late file to be opened, which no longer happens. Its other probes do not run in that script; their inputs are part of RV-02 to RV-04 |
+| Reviewer's probe script `docs/reviews/review-alpha1.mjs`, unchanged, against the committed alpha.4 build; not re-run for this build | Edge 157.0.4341.60 | stops in its first probe with a timeout: it waits for the late file to be opened, which no longer happens. Its other probes do not run in that script; their inputs are part of RV-02 to RV-04 |
 | Repository publication check (`scripts/check_publication.py`) with the private deny-list | whole repository, 347 files | 0 findings |
 
-In total 511 individual checks in Edge with 2 parts NOT MEASURED (native file pickers, in T-16 and RV-01), and 467 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
+In total 536 individual checks in Edge with 2 parts NOT MEASURED (native file pickers, in T-16 and RV-01), and 492 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
 
 ## Dependencies and licences
 
@@ -139,7 +158,7 @@ The reference editor that was studied is not a dependency. No part of it is cont
 | 5 | Trial with pupils and a teacher: are the German texts, the questions and the read-only notes understood? | usability, not measured |
 | 6 | "Code aufräumen" is refused for documents with an external style sheet and for documents whose rules hold only sometimes (other window width, pointer over an element, animation); it cannot answer for styles that a script changes later | limitation, by design in this version |
 | 7 | The page pane decides by a list of what is left out; the review recommends a list of what is allowed | design decision for a later version |
-| 8 | Images are shown only after the pupil chose the file in the current session; after reopening a page they are boxes until chosen again. A function that opens a whole folder would lift this | limitation, by design in this version |
+| 8 | Pictures are found only if the opened page lies in the folder of the editor; the CSS of a page can show picture files of this computer (accepted residual risk) | limitation, decision of the owner |
 | 9 | The page pane renders in standards mode also for documents without doctype | limitation |
 | 10 | A picture is placed by the alignment of its paragraph; text does not flow around pictures | limitation |
 

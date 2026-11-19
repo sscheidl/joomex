@@ -56,7 +56,7 @@ function render(brand) {
   fill('__CSS__', css);
   // The script element's text is everything between the tags, including the line breaks of the template.
   const hash = crypto.createHash('sha256').update('\n' + js + '\n', 'utf8').digest('base64');
-  fill('__CSP__', `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'`);
+  fill('__CSP__', `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'`);
   fill('__JS__', js);
   if (/__[A-Z_]+__/.test(html.replace(js, ''))) throw new Error('unfilled placeholder in template');
   return html;

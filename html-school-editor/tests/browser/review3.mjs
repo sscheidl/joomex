@@ -2,7 +2,7 @@
 // 0.1.0-alpha.3 (docs/reviews/REVIEW_0.1.0-alpha.3.md). The reviewer's inputs are used unchanged; further
 // inputs of the same kind are added. Expected values are written by hand.
 import { pathToFileURL } from 'node:url';
-import { Editor, PV, sleep, tmpFile, makePng, startSink } from '../lib/harness.mjs';
+import { Editor, PV, sleep, tmpFile, makePng, startSink, editorFolder } from '../lib/harness.mjs';
 
 const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
 const pageDoc = (body) => '<!doctype html><html><head><meta charset="utf-8"><title>Review sample</title></head><body>' + body + '</body></html>';
@@ -172,9 +172,11 @@ export const review3 = [
   {
     id: 'A3-04', title: 'review finding: only the latest choice of the open image dialog counts (S-06, F-01)',
     async run(c, { browser }) {
-      const slow = tmpFile('a3-langsam.png', makePng(20, 10, false)), fast = tmpFile('a3-schnell.png', makePng(30, 15, false));
+      // both pictures lie next to the editor, so that the page pane can show the one that was inserted
+      const folder = editorFolder('a3-04-ordner');
+      const slow = folder.put('a3-langsam.png', makePng(20, 10, false)), fast = folder.put('a3-schnell.png', makePng(30, 15, false));
       // reviewer schedule: choose, cancel while the check is pending, open again, choose another file, release
-      await withEditor(browser, { init: HELD_DECODE }, async (ed) => {
+      await withEditor(browser, { init: HELD_DECODE, artefact: folder.artefact }, async (ed) => {
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.click('bImage');
         await ed.page.setFiles('#imgIn', [slow]);
@@ -195,7 +197,7 @@ export const review3 = [
         c.ok(!afterCancel.includes('<img'), 'the cancelled dialog itself inserted nothing');
       });
       // two choices in one dialog: the slow first one finishes last
-      await withEditor(browser, { init: HELD_DECODE }, async (ed) => {
+      await withEditor(browser, { init: HELD_DECODE, artefact: folder.artefact }, async (ed) => {
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.click('bImage');
         await ed.page.setFiles('#imgIn', [slow]);
@@ -207,6 +209,7 @@ export const review3 = [
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
         c.ok((await ed.source()).includes('src="a3-schnell.png"') && !(await ed.source()).includes('a3-langsam'), 'and the later choice is inserted');
+        await ed.until(`((d) => d.querySelector('img').complete)(${PV})`, 'picture loaded');
         c.eq(await ed.eval(`((d) => d.querySelector('img').naturalWidth)(${PV})`), 30, 'the page pane shows the later picture');
       });
       c.note('timing', 'completion of createImageBitmap() is held by the test after the real decoding; files, file input and buttons are real');

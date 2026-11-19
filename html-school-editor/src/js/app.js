@@ -8,7 +8,7 @@
 //   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
 //                      new text revision, at the latest before the text is used for anything else.
 // Timers only decide how early these steps happen while the user pauses, never what is kept.
-import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath } from './util.js';
+import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
 import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER } from './project.js';
@@ -22,13 +22,12 @@ import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
   ':where(a[data-se-href]){color:#0000ee;text-decoration:underline}' +
-  ':where(img[data-se-src]){display:inline-block;min-width:96px;min-height:64px;box-sizing:border-box;padding:6px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif}' +
   '[data-se-box]{display:inline-block;padding:8px 12px;border:2px dashed #adb5bd;border-radius:6px;background:#f1f3f5;color:#495057;font:13px sans-serif;user-select:none}' +
   '[data-se-opaque]{outline:2px dashed #f59f00;outline-offset:2px}' +
   ':where(input,select,textarea,button){pointer-events:none}' +
   '::highlight(se-src){background-color:rgba(255,224,102,.6)}';
 const PREVIEW_SHELL = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
-  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: blob:">' +
+  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data: \'self\'">' +
   '<style id="se-base">' + PREVIEW_CSS + '</style></head><body></body></html>';
 
 const TEMPLATE = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text.</p>\n</body>\n</html>\n';
@@ -46,12 +45,15 @@ const now = () => performance.now();
 const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
-  srcMark: null, lineStarts: [0], lineCount: 0, plain: false,
+  srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [],
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
 const hlState = {};
-const files = new Map();          // images chosen in this session, by file name: { name, url, width, height }
+// Pictures are shown from the folder of the editor, which is the folder of the pupil's pages (localFileUrl).
+// `missing` holds the file addresses that could not be loaded; their images are shown as a box that says so.
+const missing = new Set();
+const local = { url: (value) => localFileUrl(value, location), missing };
 const els = {};
 let pvDoc = null, pvWin = null;
 let renderTimer = 0, commitTimer = 0, statusTimer = 0, markFrame = 0;
@@ -207,11 +209,11 @@ function render(restore) {
   let view, res;
   try {
     view = analyze(state.text, tokensFor(state.text));
-    res = renderView(view, pvDoc, info, files);
+    res = renderView(view, pvDoc, info, local);
   } catch (e) {
     // Last line of defence: show nothing editable rather than a page that does not match the text.
     view = { ok: false, failed: true };
-    res = { changed: true, report: {}, title: '' };
+    res = { changed: true, report: { lost: [] }, title: '' };
     pvDoc.body.textContent = '';
     pvDoc.body.setAttribute('contenteditable', 'false');
     info.set(pvDoc.body, { t: null, kids: [] });
@@ -221,6 +223,7 @@ function render(restore) {
   state.visualDirty = false;
   state.onlyInserts = true;
   state.report = view.failed ? '' : reportText(res.report);
+  state.lost = view.failed ? [] : res.report.lost;
   showInactive();
   els.lockNote.hidden = view.ok;
   els.lockNote.textContent = view.failed ? LOCK_FAILED : LOCK_NORMAL;
@@ -239,6 +242,9 @@ function showInactive() {
   const text = state.report || (state.blocked ? 'Inhalte von außerhalb der Seite (vom Browser blockiert)' : '');
   els.inactive.hidden = !text;
   els.inactiveText.textContent = text ? 'Im Editor ausgeschaltet: ' + text + '.' : '';
+  const lost = state.lost.length > 4 ? state.lost.slice(0, 4).join(', ') + ' und ' + (state.lost.length - 4) + ' weitere' : state.lost.join(', ');
+  els.lostNote.hidden = !lost;
+  els.lostNote.textContent = lost ? 'Nicht gefunden: ' + lost + '. Lege die Bilddatei an diese Stelle im Ordner deiner Seite oder ändere die Adresse.' : '';
 }
 
 // ---------------------------------------------------------------- preview -> source
@@ -450,17 +456,42 @@ function validateLinkDialog() {
 // ---------------------------------------------------------------- images
 //
 // The source names an image by its file name (with an optional folder). The file itself is never copied into
-// the document. `files` remembers what the pupil has chosen, so that the page pane can show it.
+// the document; the page pane shows the file that lies at this address next to the editor.
 
 let picked = null;          // file chosen in the open dialog, not yet accepted
 let imageEdit = null;       // image that the open dialog changes, or null when it inserts
 let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
 let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
+let foundSeq = 0;           // the same for the check whether the file of the address is there
 
-function dropPicked() {
-  if (picked && files.get(picked.name) !== picked) URL.revokeObjectURL(picked.url);
-  picked = null;
+function dropPicked() { picked = null; }
+
+// A missing picture file reports an error on its image element (the event does not bubble). Its address is
+// remembered and the page pane shows a box instead. Shortly afterwards, not inside the error event: pending
+// edits of the page pane are kept first.
+let lostTimer = 0;
+function onImageError(e) {
+  const img = e.target, url = img && img.localName === 'img' && img.hasAttribute(FILE_HOLDER) ? img.getAttribute('src') : '';
+  if (!url || !url.startsWith('file:')) return;
+  missing.add(url);
+  clearTimeout(lostTimer);
+  lostTimer = setTimeout(showLost, 30);
+}
+function showLost() {
+  if (state.composing) { lostTimer = setTimeout(showLost, 300); return; }
+  commitVisual('vis-type');
+  render(null);
+}
+
+// Looks again for the files that were missing: when the pupil comes back to the editor (perhaps after copying
+// the file into the folder) and after the image dialog. Never by itself, so nothing is loaded over and over.
+function retryLost() {
+  if (!missing.size) return;
+  missing.clear();
+  if (state.composing) return;
+  commitVisual('vis-type');
+  render(null);
 }
 
 // "Bild": with an image selected (a click selects it) the image is changed, otherwise one is inserted.
@@ -484,32 +515,29 @@ async function imageFlow(dropped) {
   els.imgName.textContent = !img ? 'Noch kein Bild ausgewählt.'
     : address ? 'Jetzt: ' + (address.length > 60 ? address.slice(0, 57) + '…' : address)
     : 'Jetzt: Das Bild steckt im Code der Seite.';
-  const shown = img && !img.hasAttribute('data-se-src') ? img.getAttribute('src') : null;
+  const shown = img && !img.hasAttribute('data-se-src') && !img.hasAttribute(FILE_HOLDER) ? img.getAttribute('src') : null;
   els.imgPrev.hidden = !shown;
   if (shown) els.imgPrev.src = shown; else els.imgPrev.removeAttribute('src');
   showAddress();
   if (dropped) pickImage(dropped);
   const answer = await openDialog(els.dlgImage);
-  const result = imageResult, chosen = picked;
+  const result = imageResult, chosen = picked, found = els.imgFound.classList.contains('yes');
   pickSeq++;
+  foundSeq++;
   imageEdit = imageResult = null;
   els.imgPrev.removeAttribute('src');
-  if (state.rev !== rev || state.docId !== docId) { dropPicked(); return; }
+  dropPicked();
+  if (state.rev !== rev || state.docId !== docId) { retryLost(); return; }
   restoreRange(range);
-  if (answer !== 'ok' || !result) { dropPicked(); return; }
-  picked = null;
-  if (chosen) {
-    const old = files.get(chosen.name);
-    if (old && old !== chosen) URL.revokeObjectURL(old.url);
-    files.set(chosen.name, chosen);
-  }
+  if (answer !== 'ok' || !result) { retryLost(); return; }
   if (result.src !== undefined) lastFolder = folderOfSrc(result.src);        // suggested for the next picture
   if (img) { if (img.isConnected) runCommand(() => changeImage(env, img, result)); }
   else runCommand(() => insertImage(env, getRange(pvDoc) || range, result));
-  if (chosen) {
+  if (chosen && !found) {
     const folder = folderOfSrc(result.src);
-    setStatus('Lege die Datei „' + chosen.name + '“ ' + (folder ? 'in den Ordner „' + folder + '“ neben deiner Seite.' : 'in denselben Ordner wie deine Seite.') + ' Sonst fehlt das Bild später im Browser.', 'ok');
+    setStatus('Lege die Datei „' + chosen.name + '“ ' + (folder ? 'in den Ordner „' + folder + '“ neben deiner Seite.' : 'in denselben Ordner wie deine Seite.') + ' Sonst fehlt das Bild.', 'warn');
   }
+  retryLost();
 }
 
 async function pickImage(file) {
@@ -519,7 +547,7 @@ async function pickImage(file) {
   const result = await readImage(file);
   // Only the latest choice of the dialog that is open now counts. A check that was started for an earlier
   // choice or for a dialog that has been closed since is dropped.
-  if (seq !== pickSeq || !els.dlgImage.open) { if (result.url) URL.revokeObjectURL(result.url); return; }
+  if (seq !== pickSeq || !els.dlgImage.open) return;
   if (result.error) {
     els.imgName.textContent = picked ? picked.name : imageEdit ? 'Das bisherige Bild bleibt.' : 'Noch kein Bild ausgewählt.';
     els.imgErr.textContent = result.error === 'type' ? 'Diese Datei ist kein unterstütztes Bild. Erlaubt sind PNG, JPG, GIF und WebP.'
@@ -530,8 +558,6 @@ async function pickImage(file) {
   dropPicked();
   picked = result;
   els.imgName.textContent = result.name + ' (' + result.width + ' × ' + result.height + ' Pixel' + (result.large ? ', eine sehr große Datei' : '') + ')';
-  els.imgPrev.src = result.url;
-  els.imgPrev.hidden = false;
   showAddress();
 }
 
@@ -554,10 +580,28 @@ function dialogAddress() {
   return made.ok ? made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop() : null;
 }
 
-// Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen.
+// Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen, and
+// whether the file is there: the dialog looks for it at once and shows it.
 function showAddress() {
   const src = dialogAddress();
   els.imgCode.textContent = typeof src === 'string' ? 'Im Code steht dann: <' + 'img src="' + src + '">' : '';
+  const url = typeof src === 'string' ? localFileUrl(src, location) : '';
+  const seq = ++foundSeq;
+  els.imgFound.className = 'found';
+  els.imgFound.textContent = url ? 'Das Bild wird im Ordner gesucht …' : '';
+  if (!url) return;
+  els.imgPrev.hidden = true;
+  const probe = new Image();
+  const done = (ok) => {
+    if (seq !== foundSeq || !els.dlgImage.open) return;
+    els.imgFound.className = 'found ' + (ok ? 'yes' : 'no');
+    els.imgFound.textContent = ok ? 'Gefunden: Das Bild liegt an dieser Stelle.'
+      : 'Nicht gefunden: An dieser Stelle liegt keine Datei. Lege das Bild in den Ordner deiner Seite oder ändere den Unterordner.';
+    if (ok) { els.imgPrev.src = url; els.imgPrev.hidden = false; }
+  };
+  probe.addEventListener('load', () => done(true));
+  probe.addEventListener('error', () => done(false));
+  probe.src = url;
 }
 
 // Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
@@ -569,8 +613,7 @@ function validateImageDialog() {
   const result = { alt: els.imgAlt.value.trim(), width };
   const src = dialogAddress();
   if (src === null) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
-  if (src !== undefined) result.src = src;
-  if (picked) result.url = picked.url;
+  if (src !== undefined) { result.src = src; result.url = localFileUrl(src, location); }
   imageResult = result;
   return true;
 }
@@ -599,7 +642,7 @@ async function sameLayout(a, b) {
     if (!doc) return false;
     const prints = [];
     for (const text of [a, b]) {
-      renderView(analyze(text, tokenize(text)), doc, new WeakMap(), files);
+      renderView(analyze(text, tokenize(text)), doc, new WeakMap(), local);
       await Promise.all(Array.from(doc.querySelectorAll('img'), (img) => img.decode().catch(() => {})));
       if (!prints.length && hiddenLayoutRisk(doc, FMT_BLOCK)) return false;
       prints.push(layoutPrint(doc));
@@ -673,6 +716,7 @@ function replaceDocument(text, meta) {
   state.eol = meta.eol || '\n';
   state.srcMark = null;
   state.blocked = false;
+  missing.clear();
   history.reset(text);
   els.src.value = text;
   els.src.setSelectionRange(0, 0);
@@ -943,8 +987,17 @@ function wirePreview() {
     }
   });
   pvDoc.addEventListener('selectionchange', scheduleMarks);
+  pvDoc.addEventListener('error', onImageError, true);
+  pvWin.addEventListener('blur', leftEditor);
+  pvWin.addEventListener('focus', cameBack);
   pvDoc.addEventListener('securitypolicyviolation', () => { if (!state.blocked) { state.blocked = true; showInactive(); } });
 }
+
+// True while the pupil works in another program. Moving between the panes of the editor does not count:
+// the document still has the focus then.
+let away = false;
+function leftEditor() { setTimeout(() => { if (!document.hasFocus()) away = true; }, 0); }
+function cameBack() { if (away) { away = false; retryLost(); } }
 
 function wireChrome() {
   const keepFocus = (el) => el.addEventListener('mousedown', (e) => e.preventDefault());
@@ -1006,7 +1059,8 @@ function wireChrome() {
   for (const type of ['select', 'keyup', 'click']) els.src.addEventListener(type, scheduleMarks);
   document.addEventListener('selectionchange', () => { if (document.activeElement === els.src) scheduleMarks(); });
   document.addEventListener('keydown', onShortcut);
-  window.addEventListener('blur', () => commitVisual('vis-type'));
+  window.addEventListener('blur', () => { commitVisual('vis-type'); leftEditor(); });
+  window.addEventListener('focus', cameBack);
   window.addEventListener('beforeunload', (e) => { commitVisual('vis-type'); if (isDirty()) { e.preventDefault(); e.returnValue = ''; } });
   wireDrop(document, false);
 

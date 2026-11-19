@@ -4,7 +4,7 @@ Mit diesem Editor schreibst du eigene Webseiten. Du brauchst nur die eine Datei 
 
 ## Starten
 
-Doppelklicke auf die Datei des Editors. Sie öffnet sich im Browser.
+Lege die Datei des Editors in deinen Projektordner. Dort liegen auch deine Seiten und deine Bilder. Doppelklicke auf die Datei des Editors. Sie öffnet sich im Browser.
 
 * **Links** steht der HTML-Code deiner Seite.
 * **Rechts** siehst du die Seite so, wie ein Browser sie anzeigt.
@@ -33,17 +33,23 @@ Tipp: Klicke rechts in einen Text. Links wird der passende Code gelb markiert. S
 
 ## Bilder
 
-Drücke **Bild** und wähle eine Bilddatei aus. Im Code steht dann nur der Name der Datei, zum Beispiel `<img src="katze.jpg" alt="">`.
+Lege das Bild zuerst in deinen Projektordner. Drücke dann **Bild** und wähle die Bilddatei aus. Im Code steht nur der Name der Datei, zum Beispiel `<img src="katze.jpg" alt="">`.
 
-**Wichtig:** Lege die Bilddatei in denselben Ordner wie deine Seite. Liegt sie in einem Unterordner, schreibst du dessen Namen in das Feld „Unterordner“, zum Beispiel `bilder`. Im Code steht dann `bilder/katze.jpg`. Fehlt die Datei dort, zeigt der Browser später kein Bild.
+Liegt das Bild in einem Unterordner, schreibst du dessen Namen in das Feld „Unterordner“, zum Beispiel `bilder`. Im Code steht dann `bilder/katze.jpg`. Der Editor erfährt nicht, aus welchem Ordner du ein Bild ausgewählt hast. Deshalb musst du den Unterordner selbst eintragen.
 
-Der Editor erfährt nicht, aus welchem Ordner du ein Bild ausgewählt hast. Deshalb musst du den Unterordner selbst eintragen. Unter dem Feld zeigt dir der Editor, was im Code stehen wird.
+Unter dem Feld zeigt dir der Editor, was im Code stehen wird, und ob er das Bild dort findet: **Gefunden** oder **Nicht gefunden**.
+
+**Wichtig:** Der Editor findet deine Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.
 
 Im selben Fenster kannst du das Bild beschreiben (diese Beschreibung hören Menschen, die das Bild nicht sehen können) und eine Breite in Pixeln angeben. Beides ist freiwillig.
 
 Zum Ändern klickst du das Bild rechts an und drückst wieder **Bild**. Mit der Taste Entf löschst du ein angeklicktes Bild. Mit **Links**, **Mitte** und **Rechts** stellst du ein, wo das Bild in seiner Zeile steht.
 
-Wenn du deine Seite später wieder öffnest, zeigt der Editor deine Bilder zuerst als Kasten, denn er darf deine Ordner nicht selbst lesen. Klicke einen Kasten an, drücke **Bild** und wähle die Datei noch einmal aus. Dann siehst du das Bild wieder; am Code ändert sich dabei nichts.
+Steht statt eines Bildes ein Kasten mit „Bild nicht gefunden: …“, liegt unter dieser Adresse keine Datei. Über der Seite steht dann auch, welche Bilder fehlen. Lege die Datei an die richtige Stelle oder ändere die Adresse. Wenn du danach zum Editor zurückkehrst, sucht er das Bild noch einmal.
+
+### Bilder aus dem Internet
+
+Bilder aus dem Internet zeigt der Editor nicht an. Lade das Bild herunter, lege es in deinen Projektordner und verlinke es mit seinem Dateinamen. Denk dabei an das Urheberrecht: Nicht jedes Bild aus dem Internet darfst du verwenden.
 
 ## Speichern
 
@@ -62,7 +68,7 @@ Mit **Herunterladen** bekommst du eine Kopie in den Ordner „Downloads“.
 
 ## Was der Editor nicht anzeigt
 
-Skripte, Formulare, Videos und Bilder aus dem Internet sind im Editor ausgeschaltet. Bilder aus Dateien zeigt der Editor erst, wenn du sie mit **Bild** ausgewählt hast (siehe oben). In deinem Code bleibt alles erhalten. Wenn du die gespeicherte Datei im Browser öffnest, funktioniert es dort.
+Skripte, Formulare, Videos und Bilder aus dem Internet sind im Editor ausgeschaltet. In deinem Code bleibt alles erhalten. Wenn du die gespeicherte Datei im Browser öffnest, funktioniert es dort.
 
 ## Tasten
 

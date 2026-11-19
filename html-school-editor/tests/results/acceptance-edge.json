@@ -1,11 +1,11 @@
 {
  "artefact": "dist/school-editor.html",
- "bytes": 176008,
- "sha256": "e9ad516a91fbe632353908271dc6f37236e75ab80734b30fbd336e90402e9f49",
+ "bytes": 182038,
+ "sha256": "72715e6199f19dd92163d3f399e9180b1ed8d0e192b50970b1676ffad54e5af6",
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-19T09:03:37.928Z",
+ "date": "2026-11-19T11:22:19.016Z",
  "browser": "edge",
  "results": [
   {
@@ -13,7 +13,7 @@
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 710,
+   "ms": 981,
    "error": null,
    "checks": [
     {
@@ -48,7 +48,7 @@
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 623,
+   "ms": 1039,
    "error": null,
    "checks": [
     {
@@ -74,7 +74,7 @@
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1042,
+   "ms": 1380,
    "error": null,
    "checks": [
     {
@@ -125,7 +125,7 @@
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1567,
+   "ms": 3541,
    "error": null,
    "checks": [
     {
@@ -191,7 +191,7 @@
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 779,
+   "ms": 3158,
    "error": null,
    "checks": [
     {
@@ -241,7 +241,7 @@
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2321,
+   "ms": 6371,
    "error": null,
    "checks": [
     {
@@ -304,6 +304,10 @@
     },
     {
      "pass": true,
+     "label": "the dialog tells that the file lies where the address points"
+    },
+    {
+     "pass": true,
      "label": "img element with the file name as address and the escaped description",
      "detail": "  <h1 id=\"titel\">Erste Zeile<img src=\"t06-klein.png\" alt=\"Katze &quot;auf&quot; dem &lt;script>alert(1)&lt;/script> Sofa &amp; mehr\"></h1>"
     },
@@ -321,12 +325,7 @@
     },
     {
      "pass": true,
-     "label": "the page pane shows the chosen picture"
-    },
-    {
-     "pass": true,
-     "label": "the pupil is told where the file has to be",
-     "detail": "Lege die Datei „t06-klein.png“ in denselben Ordner wie deine Seite. Sonst fehlt das Bild später im Browser."
+     "label": "the page pane shows the picture from the folder"
     },
     {
      "pass": true,
@@ -342,6 +341,10 @@
     },
     {
      "pass": true,
+     "label": "a picture chosen from another folder is reported as not found there"
+    },
+    {
+     "pass": true,
      "label": "size of a large picture is shown",
      "detail": "t06-gross.png (1600 × 1200 Pixel, eine sehr große Datei)"
     },
@@ -353,6 +356,11 @@
     {
      "pass": true,
      "label": "the source grew by 32 characters"
+    },
+    {
+     "pass": true,
+     "label": "the pupil is told where the file has to be",
+     "detail": "Lege die Datei „t06-gross.png“ in denselben Ordner wie deine Seite. Sonst fehlt das Bild."
     }
    ]
   },
@@ -361,7 +369,7 @@
    "title": "explicit formatting changes white space only and is verified",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 521,
+   "ms": 1227,
    "error": null,
    "checks": [
     {
@@ -441,7 +449,7 @@
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1118,
+   "ms": 3652,
    "error": null,
    "checks": [
     {
@@ -531,7 +539,7 @@
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1319,
+   "ms": 1825,
    "error": null,
    "checks": [
     {
@@ -585,7 +593,7 @@
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1633,
+   "ms": 2819,
    "error": null,
    "checks": [
     {
@@ -650,7 +658,7 @@
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 24751,
+   "ms": 30745,
    "error": null,
    "checks": [
     {
@@ -672,7 +680,7 @@
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3439,
+   "ms": 6824,
    "error": null,
    "checks": [
     {
@@ -690,7 +698,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 1814 ms, panes in sync after 2068 ms"
+     "detail": "162 keystrokes sent in 3875 ms, panes in sync after 4236 ms"
     },
     {
      "pass": true,
@@ -741,7 +749,7 @@
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3893,
+   "ms": 5309,
    "error": null,
    "checks": [
     {
@@ -803,7 +811,7 @@
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 10743,
+   "ms": 13386,
    "error": null,
    "checks": [
     {
@@ -875,7 +883,7 @@
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1782,
+   "ms": 1942,
    "error": null,
    "checks": [
     {
@@ -934,7 +942,7 @@
    "title": "Save falls back to a real download when direct file access is missing",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 321,
+   "ms": 393,
    "error": null,
    "checks": [
     {
@@ -963,7 +971,7 @@
    "title": "no persistence between sessions",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 805,
+   "ms": 827,
    "error": null,
    "checks": [
     {
@@ -981,7 +989,7 @@
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1965,
+   "ms": 2023,
    "error": null,
    "checks": [
     {
@@ -1027,7 +1035,7 @@
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4721,
+   "ms": 4713,
    "error": null,
    "checks": [
     {
@@ -1113,7 +1121,7 @@
    "title": "no external resource of an opened document is fetched",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3223,
+   "ms": 3260,
    "error": null,
    "checks": [
     {
@@ -1157,7 +1165,7 @@
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1124,
+   "ms": 1205,
    "error": null,
    "checks": [
     {
@@ -1203,7 +1211,7 @@
    "title": "element names that shadow DOM properties do not disturb the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 870,
+   "ms": 931,
    "error": null,
    "checks": [
     {
@@ -1241,11 +1249,54 @@
    ]
   },
   {
+   "id": "X-08",
+   "title": "residual risk accepted by the owner: the CSS of an opened page can load picture files of this computer, never from the network",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 991,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "a picture file next to the editor named in the CSS of the page is shown (owner's decision)"
+    },
+    {
+     "pass": true,
+     "label": "a picture file above the folder of the editor is shown as well: the editor does not resolve addresses in CSS"
+    },
+    {
+     "pass": true,
+     "label": "a picture on the network named in the CSS is not shown"
+    },
+    {
+     "pass": true,
+     "label": "and the address on the network reaches nothing"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "network address in the CSS",
+     "detail": "the browser reported an attempt, which the policy stopped (as in X-03)"
+    },
+    {
+     "pass": true,
+     "label": "the note above the page announces what was switched off",
+     "detail": "Im Editor ausgeschaltet: 1 Adresse im CSS."
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "file address of another computer in the CSS",
+     "detail": "shown: no; the browser reported an attempt: file://rechner/freigabe/x08-freigabe.png"
+    }
+   ]
+  },
+  {
    "id": "X-05",
    "title": "no message bridge exists",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3,
+   "ms": 2,
    "error": null,
    "checks": [
     {
@@ -1259,7 +1310,7 @@
    "title": "static scan of the delivered file",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5,
+   "ms": 6,
    "error": null,
    "checks": [
     {
@@ -1284,7 +1335,7 @@
     },
     {
      "pass": true,
-     "label": "only inert example/namespace addresses occur: https://www.beispiel.de http://www.w3.org/1999/xhtml https://…"
+     "label": "only inert example/namespace addresses occur: https://www.beispiel.de http://www.w3.org/1999/xhtml http://www.w3.org/2000/svg https://…"
     },
     {
      "pass": true,
@@ -1301,12 +1352,16 @@
     },
     {
      "pass": true,
-     "label": "page policy allows only the one hashed script, inline styles and data: images",
-     "detail": "default-src 'none'; script-src 'sha256-8sWGtrt3qkw/W0pUs2PPdlKeGFnC6eK45m8q9VE6jiU='; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'"
+     "label": "page policy allows only the one hashed script, inline styles, data: images and picture files of its own origin",
+     "detail": "default-src 'none'; script-src 'sha256-1g8kBjv3QKFgVvBiyZqRg/s7DPB8cIMJHdyHEqL3lzI='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'"
     },
     {
      "pass": true,
-     "label": "preview frame carries its own policy without any script source; images only from the document text or from files chosen in this session"
+     "label": "preview frame carries its own policy without any script source; images only from the document text or as files of its own origin"
+    },
+    {
+     "pass": true,
+     "label": "an object address is made only for the download of the page itself, never for a chosen picture"
     },
     {
      "pass": true,
@@ -1318,7 +1373,7 @@
      "pass": true,
      "note": true,
      "label": "size",
-     "detail": "176008 bytes"
+     "detail": "182038 bytes"
     }
    ]
   },
@@ -1327,7 +1382,7 @@
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 28367,
+   "ms": 30086,
    "error": null,
    "checks": [
     {
@@ -1362,7 +1417,7 @@
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 736,
+   "ms": 791,
    "error": null,
    "checks": [
     {
@@ -1403,7 +1458,7 @@
    "title": "review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 2342,
+   "ms": 2455,
    "error": null,
    "checks": [
     {
@@ -1504,7 +1559,7 @@
    "title": "review finding: \"tidy up\" never changes how the page looks (S-05, T-07)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2767,
+   "ms": 2993,
    "error": null,
    "checks": [
     {
@@ -1700,7 +1755,7 @@
    "title": "review finding: list commands keep attributes (S-05, T-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1336,
+   "ms": 1586,
    "error": null,
    "checks": [
     {
@@ -1751,7 +1806,7 @@
    "title": "review finding: whatever is switched off in the page pane is announced (S-04, X-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5275,
+   "ms": 5385,
    "error": null,
    "checks": [
     {
@@ -1868,10 +1923,10 @@
   },
   {
    "id": "F-01",
-   "title": "images are addressed by file name: folder, width, optional description; files next to the editor are never read",
+   "title": "images are addressed relative to the page and shown from the folder of the editor; missing files are named; other computers and the network are never asked",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1843,
+   "ms": 1946,
    "error": null,
    "checks": [
     {
@@ -1881,8 +1936,21 @@
     },
     {
      "pass": true,
+     "label": "without the folder the dialog says at once that the file is not there",
+     "detail": "Nicht gefunden: An dieser Stelle liegt keine Datei. Lege das Bild in den Ordner deiner Seite oder ändere den Unterordner."
+    },
+    {
+     "pass": true,
      "label": "a folder name with a colon is refused with an explanation",
      "detail": "Der Name des Unterordners darf keine Zeichen wie : ? # \" < > enthalten."
+    },
+    {
+     "pass": true,
+     "label": "with the folder typed in, the dialog finds the file"
+    },
+    {
+     "pass": true,
+     "label": "and shows it"
     },
     {
      "pass": true,
@@ -1903,17 +1971,17 @@
     },
     {
      "pass": true,
-     "label": "the page pane shows the chosen file in the given width",
-     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":60,\"box\":false}"
+     "label": "the page pane shows the file from the folder in the given width",
+     "detail": "{\"kind\":\"file\",\"natural\":120,\"shown\":60,\"box\":false}"
     },
     {
      "pass": true,
-     "label": "a picture the editor knows is not reported as switched off"
+     "label": "a picture that is there is neither switched off nor missing"
     },
     {
      "pass": true,
-     "label": "the hint names the folder",
-     "detail": "Lege die Datei „f01-katze.png“ in den Ordner „bilder/fotos“ neben deiner Seite. Sonst fehlt das Bild später im Browser."
+     "label": "no hint where to put a file that is already there",
+     "detail": ""
     },
     {
      "pass": true,
@@ -1926,48 +1994,51 @@
     },
     {
      "pass": true,
-     "label": "and the page pane shows it",
-     "detail": "{\"kind\":\"blob\",\"natural\":10,\"shown\":10,\"box\":false}"
+     "label": "and the page pane finds that file",
+     "detail": "{\"kind\":\"file\",\"natural\":10,\"shown\":10,\"box\":false}"
     },
     {
      "pass": true,
-     "label": "the saved file holds file names only, no image data and no internal address"
+     "label": "the saved file holds relative addresses only, no image data and no address of the computer"
     },
     {
      "pass": true,
-     "label": "a picture chosen earlier in this session is shown in another page that names the same file",
-     "detail": "{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}"
+     "label": "the missing file becomes a box with a text in it",
+     "detail": "{\"kind\":\"data\",\"natural\":269,\"shown\":269,\"box\":true}"
     },
     {
      "pass": true,
-     "label": "pictures that lie next to the editor are not read: both are shown as a box",
-     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"\",\"natural\":0,\"shown\":663,\"box\":true}]"
+     "label": "the box says \"Bild nicht gefunden\" with the address"
     },
     {
      "pass": true,
-     "label": "no image element of the page pane has an address that could be loaded"
+     "label": "resting on the box explains what to do"
     },
     {
      "pass": true,
-     "label": "the browser reports no request for any of the pictures"
+     "label": "the picture that is there is shown"
     },
     {
      "pass": true,
-     "label": "nothing reaches the local counter"
+     "label": "the note above the page names the missing file"
     },
     {
      "pass": true,
-     "label": "a picture from the network is a box, a picture embedded in the code is shown as before",
-     "detail": "[{\"kind\":\"\",\"natural\":0,\"shown\":96,\"box\":true},{\"kind\":\"data\",\"natural\":16,\"shown\":16,\"box\":false}]"
+     "label": "and the note \"switched off\" does not list it"
     },
     {
      "pass": true,
-     "label": "the note tells both kinds apart",
-     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb, 2 Bilder aus Dateien."
+     "label": "the code stays as it was"
     },
     {
      "pass": true,
-     "label": "the box explains what to do"
+     "label": "coming back to the editor looks again: the picture is shown and the note is gone"
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "return to the editor",
+     "detail": "the test replaces document.hasFocus for one moment and sends blur and focus to the window; leaving for another program cannot be done in a headless browser"
     },
     {
      "pass": true,
@@ -1975,21 +2046,61 @@
     },
     {
      "pass": true,
-     "label": "choosing the file again does not change the code"
+     "label": "after the dialog the page pane looks again and shows the file"
     },
     {
      "pass": true,
-     "label": "both places that name this file now show it",
-     "detail": "[{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false},{\"kind\":\"blob\",\"natural\":120,\"shown\":120,\"box\":false}]"
+     "label": "a picture in a subfolder of the editor is shown",
+     "detail": "{\"kind\":\"file\",\"natural\":120,\"shown\":120,\"box\":false}"
     },
     {
      "pass": true,
-     "label": "the note no longer lists them",
-     "detail": "Im Editor ausgeschaltet: 1 Bild von außerhalb."
+     "label": "a picture in the folder above is shown as well",
+     "detail": "{\"kind\":\"file\",\"natural\":14,\"shown\":14,\"box\":false}"
     },
     {
      "pass": true,
-     "label": "still nothing reached the local counter"
+     "label": "pictures from the network, without a scheme and from another computer are boxes",
+     "detail": "[{\"kind\":\"data\",\"natural\":176,\"shown\":176,\"box\":true},{\"kind\":\"data\",\"natural\":176,\"shown\":176,\"box\":true},{\"kind\":\"data\",\"natural\":276,\"shown\":276,\"box\":true}]"
+    },
+    {
+     "pass": true,
+     "label": "a picture embedded in the code is shown as before",
+     "detail": "{\"kind\":\"data\",\"natural\":16,\"shown\":16,\"box\":false}"
+    },
+    {
+     "pass": true,
+     "label": "every image element has a data address or one inside the test folder on this computer",
+     "detail": "file:///D:/Eigene%20Dateien/Eigene%20Dokumente/Pla file:///D:/Eigene%20Dateien/Eigene%20Dokumente/Pla data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F% data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F% data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F% data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAA"
+    },
+    {
+     "pass": true,
+     "label": "the browser reports no request for the other pictures"
+    },
+    {
+     "pass": true,
+     "label": "nothing reaches the local counter"
+    },
+    {
+     "pass": true,
+     "label": "the box of a picture from the network says so"
+    },
+    {
+     "pass": true,
+     "label": "and explains how to use it instead"
+    },
+    {
+     "pass": true,
+     "label": "the note \"switched off\" counts the three pictures from outside",
+     "detail": "Im Editor ausgeschaltet: 3 Bilder von außerhalb."
+    },
+    {
+     "pass": true,
+     "label": "nothing is reported missing"
+    },
+    {
+     "pass": true,
+     "label": "the code stays as it was"
     }
    ]
   },
@@ -1998,7 +2109,7 @@
    "title": "existing images and links are changed through the dialogs; only the changed attribute is rewritten",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2247,
+   "ms": 2819,
    "error": null,
    "checks": [
     {
@@ -2103,7 +2214,7 @@
    "title": "alignment left, centre, right, justified for text and pictures; the only style the editor writes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2116,
+   "ms": 2405,
    "error": null,
    "checks": [
     {
@@ -2202,11 +2313,42 @@
    ]
   },
   {
+   "id": "F-04",
+   "title": "the version stands small next to the name in the top bar and does not wrap",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 135,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "the name is followed by the version 0.1.0-alpha.4"
+    },
+    {
+     "pass": true,
+     "label": "smaller and in another colour than the name",
+     "detail": "{\"small\":true,\"grey\":true}"
+    },
+    {
+     "pass": true,
+     "label": "name and version stay on one line in a top bar 1800 pixels wide"
+    },
+    {
+     "pass": true,
+     "label": "name and version stay on one line in a top bar 1000 pixels wide"
+    },
+    {
+     "pass": true,
+     "label": "name and version stay on one line in a top bar 640 pixels wide"
+    }
+   ]
+  },
+  {
    "id": "A3-01",
    "title": "review finding: alignment reads the style attribute as CSS and never touches other declarations (S-05, F-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1294,
+   "ms": 1590,
    "error": null,
    "checks": [
     {
@@ -2271,7 +2413,7 @@
    "title": "review finding: changing attributes of badly written tags keeps the intended meaning (S-05, F-02)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 931,
+   "ms": 1120,
    "error": null,
    "checks": [
     {
@@ -2313,7 +2455,7 @@
    "title": "review finding: \"tidy up\" refuses pages whose rules hold only sometimes, or in parts that are hidden (S-05, T-07)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3327,
+   "ms": 3482,
    "error": null,
    "checks": [
     {
@@ -2506,7 +2648,7 @@
    "title": "review finding: only the latest choice of the open image dialog counts (S-06, F-01)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1678,
+   "ms": 1780,
    "error": null,
    "checks": [
     {
@@ -2552,7 +2694,7 @@
    "title": "review finding: every stop by the content policy is announced, whatever the address looks like (S-04)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2651,
+   "ms": 2687,
    "error": null,
    "checks": [
     {
@@ -2614,7 +2756,7 @@
    "title": "review finding about the test helper: opening a file waits for that file, also when the name is the same",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 486,
+   "ms": 538,
    "error": null,
    "checks": [
     {
@@ -2636,7 +2778,7 @@
    "title": "Firefox measurement: typing never changes white space in a neighbouring text (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1250,
+   "ms": 1338,
    "error": null,
    "checks": [
     {
@@ -2667,7 +2809,7 @@
    "title": "Firefox measurement: a line break the browser keeps in an empty page is never written into the document (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1181,
+   "ms": 1172,
    "error": null,
    "checks": [
     {
@@ -2696,11 +2838,11 @@
  "mode": "headless (new)",
  "status": "PASS",
  "summary": {
-  "pass": 41,
+  "pass": 43,
   "fail": 0,
   "partial": 0,
   "notMeasured": 0,
-  "checks": 511,
+  "checks": 536,
   "partsNotMeasured": 2
  }
 }

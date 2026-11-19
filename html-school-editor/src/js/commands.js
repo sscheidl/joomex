@@ -385,13 +385,13 @@ export function selectedImage(doc) {
   return node && node.nodeType === 1 && node.localName === 'img' && isEditableAt(node.parentNode) ? node : null;
 }
 
-// Inserts an image that the source will address by file name. `image`: { src, url, alt, width }: `src` is
-// written into the source, `url` only shows the chosen file in the page pane.
+// Inserts an image. `image`: { src, url, alt, width }: `src` is the address written into the source, `url`
+// the file address under which the page pane finds the file ('' if it cannot look for it).
 export function insertImage(env, range, image) {
   const doc = env.doc;
   const img = doc.createElement('img');
   img.setAttribute(FILE_HOLDER, image.src);
-  img.setAttribute('src', image.url);
+  if (image.url) img.setAttribute('src', image.url);
   img.setAttribute('alt', image.alt);
   if (image.width) img.setAttribute('width', image.width);
   range.collapse(false);
@@ -408,7 +408,7 @@ export function changeImage(env, img, changes) {
   if (changes.src !== undefined && changes.src !== img.getAttribute(FILE_HOLDER)) {
     set.src = changes.src;
     img.setAttribute(FILE_HOLDER, changes.src);
-    if (changes.url) img.setAttribute('src', changes.url);
+    if (changes.url) img.setAttribute('src', changes.url); else img.removeAttribute('src');
   }
   if (changes.alt !== undefined && changes.alt !== (img.getAttribute('alt') || '')) { set.alt = changes.alt; img.setAttribute('alt', changes.alt); }
   if (changes.width !== undefined && changes.width !== (img.getAttribute('width') || '')) {

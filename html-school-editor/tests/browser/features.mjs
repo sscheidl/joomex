@@ -1,25 +1,32 @@
 // Cases F-01 … F-03 for the functions the owner asked for after trying 0.1.0-alpha.2: images addressed by
-// file name (optional folder, optional description, width), changing existing images and links through the
+// file name (optional folder, optional description, width) and shown from the folder of the editor, changing existing images and links through the
 // dialogs, and text alignment. Expected source texts are written by hand.
 import fs from 'node:fs';
 import path from 'node:path';
-import { Editor, PV, ARTEFACT, TMP, sleep, tmpFile, makePng } from '../lib/harness.mjs';
+import { Editor, PV, TMP, sleep, tmpFile, makePng, editorFolder } from '../lib/harness.mjs';
 
 const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
 const page = (body) => '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>F</title>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n';
 const imgState = (ed, index = 0) => ed.eval(`((d) => { const i = d.querySelectorAll("img")[${index}]; return JSON.stringify({ kind: (i.getAttribute("src") || "").split(":")[0], natural: i.naturalWidth, shown: Math.round(i.getBoundingClientRect().width), box: i.hasAttribute("data-se-src") }); })(${PV})`).then(JSON.parse);
 const imgError = (ed) => ed.eval('document.getElementById("imgErr").textContent');
+const found = (ed) => ed.eval('document.getElementById("imgFound").textContent');
+const lostNote = (ed) => ed.eval('document.getElementById("lostNote").hidden ? "" : document.getElementById("lostNote").textContent');
+// waits until image `index` of the page pane has finished: loaded, or turned into a box
+const loaded = (ed, index) => ed.until(`((i) => i && i.complete && (i.naturalWidth > 0 || i.hasAttribute("data-se-src")))(${PV}.querySelectorAll("img")[${index}])`, 'image ' + index + ' settled');
 const pressed = (ed) => ed.eval('["bAlignLeft", "bAlignCenter", "bAlignRight", "bAlignJustify"].filter((id) => document.getElementById(id).getAttribute("aria-pressed") === "true").join(",")');
 // a 16 x 16 picture embedded in the code (large enough to be clicked)
 const SMALL_GIF = 'data:image/png;base64,' + makePng(16, 16, false).toString('base64');
 
 export const features = [
   {
-    id: 'F-01', title: 'images are addressed by file name: folder, width, optional description; files next to the editor are never read',
+    id: 'F-01', title: 'images are addressed relative to the page and shown from the folder of the editor; missing files are named; other computers and the network are never asked',
     async run(c, { browser, sink }) {
-      const png = tmpFile('f01-katze.png', makePng(120, 80, false));
-      let saved = '';
-      await withEditor(browser, {}, async (ed) => {
+      // the pupil's folder: the editor, a picture in a subfolder, one with an odd name; one picture above the folder
+      const folder = editorFolder('f01-ordner');
+      const katze = folder.put('bilder/fotos/f01-katze.png', makePng(120, 80, false));
+      const odd = folder.put('f01 mein bild #1 100%.png', makePng(10, 10, false));
+      fs.writeFileSync(path.join(TMP, 'f01-oben.png'), makePng(14, 14, false));
+      await withEditor(browser, { artefact: folder.artefact }, async (ed) => {
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.click('bImage');
         // a file above the size limit is refused before anything of it is decoded
@@ -28,11 +35,16 @@ export const features = [
         await ed.page.setFiles('#imgIn', [tmpFile('f01-riesig.png', huge)]);
         await ed.until('document.getElementById("imgErr").textContent.length > 0', 'oversized image refused');
         c.ok((await imgError(ed)).includes('zu groß'), 'a picture file above 20 MB is refused with an explanation', await imgError(ed));
-        await ed.pickImage(png);
+        await ed.pickImage(katze);
+        await ed.until('document.getElementById("imgFound").classList.contains("no")', 'not found without the folder');
+        c.ok((await found(ed)).startsWith('Nicht gefunden'), 'without the folder the dialog says at once that the file is not there', await found(ed));
         await ed.field('imgDir', 'a:b');
         await ed.dialogButton('dlgImage', 'Einfügen');
         c.ok(await ed.dialogOpen('dlgImage') && (await imgError(ed)).includes('Unterordner'), 'a folder name with a colon is refused with an explanation', await imgError(ed));
         await ed.field('imgDir', ' bilder\\fotos/ ');
+        await ed.until('document.getElementById("imgFound").classList.contains("yes")', 'found with the folder');
+        c.eq(await found(ed), 'Gefunden: Das Bild liegt an dieser Stelle.', 'with the folder typed in, the dialog finds the file');
+        c.eq(await ed.eval('document.getElementById("imgPrev").hidden + "|" + document.getElementById("imgPrev").naturalWidth'), 'false|120', 'and shows it');
         for (const bad of ['abc', '0', '12.5']) {
           await ed.field('imgWidth', bad);
           await ed.dialogButton('dlgImage', 'Einfügen');
@@ -42,63 +54,87 @@ export const features = [
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
         c.ok((await ed.source()).includes('  <p>Hier steht mein Text.<img src="bilder/fotos/f01-katze.png" alt="" width="60"></p>'), 'folder, file name, empty description and width are written as plain attributes', (await ed.source()).split('\n')[8]);
+        await loaded(ed, 0);
         let state = await imgState(ed);
-        c.ok(state.kind === 'blob' && state.natural === 120 && state.shown === 60, 'the page pane shows the chosen file in the given width', JSON.stringify(state));
-        c.eq(await ed.inactiveNote(), '', 'a picture the editor knows is not reported as switched off');
-        c.ok((await ed.status()).includes('„bilder/fotos“'), 'the hint names the folder', await ed.status());
+        c.ok(state.kind === 'file' && state.natural === 120 && state.shown === 60 && !state.box, 'the page pane shows the file from the folder in the given width', JSON.stringify(state));
+        c.eq(await ed.inactiveNote() + '|' + await lostNote(ed), '|', 'a picture that is there is neither switched off nor missing');
+        c.ok(!(await ed.status()).includes('Lege'), 'no hint where to put a file that is already there', await ed.status());
         // the folder is remembered for the next picture; a file name with characters that mean something in an address
-        const odd = tmpFile('f01 mein bild #1 100%.png', makePng(10, 10, false));
         await ed.caret('Meine erste', 0);
         await ed.click('bImage');
         c.eq(await ed.eval('document.getElementById("imgDir").value'), 'bilder/fotos', 'the folder of the last picture is suggested again');
         await ed.pickImage(odd);
         await ed.field('imgDir', '');
+        await ed.until('document.getElementById("imgFound").classList.contains("yes")', 'odd name found');
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
         c.ok((await ed.source()).includes('<h1><img src="f01 mein bild %231 100%25.png" alt="">Meine erste Webseite</h1>'), 'the characters # and % of a file name are written so that the address still means this file', (await ed.source()).split('\n')[7]);
+        await loaded(ed, 0);
         state = await imgState(ed, 0);
-        c.ok(state.kind === 'blob' && state.natural === 10, 'and the page pane shows it', JSON.stringify(state));
-        saved = (await ed.download()).text;
-        c.ok(!/data:|blob:/.test(saved), 'the saved file holds file names only, no image data and no internal address');
-        // the same file name in another document of this session is shown as well
-        await ed.openText('f01-zweite.html', page('<p><img src="f01-katze.png" alt="x"></p>'));
-        state = await imgState(ed);
-        c.ok(state.kind === 'blob' && state.natural === 120, 'a picture chosen earlier in this session is shown in another page that names the same file', JSON.stringify(state));
-      });
-      // a fresh editor does not know the files; a copy of the editor with a real picture next to it must not read it
-      const dir = path.join(TMP, 'f01-ordner');
-      fs.mkdirSync(path.join(dir, 'bilder', 'fotos'), { recursive: true });
-      const copy = path.join(dir, 'schuleditor-kopie.html');
-      fs.copyFileSync(ARTEFACT, copy);
-      fs.copyFileSync(png, path.join(dir, 'f01-katze.png'));
-      fs.copyFileSync(png, path.join(dir, 'bilder', 'fotos', 'f01-katze.png'));
-      await withEditor(browser, { artefact: copy }, async (ed) => {
-        const source = page('<p>A<img src="f01-katze.png" alt="Katze"></p>\n<p>B<img src="bilder/fotos/f01-katze.png"></p>\n<p>C<img src="' + sink.origin + '/f01/aussen.png" alt="von außen"></p>\n<p>D<img alt="klein" src="' + SMALL_GIF + '"></p>');
-        const before = sink.hits.length;
-        await ed.openText('f01-wieder.html', source);
-        await sleep(500);
-        const states = [await imgState(ed, 0), await imgState(ed, 1), await imgState(ed, 2), await imgState(ed, 3)];
-        c.ok(states[0].box && states[1].box && states[0].natural === 0 && states[1].natural === 0, 'pictures that lie next to the editor are not read: both are shown as a box', JSON.stringify(states.slice(0, 2)));
-        c.eq(await ed.eval(PV + '.querySelectorAll("img[src]:not([src^=\\"data:\\"])").length'), 0, 'no image element of the page pane has an address that could be loaded');
-        const requests = ed.page.eventsOf('Network.requestWillBeSent').map((e) => e.request.url).filter((u) => /f01-katze|aussen/.test(u));
-        c.eq(requests.join(','), '', 'the browser reports no request for any of the pictures');
-        c.eq(sink.hits.slice(before).join(','), '', 'nothing reaches the local counter');
-        c.ok(states[2].box && states[3].kind === 'data' && states[3].natural === 16, 'a picture from the network is a box, a picture embedded in the code is shown as before', JSON.stringify(states.slice(2)));
-        const note = await ed.inactiveNote();
-        c.ok(note.includes('2 Bilder aus Dateien') && note.includes('1 Bild von außerhalb'), 'the note tells both kinds apart', note);
-        c.ok((await ed.eval(PV + '.querySelector("img").title')).includes('kennt dieses Bild noch nicht'), 'the box explains what to do');
-        // choosing the file makes both boxes pictures and leaves the code alone
-        await ed.clickPv('d.querySelectorAll("img")[0]');
+        c.ok(state.kind === 'file' && state.natural === 10, 'and the page pane finds that file', JSON.stringify(state));
+        const saved = (await ed.download()).text;
+        c.ok(!/data:|blob:|file:/.test(saved), 'the saved file holds relative addresses only, no image data and no address of the computer');
+
+        // another page names a file that is not there: it is a box that says so, and the note above the page names it
+        await ed.openText('f01-zweite.html', page('<p>A<img src="f01-katze.png" alt="Katze"></p>\n<p>B<img src="bilder/fotos/f01-katze.png"></p>'));
+        await ed.until(`((d) => d.querySelector("img").hasAttribute("data-se-src"))(${PV})`, 'missing picture becomes a box');
+        await loaded(ed, 1);
+        state = await imgState(ed, 0);
+        c.ok(state.box && state.kind === 'data' && state.natural > 200, 'the missing file becomes a box with a text in it', JSON.stringify(state));
+        c.ok(decodeURIComponent(await ed.eval(PV + '.querySelector("img").getAttribute("src")')).includes('Bild nicht gefunden: f01-katze.png'), 'the box says "Bild nicht gefunden" with the address');
+        c.ok((await ed.eval(PV + '.querySelector("img").title')).startsWith('Unter dieser Adresse liegt keine Bilddatei'), 'resting on the box explains what to do');
+        c.ok((await imgState(ed, 1)).kind === 'file', 'the picture that is there is shown');
+        c.eq(await lostNote(ed), 'Nicht gefunden: f01-katze.png. Lege die Bilddatei an diese Stelle im Ordner deiner Seite oder ändere die Adresse.', 'the note above the page names the missing file');
+        c.eq(await ed.inactiveNote(), '', 'and the note "switched off" does not list it');
+        c.eq(await ed.source(), page('<p>A<img src="f01-katze.png" alt="Katze"></p>\n<p>B<img src="bilder/fotos/f01-katze.png"></p>'), 'the code stays as it was');
+        // the pupil copies the file into the folder and comes back to the editor
+        folder.put('f01-katze.png', makePng(120, 80, false));
+        await ed.eval('void (window.f01Focus = document.hasFocus, document.hasFocus = () => false, window.dispatchEvent(new Event("blur")))');
+        await sleep(50);
+        await ed.eval('void (document.hasFocus = window.f01Focus, window.dispatchEvent(new Event("focus")))');
+        await ed.until(`((d) => !d.querySelector("img").hasAttribute("data-se-src") && d.querySelector("img").naturalWidth === 120)(${PV})`, 'picture found after coming back');
+        c.eq(await lostNote(ed), '', 'coming back to the editor looks again: the picture is shown and the note is gone');
+        c.note('return to the editor', 'the test replaces document.hasFocus for one moment and sends blur and focus to the window; leaving for another program cannot be done in a headless browser');
+        // a file that appears while the editor stays in front is found after the image dialog
+        await ed.openText('f01-dritte.html', page('<p>C<img src="f01-spaeter.png" alt="später"></p>'));
+        await ed.until(`((d) => d.querySelector("img").hasAttribute("data-se-src"))(${PV})`, 'missing picture becomes a box');
+        folder.put('f01-spaeter.png', makePng(20, 20, false));
+        await ed.clickPv('d.querySelector("img")');
         await ed.click('bImage');
-        c.eq(await ed.eval('document.getElementById("imgTitle").textContent + "|" + document.getElementById("imgName").textContent + "|" + document.getElementById("imgAlt").value'), 'Bild ändern|Jetzt: f01-katze.png|Katze', 'a click on the box and "Bild" opens the dialog for this picture');
-        await ed.pickImage(png);
-        await ed.dialogButton('dlgImage', 'Übernehmen');
-        await ed.settle();
-        c.eq(await ed.source(), source, 'choosing the file again does not change the code');
-        const again = [await imgState(ed, 0), await imgState(ed, 1)];
-        c.ok(again.every((s) => s.kind === 'blob' && s.natural === 120 && !s.box), 'both places that name this file now show it', JSON.stringify(again));
-        c.ok((await ed.inactiveNote()).includes('1 Bild von außerhalb') && !(await ed.inactiveNote()).includes('Dateien'), 'the note no longer lists them', await ed.inactiveNote());
-        c.eq(sink.hits.slice(before).join(','), '', 'still nothing reached the local counter');
+        await ed.until('document.getElementById("imgFound").classList.contains("yes")', 'dialog finds it');
+        c.eq(await ed.eval('document.getElementById("imgTitle").textContent + "|" + document.getElementById("imgName").textContent'), 'Bild ändern|Jetzt: f01-spaeter.png', 'a click on the box and "Bild" opens the dialog for this picture');
+        await ed.dialogButton('dlgImage', 'Abbrechen');
+        await ed.until(`((d) => d.querySelector("img").naturalWidth === 20)(${PV})`, 'picture shown after the dialog');
+        c.eq(await lostNote(ed), '', 'after the dialog the page pane looks again and shows the file');
+      });
+      // a page with pictures of every kind of address: only plain relative ones are looked for, on this computer
+      await withEditor(browser, { artefact: folder.artefact }, async (ed) => {
+        const port = sink.origin.split(':').pop();
+        const source = page('<p>A<img src="bilder/fotos/f01-katze.png" alt="Katze"></p>\n<p>B<img src="../f01-oben.png"></p>\n<p>C<img src="' + sink.origin + '/f01/aussen.png" alt="von außen"></p>\n<p>D<img src="//127.0.0.1:' + port + '/f01/ohne.png"></p>\n<p>E<img src="file://rechner/freigabe/f01-katze.png"></p>\n<p>F<img alt="klein" src="' + SMALL_GIF + '"></p>');
+        const before = sink.hits.length;
+        await ed.openText('f01-alle.html', source);
+        await loaded(ed, 0);
+        await loaded(ed, 1);
+        await sleep(300);
+        const states = [];
+        for (let i = 0; i < 6; i++) states.push(await imgState(ed, i));
+        c.ok(states[0].kind === 'file' && states[0].natural === 120, 'a picture in a subfolder of the editor is shown', JSON.stringify(states[0]));
+        c.ok(states[1].kind === 'file' && states[1].natural === 14, 'a picture in the folder above is shown as well', JSON.stringify(states[1]));
+        c.ok(states[2].box && states[3].box && states[4].box, 'pictures from the network, without a scheme and from another computer are boxes', JSON.stringify(states.slice(2, 5)));
+        c.ok(states[5].kind === 'data' && states[5].natural === 16 && !states[5].box, 'a picture embedded in the code is shown as before', JSON.stringify(states[5]));
+        const here = await ed.eval('location.href.slice(0, location.href.lastIndexOf("/f01-ordner/"))');
+        const addresses = await ed.eval(PV + '.querySelectorAll("img").length && JSON.stringify(Array.from(' + PV + '.querySelectorAll("img"), (i) => i.getAttribute("src")))');
+        c.ok(JSON.parse(addresses).every((a) => a.startsWith('data:') || a.startsWith(here + '/')), 'every image element has a data address or one inside the test folder on this computer', JSON.parse(addresses).map((a) => a.slice(0, 50)).join(' '));
+        const requests = ed.page.eventsOf('Network.requestWillBeSent').map((e) => e.request.url).filter((u) => /aussen|ohne|rechner/.test(u));
+        c.eq(requests.join(','), '', 'the browser reports no request for the other pictures');
+        c.eq(sink.hits.slice(before).join(','), '', 'nothing reaches the local counter');
+        const net = decodeURIComponent(await ed.eval(PV + '.querySelectorAll("img")[2].getAttribute("src")'));
+        c.ok(net.includes('Bild aus dem Internet'), 'the box of a picture from the network says so');
+        c.ok((await ed.eval(PV + '.querySelectorAll("img")[2].title')) === 'Bilder aus dem Internet zeigt der Editor nicht an. Lade das Bild herunter (denk an das Urheberrecht), lege es in den Ordner deiner Seite und verlinke es mit dem Dateinamen.', 'and explains how to use it instead');
+        const note = await ed.inactiveNote();
+        c.ok(note.includes('3 Bilder von außerhalb') && !note.includes('Datei'), 'the note "switched off" counts the three pictures from outside', note);
+        c.eq(await lostNote(ed), '', 'nothing is reported missing');
+        c.eq(await ed.source(), source, 'the code stays as it was');
       });
     },
   },
@@ -261,6 +297,21 @@ export const features = [
         const typed = await ed.source();
         c.ok(/<p style="text-align: center">Erste<\/p>\n  <p( style="text-align: center")?>Zweite<\/p>/.test(typed), 'Enter after an aligned paragraph gives a paragraph with at most this alignment as style', typed.split('\n').slice(7, 10).join('\n'));
         c.note('alignment of the paragraph made by Enter', /Zweite/.test(typed) && /center">Zweite/.test(typed) ? 'continues the alignment (browser behaviour)' : 'starts without alignment');
+      });
+    },
+  },
+  {
+    id: 'F-04', title: 'the version stands small next to the name in the top bar and does not wrap',
+    async run(c, { browser }) {
+      const version = JSON.parse(fs.readFileSync(path.join(TMP, '..', '..', '..', 'package.json'), 'utf8')).version;
+      await withEditor(browser, {}, async (ed) => {
+        c.eq(await ed.eval('document.querySelector("#top .brand strong").textContent'), 'HTML-Schuleditor ' + version, 'the name is followed by the version ' + version);
+        const look = JSON.parse(await ed.eval('(() => { const s = getComputedStyle(document.getElementById("appVer")), n = getComputedStyle(document.querySelector("#top .brand strong")); return JSON.stringify({ small: parseFloat(s.fontSize) < parseFloat(n.fontSize), grey: s.color !== n.color }); })()'));
+        c.ok(look.small && look.grey, 'smaller and in another colour than the name', JSON.stringify(look));
+        for (const width of [1800, 1000, 640]) {
+          const lines = await ed.eval(`(() => { const top = document.getElementById("top"); top.style.width = "${width}px"; const r = document.createRange(); r.selectNodeContents(document.querySelector("#top .brand strong").firstChild); const name = r.getBoundingClientRect(), ver = document.getElementById("appVer").getBoundingClientRect(); top.style.width = ""; return ver.left >= name.right - 1 && ver.top < name.bottom && ver.bottom > name.top; })()`);
+          c.ok(lines, 'name and version stay on one line in a top bar ' + width + ' pixels wide');
+        }
       });
     },
   },

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { Editor, PV, ARTEFACT, sleep, tmpFile, readFixture } from '../lib/harness.mjs';
+import { Editor, PV, ARTEFACT, sleep, tmpFile, readFixture, makePng, editorFolder } from '../lib/harness.mjs';
 
 const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
 const MARK = 'parent.document.documentElement.dataset.scriptRan';
@@ -283,6 +283,35 @@ export const security = [
     },
   },
   {
+    id: 'X-08', title: 'residual risk accepted by the owner: the CSS of an opened page can load picture files of this computer, never from the network',
+    async run(c, { browser, sink }) {
+      const folder = editorFolder('x08-ordner');
+      folder.put('bilder/x08-lokal.png', makePng(8, 8, false));
+      const ed = await Editor.open(browser, { artefact: folder.artefact });
+      try {
+        const before = sink.hits.length;
+        // Generated content with an image: the span is as wide as the picture if it was loaded, 0 otherwise.
+        // The same addresses also stand in background-image, the usual way to name a picture in CSS.
+        const places = [['lokal', 'bilder/x08-lokal.png'], ['oben', '../x08-oben.png'], ['freigabe', 'file://rechner/freigabe/x08-freigabe.png'], ['netz', sink.origin + '/x08/netz.png']];
+        fs.writeFileSync(folder.dir + '/../x08-oben.png', makePng(6, 6, false));
+        const style = places.map(([k, a]) => '.' + k + '::before { content: url(' + a + '); } .' + k + 'b { background-image: url(' + a + '); }').join('\n');
+        const body = places.map(([k]) => '<p><span class="' + k + '"></span><span class="' + k + 'b">' + k + '</span></p>').join('\n');
+        await ed.openText('x08.html', '<!DOCTYPE html>\n<html>\n<head><title>X</title>\n<style>\n' + style + '\n</style>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n');
+        await sleep(800);
+        const widths = JSON.parse(await ed.eval(`JSON.stringify(Object.fromEntries(${JSON.stringify(places.map((p) => p[0]))}.map((k) => [k, Math.round(${PV}.querySelector("." + k).getBoundingClientRect().width)])))`));
+        c.eq(widths.lokal, 8, 'a picture file next to the editor named in the CSS of the page is shown (owner\'s decision)');
+        c.eq(widths.oben, 6, 'a picture file above the folder of the editor is shown as well: the editor does not resolve addresses in CSS');
+        c.eq(widths.netz, 0, 'a picture on the network named in the CSS is not shown');
+        c.eq(sink.hits.slice(before).join(','), '', 'and the address on the network reaches nothing');
+        const asked = ed.page.eventsOf('Network.requestWillBeSent').map((e) => e.request.url).filter((u) => /x08-|\/x08\//.test(u));
+        c.note('network address in the CSS', asked.some((u) => u.includes('/x08/netz.png')) ? 'the browser reported an attempt, which the policy stopped (as in X-03)' : 'the browser reported no attempt');
+        c.ok(await ed.inactiveNote() !== '', 'the note above the page announces what was switched off', await ed.inactiveNote());
+        const share = asked.filter((u) => u.includes('x08-freigabe'));
+        c.note('file address of another computer in the CSS', 'shown: ' + (widths.freigabe > 0 ? 'yes' : 'no') + '; ' + (share.length ? 'the browser reported an attempt: ' + share.join(' ') : 'the browser reported no attempt (Firefox reports no file requests to the test driver)'));
+      } finally { await ed.close(); }
+    },
+  },
+  {
     id: 'X-05', title: 'no message bridge exists',
     async run(c) {
       const html = fs.readFileSync(ARTEFACT, 'utf8');
@@ -300,7 +329,7 @@ export const security = [
       c.eq(count(/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon|EventSource|importScripts|\bimport\s*\(|serviceWorker|\.open\s*\(\s*['"]/g), 0, 'no network or dynamic import API');
       c.eq(count(/document\.write|insertAdjacentHTML|outerHTML\s*=/g), 0, 'no document.write / insertAdjacentHTML / outerHTML assignment');
       const urls = Array.from(new Set(html.match(/\b(?:https?:|wss?:|ftp:)\/\/[^\s"'<>)]+/g) || []));
-      const inert = new Set(['https://www.beispiel.de', 'http://www.w3.org/1999/xhtml', 'https://' + String.fromCharCode(0x2026)]);
+      const inert = new Set(['https://www.beispiel.de', 'http://www.w3.org/1999/xhtml', 'http://www.w3.org/2000/svg', 'https://' + String.fromCharCode(0x2026)]);
       c.eq(urls.filter((u) => !inert.has(u)).join(','), '', 'only inert example/namespace addresses occur: ' + urls.join(' '));
       c.eq(count(/<script\b/g), 1, 'exactly one script element');
       c.eq(count(/<(?:link|iframe [^>]*src=|img [^>]*src=|object|embed)\b/g), 0, 'no linked or embedded external file');
@@ -309,8 +338,9 @@ export const security = [
       const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html);
       const script = /<script>([^]*?)<\/script>/.exec(html);
       const hash = crypto.createHash('sha256').update(script[1], 'utf8').digest('base64');
-      c.ok(csp && csp[1] === `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'`, 'page policy allows only the one hashed script, inline styles and data: images', csp && csp[1]);
-      c.ok(html.includes(`default-src \\'none\\'; style-src \\'unsafe-inline\\'; img-src data: blob:">`), 'preview frame carries its own policy without any script source; images only from the document text or from files chosen in this session');
+      c.ok(csp && csp[1] === `default-src 'none'; script-src 'sha256-${hash}'; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'`, 'page policy allows only the one hashed script, inline styles, data: images and picture files of its own origin', csp && csp[1]);
+      c.ok(html.includes(`default-src \\'none\\'; style-src \\'unsafe-inline\\'; img-src data: \\'self\\'">`), 'preview frame carries its own policy without any script source; images only from the document text or as files of its own origin');
+      c.eq((html.match(/createObjectURL\([^)]*\)/g) || []).join(','), 'createObjectURL(snap.blob)', 'an object address is made only for the download of the page itself, never for a chosen picture');
       c.note('innerHTML assignments', count(/\.innerHTML\s*=/g) + ' (escaped highlight lines in the editor chrome and the character-reference decoder in an inert document)');
       c.note('size', Buffer.byteLength(html, 'utf8') + ' bytes');
     },

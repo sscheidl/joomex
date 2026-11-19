@@ -6,15 +6,15 @@ A small offline HTML learning editor for pupils of about 12–13 years. One HTML
 
 ## Use
 
-Give pupils the single file [`dist/school-editor.html`](dist/school-editor.html). They open it in Microsoft Edge or Google Chrome. In Firefox the editor was measured as well: editing works, and Save is always a download there, because Firefox cannot write to a chosen file. A short German guide for pupils is in [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md).
+Give pupils the single file [`dist/school-editor.html`](dist/school-editor.html). Each pupil keeps it in the project folder, next to the pages and pictures, and opens it in Microsoft Edge or Google Chrome. In Firefox the editor was measured as well: editing works, and Save is always a download there, because Firefox cannot write to a chosen file. A short German guide for pupils is in [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md).
 
 What the editor does:
 
 * New page, open an HTML file, save, download a copy.
 * Edit in either pane; the other pane follows. The source text is always the complete document.
-* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself has to lie next to the page. Existing links and images are changed through the same dialogs.
+* Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself lies in the project folder, and the editor shows it from there. A missing file is shown as a box that names it. Existing links and images are changed through the same dialogs.
 * One undo/redo history for both panes. "Code aufräumen" indents the source; it is applied only if the page looks exactly the same afterwards, otherwise the code stays as it is and the editor says why.
-* Scripts, forms, frames and anything from the network are switched off inside the editor and stay untouched in the source.
+* Scripts, forms, frames and anything from the network are switched off inside the editor and stay untouched in the source. Picture files of the computer are the one exception: they are shown (see [docs/SECURITY.md](docs/SECURITY.md)).
 
 What it deliberately does not do: no autosave or recovery after closing, no templates, no CSS tools, no multi-file projects, no preview window that runs scripts.
 

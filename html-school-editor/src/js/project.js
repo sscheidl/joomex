@@ -21,6 +21,14 @@ const NAMED = words('img form embed object iframe');
 // SVG animation can assign an address to an attribute after the attributes were filtered, so it is not shown.
 const ANIM = words('set animate animatemotion animatetransform animatecolor discard');
 const CSS_FETCH = /url\s*\(\s*['"]?\s*(?!data:|#|['"]?\s*\))|@import|image-set\s*\(/i;
+// What an image that is not shown says on its box (IMG_BOX) and when the mouse rests on it (IMG_HELP).
+const IMG_BOX = { lost: 'Bild nicht gefunden: ', file: 'Bild: ', net: 'Bild aus dem Internet', other: 'Bild wird im Editor nicht angezeigt' };
+const IMG_HELP = {
+  lost: 'Unter dieser Adresse liegt keine Bilddatei. Lege das Bild an diese Stelle im Ordner deiner Seite oder ändere die Adresse. Deine Seite muss im selben Ordner liegen wie der Editor.',
+  file: 'Der Editor zeigt Bilder nur an, wenn er selbst als Datei aus dem Ordner deiner Seite geöffnet ist.',
+  net: 'Bilder aus dem Internet zeigt der Editor nicht an. Lade das Bild herunter (denk an das Urheberrecht), lege es in den Ordner deiner Seite und verlinke es mit dem Dateinamen.',
+  other: 'Dieses Bild zeigt der Editor nicht an. Im Code bleibt es erhalten.',
+};
 
 const isWsOnly = (s) => !/[^ \t\n\f\r]/.test(s);
 
@@ -133,7 +141,7 @@ function matchKids(src, t, d, isTail) {
 // ---------------------------------------------------------------- inactive content report
 
 function newReport() {
-  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0, files: 0 };
+  return { scripts: 0, handlers: 0, images: 0, frames: 0, sheets: 0, css: 0, forms: 0, refresh: 0, other: 0, anims: 0, files: 0, lost: [] };
 }
 
 export function reportText(r) {
@@ -153,11 +161,22 @@ export function reportText(r) {
 
 // ---------------------------------------------------------------- projection
 
-// `files`: images the pupil has chosen in this session, by file name. An image whose address is a plain file
-// name is shown from there; the address itself is never loaded.
-function safeAttrs(d, name, html, rep, files) {
+// A picture that says in words why the image is not shown. It is an SVG image in a data address: the page
+// pane's policy allows data images, and an SVG shown as an image never runs anything.
+function boxPicture(text) {
+  const t = text.length > 70 ? text.slice(0, 67) + '…' : text;
+  const w = Math.min(560, 24 + Math.ceil(t.length * 7.2));
+  const xml = t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="40"><rect x="1" y="1" width="' + (w - 2) + '" height="38" rx="6" fill="#f1f3f5" stroke="#adb5bd" stroke-width="2" stroke-dasharray="6 4"/><text x="12" y="25" font-family="sans-serif" font-size="13" fill="#495057">' + xml + '</text></svg>');
+}
+
+// `local`: how the page pane finds picture files, or null. `local.url(address)` gives the file address of a
+// plain relative address (see localFileUrl in util.js) or ''; `local.missing` holds the file addresses that
+// could not be loaded. An image whose file is there is shown from it. Any other image becomes a picture that
+// names the reason; a missing file is also listed in `rep.lost`.
+function safeAttrs(d, name, html, rep, local) {
   const out = [];
-  let blockedImage = null, hasTitle = false, byFile = false;
+  let blockedImage = null, hasTitle = false, why = '';
   for (const a of attrsOf(d)) {
     const n = a.name, ln = n.toLowerCase(), v = a.value;
     if (ln.startsWith('on')) { rep.handlers++; continue; }
@@ -170,11 +189,11 @@ function safeAttrs(d, name, html, rep, files) {
     } else if (ln === 'src') {
       if (name === 'img' && html && isRasterDataUrl(v)) { out.push([n, v]); continue; }
       if (name === 'img') {
-        const file = html ? fileOfSrc(v) : '', known = file && files ? files.get(file) : null;
-        if (known) { out.push([n, known.url], [FILE_HOLDER, v]); continue; }
+        const file = html ? fileOfSrc(v) : '', url = file && local ? local.url(v) : '';
+        if (url && !local.missing.has(url)) { out.push([n, url], [FILE_HOLDER, v]); continue; }
         blockedImage = v;
-        byFile = !!file;
-        if (file) rep.files++; else rep.images++;
+        why = url ? 'lost' : file ? 'file' : /^\s*(?:https?:|[\/\\]{2})/i.test(v) ? 'net' : 'other';
+        if (url) { if (rep.lost.indexOf(v) < 0) rep.lost.push(v); } else if (file) rep.files++; else rep.images++;
       } else rep.other++;
       continue;
     } else if (ln === 'style') {
@@ -184,8 +203,9 @@ function safeAttrs(d, name, html, rep, files) {
     out.push([n, v]);
   }
   if (blockedImage !== null) {
-    out.push(['data-se-src', blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage], [FILE_HOLDER, blockedImage]);
-    if (!hasTitle) out.push(['title', byFile ? 'Der Editor kennt dieses Bild noch nicht. Klicke es an und wähle die Datei mit dem Knopf „Bild“ aus, dann siehst du es hier.' : 'Bilder aus dem Internet lädt der Editor nicht.']);
+    const shortSrc = blockedImage.length > 60 ? blockedImage.slice(0, 57) + '…' : blockedImage;
+    out.push(['src', boxPicture(IMG_BOX[why] + (why === 'lost' || why === 'file' ? shortSrc : ''))], ['data-se-src', shortSrc], [FILE_HOLDER, blockedImage]);
+    if (!hasTitle) out.push(['title', IMG_HELP[why]]);
   }
   return out;
 }
@@ -208,7 +228,7 @@ function describe(d, t, st) {
     rep.frames++;
     return { k: 1, name: 'span', ns: HTML_NS, attrs: [['contenteditable', 'false'], ['data-se-box', '']], fixed: BOX[name] + ' (im Editor ausgeschaltet)' };
   }
-  const attrs = safeAttrs(d, name, html, rep, st.files);
+  const attrs = safeAttrs(d, name, html, rep, st.local);
   if (t && !t.ok) {
     attrs.push(['contenteditable', 'false'], ['data-se-opaque', '']);
     if (attrOf(d, 'title') === null) attrs.push(['title', 'Diese Stelle kannst du nur links im Code ändern.']);
@@ -324,8 +344,8 @@ function syncHead(view, st) {
 
 // Updates the preview document `doc`. `info` (WeakMap) receives, for every preview node, its source node and a
 // snapshot of its rendered state; the serializer uses the snapshot to tell edited parts from untouched ones.
-export function renderView(view, doc, info, files) {
-  const st = { doc, info, files: files || null, report: newReport(), changed: false, attrChanged: false };
+export function renderView(view, doc, info, local) {
+  const st = { doc, info, local: local || null, report: newReport(), changed: false, attrChanged: false };
   const dom = view.dom;
   syncHead(view, st);
   syncAttrs(doc.documentElement, safeAttrs(docRoot(dom), 'html', true, st.report, null), st);

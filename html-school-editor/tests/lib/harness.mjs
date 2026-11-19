@@ -34,6 +34,24 @@ export function tmpFile(name, content) {
   return file;
 }
 
+// A copy of the delivered file in a folder of its own, the way a pupil keeps it next to pages and pictures.
+// `put(address, bytes)` writes a file at a relative address seen from the editor. The copy is not named like
+// the template: the publication check would take a second file of that name for a stray copy.
+export function editorFolder(name) {
+  const dir = path.join(TMP, name);
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  const artefact = path.join(dir, 'schuleditor-kopie.html');
+  fs.copyFileSync(ARTEFACT, artefact);
+  const put = (address, bytes) => {
+    const file = path.join(dir, ...address.split('/'));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, bytes);
+    return file;
+  };
+  return { dir, artefact, put };
+}
+
 export const fixture = (name) => path.join(FIXTURES, name);
 export const readFixture = (name) => fs.readFileSync(fixture(name), 'utf8');
 
@@ -99,7 +117,12 @@ export class Editor {
     }
   }
   synced() { return this.until('document.documentElement.dataset.sync === "yes"', 'panes in sync'); }
-  async settle(ms = 60) { await this.synced(); await sleep(ms); await this.synced(); }
+  // A picture file that is missing is turned into a box shortly after its load failed, which changes the
+  // layout of the page pane. A test that clicks into the page waits for that first.
+  imagesSettled() {
+    return this.until(`Array.from(${PV}.images).every((i) => !(i.getAttribute("src") || "").startsWith("file:") || (i.complete && i.naturalWidth > 0))`, 'pictures loaded or shown as boxes');
+  }
+  async settle(ms = 60) { await this.synced(); await this.imagesSettled(); await sleep(ms); await this.synced(); }
   syncFlag() { return this.eval('document.documentElement.dataset.sync'); }
   source() { return this.eval('document.getElementById("src").value'); }
   body() { return this.eval(PV + '.body.innerHTML'); }
@@ -124,6 +147,8 @@ export class Editor {
     await this.until(opened + ' || document.getElementById("dlgConfirm").open', 'file opened or question shown');
     if (await this.dialogOpen('dlgConfirm')) await this.dialogButton('dlgConfirm', 'Änderungen verwerfen');
     await this.until(opened, 'file opened');
+    await this.synced();
+    await this.imagesSettled();
     await this.synced();
   }
   // Clicks "Code aufräumen" and waits for the outcome: 'applied', 'tidy' (nothing to do), 'aborted' or

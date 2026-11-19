@@ -3,7 +3,7 @@
 // downloads). Expected values are written by hand or derived from the fixture text, not from product code.
 import fs from 'node:fs';
 import path from 'node:path';
-import { Editor, PV, sleep, tmpFile, fixture, readFixture, makePng } from '../lib/harness.mjs';
+import { Editor, PV, sleep, tmpFile, fixture, readFixture, makePng, editorFolder } from '../lib/harness.mjs';
 
 const TEMPLATE_P = '<p>Hier steht mein Text.</p>';
 const doc = (body) => '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>T</title>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n';
@@ -189,7 +189,10 @@ export const functional = [
   {
     id: 'T-06', title: 'links and local raster images; text inputs stay data',
     async run(c, { browser }) {
-      await withEditor(browser, {}, async (ed) => {
+      // the editor lies in the pupil's folder, the picture next to it
+      const folder = editorFolder('t06-ordner');
+      const png = folder.put('t06-klein.png', makePng(24, 16, false));
+      await withEditor(browser, { artefact: folder.artefact }, async (ed) => {
         const original = readFixture('basic.html');
         await ed.openFile(fixture('basic.html'));
         await ed.selectPv('Punkt B');
@@ -224,13 +227,14 @@ export const functional = [
         await ed.click('bUndo');
         await ed.settle();
 
-        const png = tmpFile('t06-klein.png', makePng(24, 16, false));
         await ed.caret('Erste Zeile', 'Erste Zeile'.length);
         await ed.click('bImage');
         c.ok(await ed.dialogOpen('dlgImage'), 'image dialog opens');
         await ed.dialogButton('dlgImage', 'Einfügen');
         c.ok(await ed.dialogOpen('dlgImage') && (await ed.eval('document.getElementById("imgErr").textContent')).includes('Wähle'), 'no image chosen: dialog explains');
         await ed.pickImage(png);
+        await ed.until('document.getElementById("imgFound").classList.contains("yes")', 'picture found next to the editor');
+        c.eq(await ed.eval('document.getElementById("imgFound").textContent'), 'Gefunden: Das Bild liegt an dieser Stelle.', 'the dialog tells that the file lies where the address points');
         const alt = 'Katze "auf" dem <script>alert(1)</script> Sofa & mehr';
         await ed.field('imgAlt', alt);
         await ed.dialogButton('dlgImage', 'Einfügen');
@@ -240,8 +244,8 @@ export const functional = [
         c.ok(!/data:|blob:/.test(src), 'the source holds no embedded image data and no internal address');
         c.eq(await ed.eval(PARSE('doc.querySelector("img").alt + "|" + doc.querySelectorAll("script").length')), alt + '|0', 'the description is plain text in the parsed file, no script element');
         c.eq(await ed.eval(PV + '.querySelectorAll("script").length'), 0, 'no script element in the page either');
-        c.eq(await ed.eval(`((d) => { const i = d.querySelector("img"); return i.naturalWidth + "x" + i.naturalHeight; })(${PV})`), '24x16', 'the page pane shows the chosen picture');
-        c.ok((await ed.status()).includes('t06-klein.png') && (await ed.status()).includes('Ordner'), 'the pupil is told where the file has to be', await ed.status());
+        await ed.until(`((d) => d.querySelector("img").naturalWidth > 0)(${PV})`, 'picture loaded');
+        c.eq(await ed.eval(`((d) => { const i = d.querySelector("img"); return i.naturalWidth + "x" + i.naturalHeight + "|" + i.getAttribute("src").split(":")[0]; })(${PV})`), '24x16|file', 'the page pane shows the picture from the folder');
         for (const [name, bytes] of [['t06-text.png', Buffer.from('<svg onload=alert(1)>kein Bild')], ['t06-vektor.svg', Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')]]) {
           await ed.caret('Punkt A', 2);
           await ed.click('bImage');
@@ -255,12 +259,15 @@ export const functional = [
         await ed.caret('Punkt A', 2);
         await ed.click('bImage');
         await ed.pickImage(bigFile);
+        await ed.until('document.getElementById("imgFound").classList.contains("no")', 'picture outside the folder not found');
+        c.ok((await ed.eval('document.getElementById("imgFound").textContent')).startsWith('Nicht gefunden'), 'a picture chosen from another folder is reported as not found there');
         c.ok((await ed.eval('document.getElementById("imgName").textContent')).includes('1600 × 1200') && (await ed.eval('document.getElementById("imgName").textContent')).includes('sehr große Datei'), 'size of a large picture is shown', await ed.eval('document.getElementById("imgName").textContent'));
         await ed.dialogButton('dlgImage', 'Einfügen');
         await ed.settle();
         const after = await ed.source();
         c.ok(after.includes('Punkt A<img src="t06-gross.png" alt=""></li>') || after.includes('Pu<img src="t06-gross.png" alt="">nkt A</li>'), 'a ' + fs.statSync(bigFile).size + '-byte picture adds only its file name to the source; an empty description gives alt=""', after.split('\n')[19]);
         c.ok(after.length - src.length < 60, 'the source grew by ' + (after.length - src.length) + ' characters');
+        c.ok((await ed.status()).includes('t06-gross.png') && (await ed.status()).includes('Ordner'), 'the pupil is told where the file has to be', await ed.status());
       });
     },
   },

@@ -108,6 +108,19 @@ export function folderOfSrc(value) {
   return cut < 0 ? '' : path.slice(0, cut);
 }
 
+// The file that a plain relative image address names, seen from the editor's own file `base` (a URL): the
+// editor lies in the folder of the pupil's pages, so the address means the same file from both. Returns the
+// file address, or '' if the address is not a plain relative one, the editor was not opened as a file, or the
+// result would lie on another computer.
+export function localFileUrl(value, base) {
+  if (!fileOfSrc(value) || !base || base.protocol !== 'file:') return '';
+  let url;
+  try { url = new URL(String(value).trim(), base.href); } catch (e) { return ''; }
+  if (url.protocol !== 'file:' || url.host !== base.host) return '';
+  url.hash = '';
+  return url.href;
+}
+
 // ---------------------------------------------------------------- alignment in a style attribute
 
 const ALIGN_VALUES = words('left right center justify');
