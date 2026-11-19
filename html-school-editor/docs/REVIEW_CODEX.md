@@ -150,7 +150,7 @@ Questions: Can any element or attribute of an opened document make the page pane
 
 ## What comes after this review
 
-The owner has collected further functions for later versions: movable dialogs, a button that opens the saved page in a new tab, underline, superscript, subscript and highlight tags, a check box "open in a new tab" for links, an editable page title, text colour with a fixed palette, tables. They come as separate versions stacked on this one. The owner wants one review after all of them; this request will be extended accordingly before it is handed over.
+The owner has collected further functions for later versions: movable dialogs, a button that opens the saved page in a new tab, underline, superscript, subscript and highlight tags, a check box "open in a new tab" for links, an editable page title, text colour with a fixed palette, tables. They come as separate versions stacked on this one and are not part of this review.
 
 ## Not measured
 
