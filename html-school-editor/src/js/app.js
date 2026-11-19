@@ -8,7 +8,7 @@
 //   preview -> source: the preview DOM changes first (`state.visualDirty`); commitVisual() turns it into a
 //                      new text revision, at the latest before the text is used for anything else.
 // Timers only decide how early these steps happen while the user pauses, never what is kept.
-import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl } from './util.js';
+import { mapOffset, changeEnd, checkLinkUrl, decodeFileBytes, encodeFileText, MAX_FILE_BYTES, fileOfSrc, folderOfSrc, imagePath, localFileUrl, moveSrc } from './util.js';
 import { tokenize } from './tokenizer.js';
 import { parseHtml } from './tree.js';
 import { analyze, renderView, reportText, srcOffsetOf, srcElementRange, previewPosOf, srcElementAt, canonDom, cssFacts, layoutPrint, hiddenLayoutRisk, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
@@ -17,7 +17,7 @@ import { formatSource, withTitle, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
 import { createHistory } from './history.js';
 import { readImage } from './images.js';
-import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink } from './commands.js';
+import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink, opensNewTab } from './commands.js';
 
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
@@ -116,6 +116,13 @@ function wireDrag(dialog) {
     grip.addEventListener('pointercancel', stop);
   });
   dialog.addEventListener('close', () => { const s = dialog.style; s.margin = s.left = s.top = s.right = s.bottom = ''; });
+  // a moved dialog stays inside the window when the window becomes smaller
+  addEventListener('resize', () => {
+    if (!dialog.open || !dialog.style.left) return;
+    const r = dialog.getBoundingClientRect(), s = dialog.style;
+    s.left = clamp(r.left, 0, Math.max(0, innerWidth - r.width)) + 'px';
+    s.top = clamp(r.top, 0, Math.max(0, innerHeight - r.height)) + 'px';
+  });
 }
 
 // ---------------------------------------------------------------- source pane
@@ -182,7 +189,8 @@ function applySourceMark(reveal) {
 
 // ---------------------------------------------------------------- shared state updates
 
-const isDirty = () => state.text !== state.savedText;
+// a title typed into the field and not yet taken over counts as a change as well
+const isDirty = () => state.text !== state.savedText || els.pvTitle.value.replace(/\s+/g, ' ').trim() !== state.title;
 const previewFocused = () => document.activeElement === els.pv;
 
 function updateChrome() {
@@ -457,7 +465,7 @@ async function linkFlow() {
   els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
   els.linkTextRow.hidden = !!link || !range.collapsed;
-  els.linkNew.checked = !!link && link.getAttribute(TARGET_HOLDER) === '_blank';
+  els.linkNew.checked = !!link && opensNewTab(link);
   els.linkErr.textContent = '';
   const asked = openDialog(els.dlgLink);
   els.linkUrl.select();
@@ -493,6 +501,7 @@ let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
 let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
 let foundSeq = 0;           // the same for the check whether the file of the address is there
+let pickBusy = 0;           // the choice whose check is still running (0: none)
 
 function dropPicked() { picked = null; }
 
@@ -573,7 +582,9 @@ async function pickImage(file) {
   els.imgErr.textContent = '';
   els.imgName.textContent = 'Bild wird geprüft …';
   const seq = ++pickSeq;
+  pickBusy = seq;
   const result = await readImage(file);
+  if (pickBusy === seq) pickBusy = 0;
   // Only the latest choice of the dialog that is open now counts. A check that was started for an earlier
   // choice or for a dialog that has been closed since is dropped.
   if (seq !== pickSeq || !els.dlgImage.open) return;
@@ -604,9 +615,10 @@ function dialogAddress() {
     return address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
   }
   if (!address || !fileOfSrc(address)) return undefined;
-  // same file, perhaps another folder: the file name stays exactly as it is written in the code
+  if (folder.trim() === folderOfSrc(address)) return address;           // nothing changed: the address stays as written
+  // same file in another folder: the file name, '?…' and '#…' stay exactly as they are written in the code
   const made = imagePath(folder, 'x');
-  return made.ok ? made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop() : null;
+  return made.ok ? moveSrc(address, made.src.slice(0, -1)) : null;
 }
 
 // Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen, and
@@ -636,6 +648,7 @@ function showAddress() {
 // Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
 function validateImageDialog() {
   const fail = (message) => { els.imgErr.textContent = message; return false; };
+  if (pickBusy && pickBusy === pickSeq) return fail('Das Bild wird noch geprüft. Warte einen Moment.');
   if (!imageEdit && !picked) return fail('Wähle zuerst ein Bild aus.');
   const width = els.imgWidth.value.trim();
   if (width && !/^[1-9][0-9]{0,3}$/.test(width)) return fail('Die Breite ist eine Zahl in Pixeln, zum Beispiel 300.');
@@ -879,7 +892,16 @@ function downloadDoc(given) {
   return true;
 }
 
-async function saveDoc() {
+// One save at a time: a save waits until the one before it is finished, so the file is written in the order
+// of the requests and the newest text is the last one written.
+let saving = Promise.resolve(true);
+function saveDoc() {
+  const run = saving.then(saveNow, saveNow);
+  saving = run;
+  return run;
+}
+
+async function saveNow() {
   const snap = snapshotForSave();
   let handle = state.handle;
   if (!handle) {
@@ -908,11 +930,12 @@ async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
   if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
+  const docId = state.docId;          // the page that was asked for; if another one is opened meanwhile, nothing opens
   if (!state.onDisk || isDirty()) {
     const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
       : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
-    if (!(await confirmBox(question, 'Speichern'))) return;
-    if (!(await saveDoc()) || isDirty()) return;
+    if (!(await confirmBox(question, 'Speichern')) || state.docId !== docId) return;
+    if (!(await saveDoc()) || state.docId !== docId || isDirty()) return;
     if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
   }
   window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
@@ -931,6 +954,7 @@ function commitTitle() {
   const before = parse(src), after = out === null ? null : parse(out);
   if (!after || after.title !== value || after.body.innerHTML !== before.body.innerHTML || after.compatMode !== before.compatMode) {
     els.pvTitle.value = state.title;
+    updateChrome();
     setStatus('Den Titel kann der Editor hier nicht sicher ändern. Ändere ihn links im Code im Tag <title>.', 'warn');
     return;
   }
@@ -1113,7 +1137,8 @@ function wireChrome() {
     wireDrag(dialog);
   }
   els.pvTitle.addEventListener('change', commitTitle);
-  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; focusPreview(); } });
+  els.pvTitle.addEventListener('input', updateChrome);
+  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; updateChrome(); focusPreview(); } });
   els.linkOk.addEventListener('click', () => { if (validateLinkDialog()) els.dlgLink.close('ok'); });
   els.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });

@@ -94,6 +94,7 @@ class Page {
     if (!result.result?.sharedId) throw new Error('File input not found: ' + selector);
     await this.browser.raw.send('input.setFiles', { context: this.context, element: { sharedId: result.result.sharedId }, files });
   }
+  setViewport(width, height) { return this.browser.raw.send('browsingContext.setViewport', { context: this.context, viewport: width ? { width, height } : null }); }
   setOffline(offline) { return this.browser.raw.send('emulation.setNetworkConditions', {
     contexts: [this.context], networkConditions: offline ? { type: 'offline' } : null }); }
   async keyAction(type, character) {

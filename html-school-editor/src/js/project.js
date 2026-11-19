@@ -328,7 +328,7 @@ function syncHead(view, st) {
       const name = nameOf(el);
       if (name === 'style') { styles.push(el); if (CSS_FETCH.test(textOf(el))) rep.css++; }
       else if (name === 'script') rep.scripts++;
-      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; }
+      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; else if (attrOf(el, 'href') !== null) rep.other++; }
       else if (name === 'meta') { if (/refresh/i.test(attrOf(el, 'http-equiv') || '')) rep.refresh++; }
       else if (name === 'base') rep.other++;
     }
@@ -486,7 +486,10 @@ export function cssFacts(dom) {
     for (const c of childrenOf(node)) {
       if (typeOf(c) !== 1) continue;
       const name = nameOf(c);
-      if (name === 'style') cssRisks(textOf(c), facts);
+      if (name === 'style') {
+        const media = (attrOf(c, 'media') || '').trim().toLowerCase();
+        cssRisks(textOf(c), facts, media !== '' && media !== 'all');      // media="(min-width: …)" applies only sometimes
+      }
       else if (name === 'link' && /stylesheet/i.test(attrOf(c, 'rel') || '')) facts.external = true;
       const own = attrOf(c, 'style');
       if (own) cssRisks(own, facts);

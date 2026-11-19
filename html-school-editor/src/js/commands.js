@@ -215,10 +215,13 @@ export function toggleList(env, type) {
   }
   const parent = targets[0].parentNode;
   targets = targets.filter((el) => el.parentNode === parent);
-  const list = doc.createElement(type);
-  parent.insertBefore(list, targets[0]);
-  let lastLi = null;
+  // Paragraphs with something else between them (a line, a picture, a comment) get a list each, so that
+  // everything stays in its order.
+  const between = (a, b) => { for (let n = a.nextSibling; n && n !== b; n = n.nextSibling) if (n.nodeType !== 3 || /[^ \t\n\f\r]/.test(n.data)) return true; return false; };
+  let list = null, lastLi = null;
   for (const el of targets) {
+    if (list && between(list, el)) list = null;
+    if (!list) { list = doc.createElement(type); parent.insertBefore(list, el); lastLi = null; }
     while (lastLi && el.previousSibling !== list && dropSpace(env, el.previousSibling)) { /* line breaks between neighbouring items */ }
     lastLi = rename(env, el, 'li', keep);       // the item keeps the paragraph's attributes as written
     list.appendChild(lastLi);
@@ -270,7 +273,8 @@ function textNodesIn(doc, range) {
 }
 
 // Moves a text node out of a formatting element by splitting that element around it.
-function liftOut(doc, node, fmt, names) {
+function liftOut(env, node, fmt, names) {
+  const doc = env.doc;
   const parent = fmt.parentNode, ref = fmt.nextSibling;
   let r = doc.createRange();
   r.setStartAfter(node);
@@ -280,6 +284,8 @@ function liftOut(doc, node, fmt, names) {
   r.setStartBefore(node);
   r.setEndAfter(fmt);
   const mid = r.extractContents();
+  // Elements cut in two are copied by the range; a copy writes the attributes of its original
+  for (const part of [tail, mid]) for (const el of part.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });
   for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) unwrap(el);
   for (const el of Array.from(tail.children)) if (isEmptyInline(el)) el.remove();
   parent.insertBefore(mid, ref);
@@ -303,11 +309,11 @@ export function toggleInline(env, command) {
   if (!nodes.length) return 'none';
   const fmtOf = (n) => closestTag(n, body, names);
   if (nodes.every(fmtOf)) {
-    for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(doc, n, f, names);
+    for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(env, n, f, names);
   } else {
     if (INLINE_NOT[command]) {
       const other = INLINE_ON[INLINE_NOT[command]], otherOf = (n) => closestTag(n, body, other);
-      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(doc, n, f, other);
+      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(env, n, f, other);
     }
     let made = null;
     const created = [];
@@ -359,6 +365,7 @@ export function insertLink(env, range, url, text, newTab) {
     range.insertNode(a);
   } else {
     const frag = range.extractContents();
+    for (const el of frag.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });       // copies of cut elements
     for (const inner of Array.from(frag.querySelectorAll('a'))) unwrap(inner);
     a.appendChild(frag);
     range.insertNode(a);
@@ -435,12 +442,15 @@ export function linkAround(doc, range) {
   return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
 }
 
+// True if a link of the page pane opens in a new tab (the browser reads "_BLANK" like "_blank").
+export const opensNewTab = (a) => (a.getAttribute(TARGET_HOLDER) || '').toLowerCase() === '_blank';
+
 // Changes the address of a link and whether it opens in a new tab. Only these two attributes are rewritten
 // in the source. Unticking "new tab" removes a target only if it is _blank; any other target stays.
 export function changeLink(env, a, url, newTab) {
   const set = {};
   if (a.getAttribute(HREF_HOLDER) !== url) { set.href = url; a.setAttribute(HREF_HOLDER, url); }
-  const blank = a.getAttribute(TARGET_HOLDER) === '_blank';
+  const blank = opensNewTab(a);
   if (newTab && !blank) { set.target = '_blank'; a.setAttribute(TARGET_HOLDER, '_blank'); }
   else if (!newTab && blank) { set.target = null; a.removeAttribute(TARGET_HOLDER); }
   if (!Object.keys(set).length) return 'same';

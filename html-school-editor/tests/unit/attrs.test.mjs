@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tokenize } from '../../src/js/tokenizer.js';
 import { parseHtml } from '../../src/js/tree.js';
-import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl } from '../../src/js/util.js';
+import { patchAttrs, fileOfSrc, folderOfSrc, imagePath, withAlign, onlyAlign, styleDeclarations, cssRisks, localFileUrl, moveSrc } from '../../src/js/util.js';
 import { withTitle } from '../../src/js/format.js';
 
 test('page title: only the text of <title> changes; a missing title is added at the start of the head', () => {
@@ -144,4 +144,38 @@ test('style rules: what stands in the way of moving white space (review findings
   assert.equal(risks('@import "a.css";'), 'external');
   assert.equal(risks('p{content:"}'), 'unclear');
   assert.equal(risks('p{color:red} /* offen'), 'unclear');
+});
+
+test('review findings of alpha.4 and alpha.5: attributes, addresses, alignment, conditional style elements', () => {
+  // ATTR: the neighbours of a removed attribute never join, whatever the spacing
+  assert.equal(patched('<img src=tile.png width="20"alt=diagram>', { width: null }), '<img src=tile.png alt=diagram>');
+  assert.equal(patched('<img src="a.png"width="20"alt=x>', { width: null }), '<img src="a.png" alt=x>');
+  assert.equal(patched('<img src=a.png width=20 />', { width: null }), '<img src=a.png />', 'no "a.png/" as address');
+  assert.equal(patched('<img src="a.png" width="20" />', { width: null }), '<img src="a.png" />');
+  assert.equal(patched('<img alt=x width="20"src=a.png>', { width: null, alt: null }), '<img src=a.png>');
+  // ALIGN: a changed value keeps the spelling of its unchanged parts, character references included
+  const refs = { '&#34;': '"', '&quot;': '"', '&amp;': '&' };
+  const decode = (r) => refs[r];
+  const tag = '<p style=" color: red; font-family: &#34;A B&#34;; text-align: center ">';
+  const t = tokenize(tag)[0];
+  const set = (changes) => tag.slice(0, t.nameEnd) + patchAttrs(tag, t.nameEnd, t.end, t.attrs, changes, decode);
+  const left = withAlign(' color: red; font-family: "A B"; text-align: center ', '');
+  assert.equal(left, ' color: red; font-family: "A B" ', 'white space at both ends stays');
+  assert.equal(set({ style: left }), '<p style=" color: red; font-family: &#34;A B&#34; ">');
+  assert.equal(set({ style: ' color: blue; font-family: "A B"; text-align: center ' }), '<p style=" color: blue; font-family: &#34;A B&#34;; text-align: center ">');
+  assert.equal(withAlign(' color:red ', 'center'), ' color:red; text-align: center ');
+  assert.equal(withAlign(withAlign('  a:b;  ', 'right'), ''), '  a:b;  ');
+  // a reference without semicolon is not read by guessing: the value is then written anew
+  const loose = '<a href="?a=1&amp;b=2&c">';
+  const l = tokenize(loose)[0];
+  assert.equal('<a' + patchAttrs(loose, l.nameEnd, l.end, l.attrs, { href: '?a=1&b=2&c#x' }, decode), '<a href="?a=1&amp;b=2&amp;c#x">');
+  // IMG-QUERY: only the path names folders; the query and the fragment stay as written
+  assert.equal(moveSrc('tile.png?view=class/2', ''), 'tile.png?view=class/2');
+  assert.equal(moveSrc('alt/tile.png?view=class/2', 'neu/'), 'neu/tile.png?view=class/2');
+  assert.equal(moveSrc('a\\b.png#x\\y/z', ''), 'b.png#x\\y/z');
+  assert.equal(folderOfSrc('tile.png?view=class/2'), '');
+  // MEDIA: the rules of a style element with a media condition apply only sometimes
+  assert.equal(cssRisks('p{display:inline}', {}, true).conditional, true);
+  assert.equal(!!cssRisks('p{display:inline}', {}, false).conditional, false);
+  assert.equal(!!cssRisks('p{color:red}', {}, true).conditional, false, 'a colour does not move white space');
 });

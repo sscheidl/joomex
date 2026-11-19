@@ -6,7 +6,7 @@
 // elements are written fresh, with a small fixed vocabulary of plain tags.
 import { words, escapeText, escapeAttr, commonPrefix, commonSuffix, isSafeHref, isRasterDataUrl, fileOfSrc, onlyAlign, patchAttrs } from './util.js';
 import { VOID_TAGS } from './tokenizer.js';
-import { HTML_NS, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER, rawPos, srcOffsetOf } from './project.js';
+import { HTML_NS, HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER, rawPos, srcOffsetOf, decodeText } from './project.js';
 
 const NEW_OK = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd b i strong em u s sub sup code kbd mark small span a img br hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
 export const BLOCKS = words('p h1 h2 h3 h4 h5 h6 div blockquote pre ul ol li dl dt dd hr table thead tbody tfoot tr td th caption section article header footer nav main aside figure figcaption');
@@ -294,7 +294,7 @@ function emitNode(ctx, c, indent) {
     for (const key of Object.keys(inf.attrs || {})) if (inf.attrs[key] !== null) ctx.s += ' ' + key + '="' + escapeAttr(inf.attrs[key]) + '"';
     ctx.s += '>';
   } else {
-    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs) : src.slice(t.nameEnd, t.tagEnd));
+    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs, decodeText) : src.slice(t.nameEnd, t.tagEnd));
   }
   if (VOID_TAGS.has(name)) return false;
   const own = moved ? null : lineIndentAt(src, t.start);

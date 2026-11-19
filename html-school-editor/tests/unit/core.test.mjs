@@ -172,6 +172,10 @@ test('util: file bytes', () => {
   assert.deepEqual([d.text, d.bom, d.eol], ['a\n', true, '\n']);
   assert.equal(encodeFileText(d.text, d.bom, d.eol), '\ufeffa\n');
   assert.equal(decodeFileBytes(enc('a\r\nb\nc\rd'), false).mixedEol, true);
+  // review finding BYTES: three line feeds in a row are three, and they are more than two CRLF
+  d = decodeFileBytes(enc('x\r\ny\r\n\n\n\nz'), false);
+  assert.deepEqual([d.text, d.eol, d.mixedEol], ['x\ny\n\n\n\nz', '\n', true]);
+  assert.equal(decodeFileBytes(enc('a\n\nb\r\nc\r\nd\r\n'), false).eol, '\r\n');
   assert.equal(decodeFileBytes(new Uint8Array([0x61, 0xf6, 0x62]), false).error, 'encoding');
   assert.equal(decodeFileBytes(new Uint8Array([0x61, 0xf6, 0x62]), true).text, 'a\u00f6b');
   assert.equal(decodeFileBytes(new Uint8Array([0xff, 0xfe, 0x61, 0x00]), false).error, 'utf16');

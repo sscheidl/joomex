@@ -154,6 +154,10 @@ export class Page {
     const r = await this.send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(selector)})` });
     await this.send('DOM.setFileInputFiles', { objectId: r.result.objectId, files });
   }
+  // Size of the page's viewport in CSS pixels (no arguments: back to the window's own size).
+  setViewport(width, height) {
+    return width ? this.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false }) : this.send('Emulation.clearDeviceMetricsOverride', {});
+  }
   async setOffline(offline) {
     await this.send('Network.emulateNetworkConditions', { offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
   }

@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ybgoYm9iiRUVg3CuOhcK0yTWz0lUkjB9JIZPyTFblMQ='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CN6bbMjmfvmATrJnWmDR5DsY9I02TJSnrVSHuhZyOZ4='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.5">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.6">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -110,7 +110,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.5</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.6</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -181,7 +181,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.5</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.6</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -341,6 +341,13 @@ function imagePath(folder, fileName) {
   return { ok: true, src: dir ? dir + '/' + name : name };
 }
 
+// The address with its folder replaced by `folder` (an address from imagePath): the file name, the query and
+// the fragment stay exactly as written. Slashes behind '?' or '#' are not folders.
+function moveSrc(value, folder) {
+  const v = String(value).trim(), cut = v.search(/[?#]/), path = (cut < 0 ? v : v.slice(0, cut)).replace(/\\/g, '/');
+  return folder + path.slice(path.lastIndexOf('/') + 1) + (cut < 0 ? '' : v.slice(cut));
+}
+
 // Folder part of a relative image address ('' if there is none).
 function folderOfSrc(value) {
   const path = String(value).trim().split(/[?#]/)[0].replace(/\\/g, '/');
@@ -386,10 +393,12 @@ function withAlign(style, value) {
     // a declaration at the end goes together with the semicolon in front of it, any other with its own
     rest = k === decls.length - 1 ? rest.slice(0, k ? d.start - 1 : d.start) + rest.slice(d.end) : rest.slice(0, d.start) + rest.slice(d.end + 1);
   }
+  // white space in front of and behind the whole text stays as written
+  const lead = /^[ \t\n\f\r]*/.exec(text)[0], trail = text.length > lead.length ? /[ \t\n\f\r]*$/.exec(text)[0] : '';
   rest = rest.trim();
-  if (!value) return rest;
+  if (!value) return rest ? lead + rest + trail : '';
   if (!rest) return 'text-align: ' + value;
-  return /;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value;
+  return lead + (/;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value) + trail;
 }
 
 // ---------------------------------------------------------------- reading CSS text
@@ -464,7 +473,7 @@ const STATE = /:(?:hover|active|focus|focus-within|focus-visible|target|target-w
 //                state of the page and cannot answer for the others.
 //   unclear      a string or comment is not closed
 // The text may be a style sheet or the content of a style attribute. `facts` collects the answers.
-function cssRisks(css, facts) {
+function cssRisks(css, facts, sometimes0) {
   const declaration = (piece, conditional) => {
     const plain = cssPlain(piece).trim();
     if (plain[0] === '@') { if (plain.slice(0, 7) === '@import' && !/[a-z0-9-]/.test(plain[7] || '')) facts.external = true; return; }
@@ -501,7 +510,7 @@ function cssRisks(css, facts) {
     declaration(css.slice(start), conditional);
     return css.length;
   };
-  for (let i = 0; i < css.length;) i = block(i, false);      // a stray '}' ends a block early: go on behind it
+  for (let i = 0; i < css.length;) i = block(i, !!sometimes0);      // a stray '}' ends a block early: go on behind it
   return facts;
 }
 
@@ -510,7 +519,7 @@ function cssRisks(css, facts) {
 // Rewrites single attributes of a start tag and leaves every other character of it as written. `from`..`to`
 // is the tag text behind the tag name up to and including '>', `attrs` the tokenizer's offsets
 // [nameAt, nameTo, valueAt, valueTo, ...], `changes` maps lower-case names to the new value or null (remove).
-function patchAttrs(src, from, to, attrs, changes) {
+function patchAttrs(src, from, to, attrs, changes, decode) {
   const ws = (ch) => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\r';
   const has = (name) => Object.prototype.hasOwnProperty.call(changes, name);
   const edits = [];
@@ -533,13 +542,20 @@ function patchAttrs(src, from, to, attrs, changes) {
     const value = changes[name];
     if (value === null) {
       // every spelling of the name goes; otherwise a later one, ignored until now, would take effect
+      // with the white space in front of it, unless the neighbours would then join: `width="20"alt=x` must not
+      // make `src=a.png alt=x` one attribute, and `src=a.png width=1 />` not `src=a.png/>`
       let a = nameAt;
       while (a > from && ws(src[a - 1])) a--;
-      edits.push([a, end, '']);
+      const next = src[end];
+      const apart = end >= to || ws(next) || next === '>' || (next === '/' && (a === from || src[a - 1] === '"' || src[a - 1] === "'"));
+      if (!apart) a = nameAt;
+      edits.push([a, end, !apart && !ws(src[a - 1]) ? ' ' : '']);
     } else if (!first) continue;
     else if (valueAt < 0) edits.push([nameTo, end, '="' + escapeAttr(value) + '"']);
-    else if (src[valueAt] === "'") edits.push([valueAt, valueTo, "'" + escapeAttr(value).replace(/&quot;/g, '"').replace(/'/g, '&#39;') + "'"]);
-    else edits.push([valueAt, valueTo, '"' + escapeAttr(value) + '"']);
+    else {
+      const q = src[valueAt] === '"' || src[valueAt] === "'" ? src[valueAt] : '';
+      edits.push([valueAt, valueTo, keepRaw(src.slice(valueAt + q.length, valueTo - q.length), q, value, decode)]);
+    }
   }
   let added = '';
   for (const name of Object.keys(changes)) if (!seen.has(name) && changes[name] !== null) added += ' ' + name + '="' + escapeAttr(changes[name]) + '"';
@@ -548,6 +564,24 @@ function patchAttrs(src, from, to, attrs, changes) {
   let out = '', at = from;
   for (const e of edits) { out += src.slice(at, e[0]) + e[2]; at = e[1]; }
   return out + src.slice(at, to);
+}
+
+// The new value of an attribute written as `raw` (without its quote `q`, '' if unquoted): the part in front of
+// and the part behind the change keep their spelling, character references included. Raw text is only kept
+// where `decode` can read it with certainty (no reference without a semicolon), otherwise all is written anew.
+function keepRaw(raw, q, value, decode) {
+  const esc = (v) => (q === "'" ? escapeAttr(v).replace(/&quot;/g, '"').replace(/'/g, '&#39;') : escapeAttr(v));
+  const quote = q || '"';
+  const pieces = raw.match(/&#?[a-z0-9]+;?|[^]/gi) || [];
+  const sure = pieces.every((r) => r.length === 1 || (decode && r[r.length - 1] === ';'));
+  if (!sure) return quote + esc(value) + quote;
+  const dec = pieces.map((r) => (r.length === 1 ? r : decode(r)));
+  const old = dec.join('');
+  const pre = commonPrefix(old, value), suf = commonSuffix(old, value, pre);
+  let i = 0, a = 0, j = pieces.length, b = 0;
+  while (i < j && a + dec[i].length <= pre) a += dec[i++].length;
+  while (j > i && b + dec[j - 1].length <= suf) b += dec[--j].length;
+  return quote + pieces.slice(0, i).join('') + esc(value.slice(a, value.length - b)) + pieces.slice(j).join('') + quote;
 }
 
 // ---------------------------------------------------------------- file bytes <-> text
@@ -573,7 +607,7 @@ function decodeFileBytes(bytes, allowLegacy) {
   }
   const crlf = (text.match(/\r\n/g) || []).length;
   const loneCr = (text.match(/\r(?!\n)/g) || []).length;
-  const loneLf = (text.match(/(^|[^\r])\n/g) || []).length;
+  const loneLf = (text.match(/\n/g) || []).length - crlf;
   const eol = crlf > 0 && crlf >= loneLf ? '\r\n' : '\n';
   const mixedEol = loneCr > 0 || (crlf > 0 && loneLf > 0);
   return { text: text.replace(/\r\n?/g, '\n'), bom, eol, mixedEol, legacy };
@@ -1202,7 +1236,7 @@ function syncHead(view, st) {
       const name = nameOf(el);
       if (name === 'style') { styles.push(el); if (CSS_FETCH.test(textOf(el))) rep.css++; }
       else if (name === 'script') rep.scripts++;
-      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; }
+      else if (name === 'link') { if (/stylesheet/i.test(attrOf(el, 'rel') || '')) rep.sheets++; else if (attrOf(el, 'href') !== null) rep.other++; }
       else if (name === 'meta') { if (/refresh/i.test(attrOf(el, 'http-equiv') || '')) rep.refresh++; }
       else if (name === 'base') rep.other++;
     }
@@ -1360,7 +1394,10 @@ function cssFacts(dom) {
     for (const c of childrenOf(node)) {
       if (typeOf(c) !== 1) continue;
       const name = nameOf(c);
-      if (name === 'style') cssRisks(textOf(c), facts);
+      if (name === 'style') {
+        const media = (attrOf(c, 'media') || '').trim().toLowerCase();
+        cssRisks(textOf(c), facts, media !== '' && media !== 'all');      // media="(min-width: …)" applies only sometimes
+      }
       else if (name === 'link' && /stylesheet/i.test(attrOf(c, 'rel') || '')) facts.external = true;
       const own = attrOf(c, 'style');
       if (own) cssRisks(own, facts);
@@ -1704,7 +1741,7 @@ function emitNode(ctx, c, indent) {
     for (const key of Object.keys(inf.attrs || {})) if (inf.attrs[key] !== null) ctx.s += ' ' + key + '="' + escapeAttr(inf.attrs[key]) + '"';
     ctx.s += '>';
   } else {
-    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs) : src.slice(t.nameEnd, t.tagEnd));
+    ctx.s += '<' + (inf.rename || src.slice(t.start + 1, t.nameEnd)) + (inf.attrs ? patchAttrs(src, t.nameEnd, t.tagEnd, t.attrs, inf.attrs, decodeText) : src.slice(t.nameEnd, t.tagEnd));
   }
   if (VOID_TAGS.has(name)) return false;
   const own = moved ? null : lineIndentAt(src, t.start);
@@ -2279,10 +2316,13 @@ function toggleList(env, type) {
   }
   const parent = targets[0].parentNode;
   targets = targets.filter((el) => el.parentNode === parent);
-  const list = doc.createElement(type);
-  parent.insertBefore(list, targets[0]);
-  let lastLi = null;
+  // Paragraphs with something else between them (a line, a picture, a comment) get a list each, so that
+  // everything stays in its order.
+  const between = (a, b) => { for (let n = a.nextSibling; n && n !== b; n = n.nextSibling) if (n.nodeType !== 3 || /[^ \t\n\f\r]/.test(n.data)) return true; return false; };
+  let list = null, lastLi = null;
   for (const el of targets) {
+    if (list && between(list, el)) list = null;
+    if (!list) { list = doc.createElement(type); parent.insertBefore(list, el); lastLi = null; }
     while (lastLi && el.previousSibling !== list && dropSpace(env, el.previousSibling)) { /* line breaks between neighbouring items */ }
     lastLi = rename(env, el, 'li', keep);       // the item keeps the paragraph's attributes as written
     list.appendChild(lastLi);
@@ -2334,7 +2374,8 @@ function textNodesIn(doc, range) {
 }
 
 // Moves a text node out of a formatting element by splitting that element around it.
-function liftOut(doc, node, fmt, names) {
+function liftOut(env, node, fmt, names) {
+  const doc = env.doc;
   const parent = fmt.parentNode, ref = fmt.nextSibling;
   let r = doc.createRange();
   r.setStartAfter(node);
@@ -2344,6 +2385,8 @@ function liftOut(doc, node, fmt, names) {
   r.setStartBefore(node);
   r.setEndAfter(fmt);
   const mid = r.extractContents();
+  // Elements cut in two are copied by the range; a copy writes the attributes of its original
+  for (const part of [tail, mid]) for (const el of part.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });
   for (const el of Array.from(mid.querySelectorAll(Array.from(names).join(',')))) unwrap(el);
   for (const el of Array.from(tail.children)) if (isEmptyInline(el)) el.remove();
   parent.insertBefore(mid, ref);
@@ -2367,11 +2410,11 @@ function toggleInline(env, command) {
   if (!nodes.length) return 'none';
   const fmtOf = (n) => closestTag(n, body, names);
   if (nodes.every(fmtOf)) {
-    for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(doc, n, f, names);
+    for (const n of nodes) for (let f = fmtOf(n); f; f = fmtOf(n)) liftOut(env, n, f, names);
   } else {
     if (INLINE_NOT[command]) {
       const other = INLINE_ON[INLINE_NOT[command]], otherOf = (n) => closestTag(n, body, other);
-      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(doc, n, f, other);
+      for (const n of nodes) for (let f = otherOf(n); f; f = otherOf(n)) liftOut(env, n, f, other);
     }
     let made = null;
     const created = [];
@@ -2423,6 +2466,7 @@ function insertLink(env, range, url, text, newTab) {
     range.insertNode(a);
   } else {
     const frag = range.extractContents();
+    for (const el of frag.querySelectorAll('*')) if (!env.info.has(el)) env.info.set(el, { t: null, copy: true });       // copies of cut elements
     for (const inner of Array.from(frag.querySelectorAll('a'))) unwrap(inner);
     a.appendChild(frag);
     range.insertNode(a);
@@ -2499,12 +2543,15 @@ function linkAround(doc, range) {
   return a && a.isContentEditable && a === closestTag(range.endContainer, doc.body, LINK) ? a : null;
 }
 
+// True if a link of the page pane opens in a new tab (the browser reads "_BLANK" like "_blank").
+const opensNewTab = (a) => (a.getAttribute(TARGET_HOLDER) || '').toLowerCase() === '_blank';
+
 // Changes the address of a link and whether it opens in a new tab. Only these two attributes are rewritten
 // in the source. Unticking "new tab" removes a target only if it is _blank; any other target stays.
 function changeLink(env, a, url, newTab) {
   const set = {};
   if (a.getAttribute(HREF_HOLDER) !== url) { set.href = url; a.setAttribute(HREF_HOLDER, url); }
-  const blank = a.getAttribute(TARGET_HOLDER) === '_blank';
+  const blank = opensNewTab(a);
   if (newTab && !blank) { set.target = '_blank'; a.setAttribute(TARGET_HOLDER, '_blank'); }
   else if (!newTab && blank) { set.target = null; a.removeAttribute(TARGET_HOLDER); }
   if (!Object.keys(set).length) return 'same';
@@ -2703,6 +2750,13 @@ function wireDrag(dialog) {
     grip.addEventListener('pointercancel', stop);
   });
   dialog.addEventListener('close', () => { const s = dialog.style; s.margin = s.left = s.top = s.right = s.bottom = ''; });
+  // a moved dialog stays inside the window when the window becomes smaller
+  addEventListener('resize', () => {
+    if (!dialog.open || !dialog.style.left) return;
+    const r = dialog.getBoundingClientRect(), s = dialog.style;
+    s.left = clamp(r.left, 0, Math.max(0, innerWidth - r.width)) + 'px';
+    s.top = clamp(r.top, 0, Math.max(0, innerHeight - r.height)) + 'px';
+  });
 }
 
 // ---------------------------------------------------------------- source pane
@@ -2769,7 +2823,8 @@ function applySourceMark(reveal) {
 
 // ---------------------------------------------------------------- shared state updates
 
-const isDirty = () => state.text !== state.savedText;
+// a title typed into the field and not yet taken over counts as a change as well
+const isDirty = () => state.text !== state.savedText || els.pvTitle.value.replace(/\s+/g, ' ').trim() !== state.title;
 const previewFocused = () => document.activeElement === els.pv;
 
 function updateChrome() {
@@ -3044,7 +3099,7 @@ async function linkFlow() {
   els.linkUrl.value = link ? link.getAttribute(HREF_HOLDER) || '' : '';
   els.linkText.value = '';
   els.linkTextRow.hidden = !!link || !range.collapsed;
-  els.linkNew.checked = !!link && link.getAttribute(TARGET_HOLDER) === '_blank';
+  els.linkNew.checked = !!link && opensNewTab(link);
   els.linkErr.textContent = '';
   const asked = openDialog(els.dlgLink);
   els.linkUrl.select();
@@ -3080,6 +3135,7 @@ let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
 let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
 let foundSeq = 0;           // the same for the check whether the file of the address is there
+let pickBusy = 0;           // the choice whose check is still running (0: none)
 
 function dropPicked() { picked = null; }
 
@@ -3160,7 +3216,9 @@ async function pickImage(file) {
   els.imgErr.textContent = '';
   els.imgName.textContent = 'Bild wird geprüft …';
   const seq = ++pickSeq;
+  pickBusy = seq;
   const result = await readImage(file);
+  if (pickBusy === seq) pickBusy = 0;
   // Only the latest choice of the dialog that is open now counts. A check that was started for an earlier
   // choice or for a dialog that has been closed since is dropped.
   if (seq !== pickSeq || !els.dlgImage.open) return;
@@ -3191,9 +3249,10 @@ function dialogAddress() {
     return address && fileOfSrc(address) === picked.name && folder.trim() === folderOfSrc(address) ? address : made.src;
   }
   if (!address || !fileOfSrc(address)) return undefined;
-  // same file, perhaps another folder: the file name stays exactly as it is written in the code
+  if (folder.trim() === folderOfSrc(address)) return address;           // nothing changed: the address stays as written
+  // same file in another folder: the file name, '?…' and '#…' stay exactly as they are written in the code
   const made = imagePath(folder, 'x');
-  return made.ok ? made.src.slice(0, -1) + address.trim().replace(/\\/g, '/').split('/').pop() : null;
+  return made.ok ? moveSrc(address, made.src.slice(0, -1)) : null;
 }
 
 // Shows in the dialog what will stand in the code, so that the effect of the folder field can be seen, and
@@ -3223,6 +3282,7 @@ function showAddress() {
 // Checks the fields of the image dialog and fills `imageResult`. Returns false with a message if something is wrong.
 function validateImageDialog() {
   const fail = (message) => { els.imgErr.textContent = message; return false; };
+  if (pickBusy && pickBusy === pickSeq) return fail('Das Bild wird noch geprüft. Warte einen Moment.');
   if (!imageEdit && !picked) return fail('Wähle zuerst ein Bild aus.');
   const width = els.imgWidth.value.trim();
   if (width && !/^[1-9][0-9]{0,3}$/.test(width)) return fail('Die Breite ist eine Zahl in Pixeln, zum Beispiel 300.');
@@ -3466,7 +3526,16 @@ function downloadDoc(given) {
   return true;
 }
 
-async function saveDoc() {
+// One save at a time: a save waits until the one before it is finished, so the file is written in the order
+// of the requests and the newest text is the last one written.
+let saving = Promise.resolve(true);
+function saveDoc() {
+  const run = saving.then(saveNow, saveNow);
+  saving = run;
+  return run;
+}
+
+async function saveNow() {
   const snap = snapshotForSave();
   let handle = state.handle;
   if (!handle) {
@@ -3495,11 +3564,12 @@ async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
   if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
+  const docId = state.docId;          // the page that was asked for; if another one is opened meanwhile, nothing opens
   if (!state.onDisk || isDirty()) {
     const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
       : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
-    if (!(await confirmBox(question, 'Speichern'))) return;
-    if (!(await saveDoc()) || isDirty()) return;
+    if (!(await confirmBox(question, 'Speichern')) || state.docId !== docId) return;
+    if (!(await saveDoc()) || state.docId !== docId || isDirty()) return;
     if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
   }
   window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
@@ -3518,6 +3588,7 @@ function commitTitle() {
   const before = parse(src), after = out === null ? null : parse(out);
   if (!after || after.title !== value || after.body.innerHTML !== before.body.innerHTML || after.compatMode !== before.compatMode) {
     els.pvTitle.value = state.title;
+    updateChrome();
     setStatus('Den Titel kann der Editor hier nicht sicher ändern. Ändere ihn links im Code im Tag <title>.', 'warn');
     return;
   }
@@ -3700,7 +3771,8 @@ function wireChrome() {
     wireDrag(dialog);
   }
   els.pvTitle.addEventListener('change', commitTitle);
-  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; focusPreview(); } });
+  els.pvTitle.addEventListener('input', updateChrome);
+  els.pvTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); focusPreview(); } else if (e.key === 'Escape') { els.pvTitle.value = state.title; updateChrome(); focusPreview(); } });
   els.linkOk.addEventListener('click', () => { if (validateLinkDialog()) els.dlgLink.close('ok'); });
   els.linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });
   els.linkText.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.linkOk.click(); } });

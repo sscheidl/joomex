@@ -101,6 +101,13 @@ export function imagePath(folder, fileName) {
   return { ok: true, src: dir ? dir + '/' + name : name };
 }
 
+// The address with its folder replaced by `folder` (an address from imagePath): the file name, the query and
+// the fragment stay exactly as written. Slashes behind '?' or '#' are not folders.
+export function moveSrc(value, folder) {
+  const v = String(value).trim(), cut = v.search(/[?#]/), path = (cut < 0 ? v : v.slice(0, cut)).replace(/\\/g, '/');
+  return folder + path.slice(path.lastIndexOf('/') + 1) + (cut < 0 ? '' : v.slice(cut));
+}
+
 // Folder part of a relative image address ('' if there is none).
 export function folderOfSrc(value) {
   const path = String(value).trim().split(/[?#]/)[0].replace(/\\/g, '/');
@@ -146,10 +153,12 @@ export function withAlign(style, value) {
     // a declaration at the end goes together with the semicolon in front of it, any other with its own
     rest = k === decls.length - 1 ? rest.slice(0, k ? d.start - 1 : d.start) + rest.slice(d.end) : rest.slice(0, d.start) + rest.slice(d.end + 1);
   }
+  // white space in front of and behind the whole text stays as written
+  const lead = /^[ \t\n\f\r]*/.exec(text)[0], trail = text.length > lead.length ? /[ \t\n\f\r]*$/.exec(text)[0] : '';
   rest = rest.trim();
-  if (!value) return rest;
+  if (!value) return rest ? lead + rest + trail : '';
   if (!rest) return 'text-align: ' + value;
-  return /;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value;
+  return lead + (/;$/.test(rest) ? rest + ' text-align: ' + value + ';' : rest + '; text-align: ' + value) + trail;
 }
 
 // ---------------------------------------------------------------- reading CSS text
@@ -224,7 +233,7 @@ const STATE = /:(?:hover|active|focus|focus-within|focus-visible|target|target-w
 //                state of the page and cannot answer for the others.
 //   unclear      a string or comment is not closed
 // The text may be a style sheet or the content of a style attribute. `facts` collects the answers.
-export function cssRisks(css, facts) {
+export function cssRisks(css, facts, sometimes0) {
   const declaration = (piece, conditional) => {
     const plain = cssPlain(piece).trim();
     if (plain[0] === '@') { if (plain.slice(0, 7) === '@import' && !/[a-z0-9-]/.test(plain[7] || '')) facts.external = true; return; }
@@ -261,7 +270,7 @@ export function cssRisks(css, facts) {
     declaration(css.slice(start), conditional);
     return css.length;
   };
-  for (let i = 0; i < css.length;) i = block(i, false);      // a stray '}' ends a block early: go on behind it
+  for (let i = 0; i < css.length;) i = block(i, !!sometimes0);      // a stray '}' ends a block early: go on behind it
   return facts;
 }
 
@@ -270,7 +279,7 @@ export function cssRisks(css, facts) {
 // Rewrites single attributes of a start tag and leaves every other character of it as written. `from`..`to`
 // is the tag text behind the tag name up to and including '>', `attrs` the tokenizer's offsets
 // [nameAt, nameTo, valueAt, valueTo, ...], `changes` maps lower-case names to the new value or null (remove).
-export function patchAttrs(src, from, to, attrs, changes) {
+export function patchAttrs(src, from, to, attrs, changes, decode) {
   const ws = (ch) => ch === ' ' || ch === '\t' || ch === '\n' || ch === '\f' || ch === '\r';
   const has = (name) => Object.prototype.hasOwnProperty.call(changes, name);
   const edits = [];
@@ -293,13 +302,20 @@ export function patchAttrs(src, from, to, attrs, changes) {
     const value = changes[name];
     if (value === null) {
       // every spelling of the name goes; otherwise a later one, ignored until now, would take effect
+      // with the white space in front of it, unless the neighbours would then join: `width="20"alt=x` must not
+      // make `src=a.png alt=x` one attribute, and `src=a.png width=1 />` not `src=a.png/>`
       let a = nameAt;
       while (a > from && ws(src[a - 1])) a--;
-      edits.push([a, end, '']);
+      const next = src[end];
+      const apart = end >= to || ws(next) || next === '>' || (next === '/' && (a === from || src[a - 1] === '"' || src[a - 1] === "'"));
+      if (!apart) a = nameAt;
+      edits.push([a, end, !apart && !ws(src[a - 1]) ? ' ' : '']);
     } else if (!first) continue;
     else if (valueAt < 0) edits.push([nameTo, end, '="' + escapeAttr(value) + '"']);
-    else if (src[valueAt] === "'") edits.push([valueAt, valueTo, "'" + escapeAttr(value).replace(/&quot;/g, '"').replace(/'/g, '&#39;') + "'"]);
-    else edits.push([valueAt, valueTo, '"' + escapeAttr(value) + '"']);
+    else {
+      const q = src[valueAt] === '"' || src[valueAt] === "'" ? src[valueAt] : '';
+      edits.push([valueAt, valueTo, keepRaw(src.slice(valueAt + q.length, valueTo - q.length), q, value, decode)]);
+    }
   }
   let added = '';
   for (const name of Object.keys(changes)) if (!seen.has(name) && changes[name] !== null) added += ' ' + name + '="' + escapeAttr(changes[name]) + '"';
@@ -308,6 +324,24 @@ export function patchAttrs(src, from, to, attrs, changes) {
   let out = '', at = from;
   for (const e of edits) { out += src.slice(at, e[0]) + e[2]; at = e[1]; }
   return out + src.slice(at, to);
+}
+
+// The new value of an attribute written as `raw` (without its quote `q`, '' if unquoted): the part in front of
+// and the part behind the change keep their spelling, character references included. Raw text is only kept
+// where `decode` can read it with certainty (no reference without a semicolon), otherwise all is written anew.
+function keepRaw(raw, q, value, decode) {
+  const esc = (v) => (q === "'" ? escapeAttr(v).replace(/&quot;/g, '"').replace(/'/g, '&#39;') : escapeAttr(v));
+  const quote = q || '"';
+  const pieces = raw.match(/&#?[a-z0-9]+;?|[^]/gi) || [];
+  const sure = pieces.every((r) => r.length === 1 || (decode && r[r.length - 1] === ';'));
+  if (!sure) return quote + esc(value) + quote;
+  const dec = pieces.map((r) => (r.length === 1 ? r : decode(r)));
+  const old = dec.join('');
+  const pre = commonPrefix(old, value), suf = commonSuffix(old, value, pre);
+  let i = 0, a = 0, j = pieces.length, b = 0;
+  while (i < j && a + dec[i].length <= pre) a += dec[i++].length;
+  while (j > i && b + dec[j - 1].length <= suf) b += dec[--j].length;
+  return quote + pieces.slice(0, i).join('') + esc(value.slice(a, value.length - b)) + pieces.slice(j).join('') + quote;
 }
 
 // ---------------------------------------------------------------- file bytes <-> text
@@ -333,7 +367,7 @@ export function decodeFileBytes(bytes, allowLegacy) {
   }
   const crlf = (text.match(/\r\n/g) || []).length;
   const loneCr = (text.match(/\r(?!\n)/g) || []).length;
-  const loneLf = (text.match(/(^|[^\r])\n/g) || []).length;
+  const loneLf = (text.match(/\n/g) || []).length - crlf;
   const eol = crlf > 0 && crlf >= loneLf ? '\r\n' : '\n';
   const mixedEol = loneCr > 0 || (crlf > 0 && loneLf > 0);
   return { text: text.replace(/\r\n?/g, '\n'), bom, eol, mixedEol, legacy };
