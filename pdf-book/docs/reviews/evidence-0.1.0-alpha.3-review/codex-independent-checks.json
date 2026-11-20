@@ -1,0 +1,136 @@
+[
+  {
+    "test": "edge ICCBased CMYK fallback",
+    "version": "157.0.4341.46",
+    "pixel": [
+      0,
+      185,
+      242,
+      255
+    ],
+    "bad_responses": [],
+    "errors": []
+  },
+  {
+    "test": "edge JPX strictstyle",
+    "decoder_requests": [
+      "http://127.0.0.1:8766/sub/media/mod_pdfbook/vendor/pdfjs/web/wasm/openjpeg_nowasm_fallback.js"
+    ],
+    "pixel": [
+      127,
+      171,
+      120,
+      255
+    ],
+    "errors": []
+  },
+  {
+    "test": "edge effective 320x225 dialog layout",
+    "metrics": {
+      "viewport": 225,
+      "dialog": {
+        "top": -7.5,
+        "bottom": 232.5,
+        "height": 240
+      },
+      "toolbar": {
+        "top": 269.1875,
+        "bottom": 392.1875,
+        "height": 123
+      },
+      "close": {
+        "top": 4.5,
+        "bottom": 37.5,
+        "height": 33
+      },
+      "scrollHeight": 240,
+      "clientHeight": 240
+    }
+  },
+  {
+    "test": "edge render failure lifecycle fault injection",
+    "result": {
+      "state": "error",
+      "pdfDisposed": false,
+      "cacheEntries": 1,
+      "workerDestroyed": false,
+      "controlsEnabled": 0
+    }
+  },
+  {
+    "test": "edge dispose with queued navigation",
+    "result": {
+      "disposed": true,
+      "pdfDisposed": true,
+      "pending": null,
+      "page": "1"
+    }
+  },
+  {
+    "test": "firefox ICCBased CMYK fallback",
+    "version": "159.0",
+    "pixel": [
+      0,
+      185,
+      242,
+      255
+    ],
+    "bad_responses": [],
+    "errors": []
+  },
+  {
+    "test": "firefox JPX strictstyle",
+    "decoder_requests": [
+      "http://127.0.0.1:8766/sub/media/mod_pdfbook/vendor/pdfjs/web/wasm/openjpeg_nowasm_fallback.js"
+    ],
+    "pixel": [
+      127,
+      171,
+      120,
+      255
+    ],
+    "errors": []
+  },
+  {
+    "test": "firefox effective 320x225 dialog layout",
+    "metrics": {
+      "viewport": 225,
+      "dialog": {
+        "top": -7.5,
+        "bottom": 232.5,
+        "height": 240
+      },
+      "toolbar": {
+        "top": 270.20001220703125,
+        "bottom": 393.20001220703125,
+        "height": 123
+      },
+      "close": {
+        "top": 4.5,
+        "bottom": 38.5,
+        "height": 34
+      },
+      "scrollHeight": 240,
+      "clientHeight": 240
+    }
+  },
+  {
+    "test": "firefox render failure lifecycle fault injection",
+    "result": {
+      "state": "error",
+      "pdfDisposed": false,
+      "cacheEntries": 1,
+      "workerDestroyed": false,
+      "controlsEnabled": 0
+    }
+  },
+  {
+    "test": "firefox dispose with queued navigation",
+    "result": {
+      "disposed": true,
+      "pdfDisposed": true,
+      "pending": null,
+      "page": "1"
+    }
+  }
+]

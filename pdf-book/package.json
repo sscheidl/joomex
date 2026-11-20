@@ -1,0 +1,8 @@
+{
+  "name": "joomex-pdf-book",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test tests/model.test.mjs"},
+  "description": "Independent Joomla PDF flipbook module; vendored PDF.js is pinned in dependencies.json"
+}

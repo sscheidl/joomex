@@ -1,0 +1,98 @@
+{
+  "date": "2026-11-19T08:36:05.439Z",
+  "browser": "Firefox/160.0.1",
+  "mode": "headless",
+  "bytes": 160302,
+  "sha256": "2c85f25d11fe0d1207f3e7655334dcbdd6f7b058dad66e0c6a9c9aeb09629244",
+  "selection": {
+    "text": "beides ",
+    "source": "<i>beides</i></b> ",
+    "events": [
+      [
+        "click",
+        1
+      ],
+      [
+        "click",
+        2
+      ],
+      [
+        "dblclick",
+        2
+      ]
+    ],
+    "startNode": "#text",
+    "startOffset": 5,
+    "endNode": "#text",
+    "endOffset": 1
+  },
+  "commentEdit": {
+    "source": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Control</title></head><body><p>Text <!-- comment --> weiter.</p></body></html>",
+    "expected": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Control</title></head><body><p>TextQ <!-- comment --> weiter.</p></body></html>",
+    "saved": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Control</title></head><body><p>TextQ <!-- comment -->weiter.</p></body></html>",
+    "exact": false
+  },
+  "format": {
+    "outcome": "refused",
+    "text": "Durch das Aufräumen würde sich das Aussehen der Seite ändern, zum Beispiel Abstände zwischen Wörtern oder Elementen. Das liegt am CSS dieser Seite. Dein Code bleibt unverändert.",
+    "sourceUnchanged": true,
+    "viewport": {
+      "width": 692,
+      "height": 587
+    }
+  },
+  "roundTrips": [
+    {
+      "source": "<p>Alpha</p>",
+      "mapped": true,
+      "serialized": "<p>Alpha</p>",
+      "exact": true,
+      "rendered": "<p>Alpha</p>",
+      "children": [
+        {
+          "node": "P",
+          "mapped": true
+        }
+      ]
+    },
+    {
+      "source": "<p>Alpha<!-- c --> Beta</p>",
+      "mapped": true,
+      "serialized": "<p>Alpha<!-- c --> Beta</p>",
+      "exact": true,
+      "rendered": "<p>Alpha<!-- c --> Beta</p>",
+      "children": [
+        {
+          "node": "P",
+          "mapped": true
+        }
+      ]
+    },
+    {
+      "source": "<br/><!-- unfinished",
+      "mapped": true,
+      "serialized": "<p><br></p><!-- unfinished",
+      "exact": false,
+      "rendered": "<br><!-- unfinished-->",
+      "children": [
+        {
+          "node": "BR",
+          "mapped": false
+        },
+        {
+          "node": "#comment",
+          "mapped": true
+        }
+      ]
+    }
+  ],
+  "ordinaryFormatControl": {
+    "origin": "controlled localhost, CSP disables scripts; viewport equals editor page pane",
+    "viewport": {
+      "width": 692,
+      "height": 587
+    },
+    "equal": true,
+    "firstDifferences": []
+  }
+}

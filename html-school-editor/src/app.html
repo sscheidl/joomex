@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="__APP_ID__ __VERSION__">
+<title>__APP_NAME__</title>
+<style>
+__CSS__
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand"><strong>__APP_NAME__ <small id="appVer">__VERSION__</small></strong><span>__APP_SUB__</span></div>
+  <div class="group" role="group" aria-label="Datei">
+    <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
+    <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
+    <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)">Speichern</button>
+    <button id="bDownload" type="button" title="Eine Kopie in den Ordner „Downloads“ laden">Herunterladen</button>
+  </div>
+  <div class="group" role="group" aria-label="Verlauf">
+    <button id="bUndo" type="button" title="Rückgängig (Strg+Z)">Rückgängig</button>
+    <button id="bRedo" type="button" title="Wiederholen (Strg+Y)">Wiederholen</button>
+  </div>
+  <div class="group">
+    <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
+  </div>
+  <div class="group">
+    <button id="bBrowse" type="button" title="Die gespeicherte Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Im Browser öffnen</button>
+  </div>
+  <div class="doc"><span id="docName"></span><span id="docState"></span></div>
+  <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
+</header>
+
+<main id="work">
+  <section id="srcPane" aria-label="HTML-Code">
+    <div class="paneHead"><h2>HTML-Code</h2><span class="hint">Hier steht der ganze Code deiner Seite.</span></div>
+    <div id="srcBox">
+      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
+      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite"></textarea>
+    </div>
+  </section>
+  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
+  <section id="pvPane" aria-label="Seite">
+    <div class="paneHead"><h2>Deine Seite</h2><label class="hint" for="pvTitle">Titel:</label><input id="pvTitle" type="text" autocomplete="off" spellcheck="false" maxlength="200" title="Der Titel steht im Code im Tag &lt;title&gt; und oben im Tab des Browsers"></div>
+    <div id="fmt" role="toolbar" aria-label="Text gestalten">
+      <span class="group">
+        <button id="bP" type="button" title="Absatz &lt;p&gt;">Absatz</button>
+        <button id="bH1" type="button" title="Große Überschrift &lt;h1&gt;">Ü1</button>
+        <button id="bH2" type="button" title="Mittlere Überschrift &lt;h2&gt;">Ü2</button>
+        <button id="bH3" type="button" title="Kleine Überschrift &lt;h3&gt;">Ü3</button>
+      </span>
+      <span class="group">
+        <button id="bBold" type="button" class="b" title="Fett &lt;b&gt; (Strg+B)">F</button>
+        <button id="bItalic" type="button" class="i" title="Kursiv &lt;i&gt; (Strg+I)">K</button>
+        <button id="bUnderline" type="button" class="u" title="Unterstrichen &lt;u&gt; (Strg+U)">U</button>
+        <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
+        <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
+        <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
+        <button id="bColor" type="button" class="c" title="Textfarbe &lt;span style=&quot;color: …&quot;&gt;">Farbe</button>
+      </span>
+      <span class="group">
+        <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
+        <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
+      </span>
+      <span class="group" role="group" aria-label="Ausrichtung">
+        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links)">Links</button>
+        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte)">Mitte</button>
+        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts)">Rechts</button>
+        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile)">Block</button>
+      </span>
+      <span class="group">
+        <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
+        <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
+        <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
+        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
+      </span>
+    </div>
+    <div id="lockNote" class="note warn" hidden></div>
+    <div id="lostNote" class="note warn" role="status" hidden></div>
+    <div id="pvBox"><iframe id="pv" sandbox="allow-same-origin" title="Vorschau deiner Seite zum Bearbeiten"></iframe></div>
+    <div id="inactive" class="note" hidden title="Skripte, Formulare und Dateien von außerhalb laufen bzw. laden im Editor nicht. Im Code und in der gespeicherten Datei bleiben sie unverändert erhalten."><span id="inactiveText"></span> Im Code bleibt alles erhalten.</div>
+  </section>
+</main>
+
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">__APP_ID__ __VERSION__</span></footer>
+
+<div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
+
+<dialog id="dlgInfo"><p id="infoText"></p><div class="row"><button type="button" class="primary" data-close="ok">OK</button></div></dialog>
+
+<dialog id="dlgConfirm"><p id="confirmText"></p><div class="row"><button type="button" class="primary" data-close="cancel">Abbrechen</button><button type="button" id="confirmOk" data-close="ok"></button></div></dialog>
+
+<dialog id="dlgLink">
+  <h3 id="linkTitle">Link einfügen</h3>
+  <label for="linkUrl">Adresse (wohin führt der Link?)</label>
+  <input id="linkUrl" type="text" autocomplete="off" spellcheck="false" placeholder="https://www.beispiel.de oder seite2.html">
+  <div id="linkTextRow"><label for="linkText">Text des Links</label><input id="linkText" type="text" autocomplete="off" placeholder="Hier klicken"></div>
+  <label class="check"><input id="linkNew" type="checkbox"> In neuem Tab öffnen</label>
+  <p id="linkErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="linkOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgImage">
+  <h3 id="imgTitle">Bild einfügen</h3>
+  <p>Lege das Bild zuerst in den Ordner deiner Seite. Im Code steht dann nur der Name der Bilddatei. Erlaubt sind PNG, JPG, GIF und WebP.</p>
+  <div class="pick"><button type="button" id="imgPick">Bild auswählen …</button><span id="imgName"></span></div>
+  <img id="imgPrev" alt="" hidden>
+  <label for="imgDir">Unterordner (nur wenn das Bild in einem Unterordner liegt)</label>
+  <input id="imgDir" type="text" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Zum Beispiel: bilder">
+  <p class="hint">Der Editor erfährt vom Browser nicht, aus welchem Ordner du das Bild ausgewählt hast. Liegt es in einem Unterordner deiner Seite, schreibe den Namen des Ordners hier hinein.</p>
+  <p id="imgCode" class="code" role="status"></p>
+  <p id="imgFound" class="found" role="status"></p>
+  <label for="imgAlt">Beschreibung des Bildes (freiwillig)</label>
+  <input id="imgAlt" type="text" autocomplete="off" maxlength="200" placeholder="Zum Beispiel: Unsere Katze schläft auf dem Sofa">
+  <label for="imgWidth">Breite in Pixeln (leer lassen für die Originalgröße)</label>
+  <input id="imgWidth" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="Zum Beispiel: 300">
+  <p id="imgErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="imgOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgColor">
+  <h3>Textfarbe</h3>
+  <p>Die Farbe gilt für den markierten Text. Ist ein ganzer Absatz markiert, bekommt der Absatz die Farbe.</p>
+  <div class="swatches">
+    <button type="button" data-close="red" style="color: red">Rot</button>
+    <button type="button" data-close="orange" style="color: orange">Orange</button>
+    <button type="button" data-close="green" style="color: green">Grün</button>
+    <button type="button" data-close="blue" style="color: blue">Blau</button>
+    <button type="button" data-close="navy" style="color: navy">Dunkelblau</button>
+    <button type="button" data-close="purple" style="color: purple">Lila</button>
+    <button type="button" data-close="brown" style="color: brown">Braun</button>
+    <button type="button" data-close="gray" style="color: gray">Grau</button>
+  </div>
+  <div class="row"><button type="button" data-close="none">Farbe entfernen</button><button type="button" class="primary" data-close="cancel">Abbrechen</button></div>
+</dialog>
+
+<dialog id="dlgTable">
+  <h3 id="tblTitle">Tabelle einfügen</h3>
+  <div id="tblNew">
+    <label for="tblRows">Zeilen (1 bis 20)</label>
+    <input id="tblRows" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label for="tblCols">Spalten (1 bis 10)</label>
+    <input id="tblCols" type="text" inputmode="numeric" autocomplete="off" maxlength="2" value="3">
+    <label class="check"><input id="tblHead" type="checkbox" checked> Erste Zeile als Überschrift</label>
+    <label class="check"><input id="tblBorder" type="checkbox" checked> Mit Rahmenlinien</label>
+  </div>
+  <div id="tblEdit" class="grid">
+    <button type="button" data-close="rowAdd">Zeile darunter einfügen</button>
+    <button type="button" data-close="colAdd">Spalte rechts einfügen</button>
+    <button type="button" data-close="rowDel">Zeile löschen</button>
+    <button type="button" data-close="colDel">Spalte löschen</button>
+  </div>
+  <p id="tblErr" class="err" role="alert"></p>
+  <div class="row"><button type="button" data-close="cancel">Abbrechen</button><button type="button" class="primary" id="tblOk">Einfügen</button></div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <h3>Kurze Hilfe</h3>
+  <ul>
+    <li><b>Links</b> steht der HTML-Code, <b>rechts</b> siehst du deine Seite. Du kannst auf beiden Seiten schreiben – die andere Seite ändert sich mit.</li>
+    <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
+    <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
+    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
+    <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
+    <li><b>Farbe</b> färbt den markierten Text. <b>Tabelle</b> fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, kannst du damit Zeilen und Spalten einfügen oder löschen. Mit der Tab-Taste springst du in die nächste Zelle.</li>
+    <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
+    <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
+  </ul>
+  <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
+</dialog>
+
+<input id="fileIn" type="file" accept=".html,.htm,text/html" hidden>
+<input id="imgIn" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+<script>
+__JS__
+</script>
+</body>
+</html>

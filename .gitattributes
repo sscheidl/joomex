@@ -1,0 +1,3 @@
+# Reproducible builds: our sources use LF everywhere; vendored files stay byte-identical to dependencies.json.
+* text=auto eol=lf
+pdf-book/media/vendor/** -text -diff

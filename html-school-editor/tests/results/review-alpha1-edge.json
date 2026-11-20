@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-18T22:33:14.339Z",
+  "browser": "Edg/157.0.4341.60",
+  "mode": "headless",
+  "node": "v24.22.1",
+  "os": "Windows_NT 10.0.26300",
+  "bytes": 132525,
+  "sha256": "ef9585a6c323bf9913f7dff2baf8d475eb5eb70b0c4700f5545ba6c120385079",
+  "probes": [
+    {
+      "id": "RV-01-new-during-read",
+      "expectation": "Pending file read must not silently discard newer work",
+      "timing": "File.arrayBuffer completion held by test; native picker not exercised",
+      "productPass": false,
+      "before": "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text. KEEP-MY-WORK</p>\n</body>\n</html>\n",
+      "after": "<p>DELAYED FILE</p>",
+      "undoDisabled": true,
+      "dirty": "gespeichert",
+      "confirmationOpen": false
+    },
+    {
+      "id": "RV-01-edit-during-read",
+      "expectation": "Pending file read must not silently discard newer work",
+      "timing": "File.arrayBuffer completion held by test; native picker not exercised",
+      "productPass": false,
+      "before": "<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Meine Seite</title>\n</head>\n<body>\n  <h1>Meine erste Webseite</h1>\n  <p>Hier steht mein Text. KEEP-MY-WORK</p>\n</body>\n</html>\n",
+      "after": "<p>DELAYED FILE</p>",
+      "undoDisabled": true,
+      "dirty": "gespeichert",
+      "confirmationOpen": false
+    },
+    {
+      "id": "RV-02-inline-block",
+      "expectation": "Formatting preserves visible text with document CSS applied",
+      "productPass": false,
+      "before": {
+        "text": "Alpha\n\nBeta",
+        "gap": 0
+      },
+      "after": {
+        "text": "Alpha\n\n \n\nBeta",
+        "gap": 4
+      },
+      "refused": false,
+      "source": "<!doctype html><style>p {display:inline}</style><p>Alpha</p><p>Beta</p>",
+      "saved": "<!doctype html>\n<style>p {display:inline}</style>\n<p>Alpha</p>\n<p>Beta</p>\n"
+    },
+    {
+      "id": "RV-02-css-pre",
+      "expectation": "Formatting preserves visible text with document CSS applied",
+      "productPass": false,
+      "before": {
+        "text": "Alpha   Beta",
+        "gap": null
+      },
+      "after": {
+        "text": "Alpha Beta",
+        "gap": null
+      },
+      "refused": false,
+      "source": "<!doctype html><p style=\"white-space:/**/pre\">Alpha   Beta</p>",
+      "saved": "<!doctype html>\n<p style=\"white-space:/**/pre\">Alpha Beta</p>\n"
+    },
+    {
+      "id": "RV-03-list-attributes",
+      "expectation": "List conversion preserves existing attributes",
+      "productPass": false,
+      "source": "<!doctype html><p id=\"anchor\" class=\"special\" title=\"Keep me\">Alpha</p><p>Beta</p>",
+      "saved": "<!doctype html>\n<ul>\n  <li>Alpha</li>\n</ul><p>Beta</p>"
+    },
+    {
+      "id": "RV-C-svg-animation",
+      "expectation": "No animated resource reaches the local counter",
+      "productPass": true,
+      "hits": [],
+      "attemptedPaths": [
+        "/review-svg-image.png"
+      ],
+      "cspBlocks": 2,
+      "sourceUnchanged": true,
+      "inactiveHidden": true
+    },
+    {
+      "id": "RV-04-inactive-notice",
+      "expectation": "A blocked document resource is announced to the pupil",
+      "productPass": false,
+      "inactiveText": "",
+      "sourceUnchanged": true
+    }
+  ]
+}

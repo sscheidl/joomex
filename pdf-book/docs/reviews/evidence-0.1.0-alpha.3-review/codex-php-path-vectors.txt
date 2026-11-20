@@ -1,0 +1,41 @@
+ACCEPT  "images\/ok.pdf" -> images/ok.pdf
+ACCEPT  "images\/\/ok.pdf" -> images//ok.pdf
+reject  "images\/.\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+ACCEPT  "images\/sub\/Broschüre.pdf" -> images/sub/Brosch%C3%BCre.pdf
+ACCEPT  "images\/sub\/Brosch%C3%BCre.pdf" -> images/sub/Brosch%C3%BCre.pdf
+ACCEPT  "images\/UPPER.PDF" -> images/UPPER.PDF
+reject  "Images\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "IMAGES\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+ACCEPT  "images\/a b.pdf" -> images/a%20b.pdf
+ACCEPT  "images\/a%20b.pdf" -> images/a%20b.pdf
+ACCEPT  "images\/a+b&c'.pdf" -> images/a%2Bb%26c%27.pdf
+ACCEPT  "images\/a%2Bb%26c%27.pdf" -> images/a%2Bb%26c%27.pdf
+reject  "images\/late.pdf" : Die Datei ist kein PDF.
+reject  "images\/big.pdf" : PDF darf höchstens 32 MB groß sein.
+reject  "images\/jx\/secret.pdf" : PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.
+reject  "images\/sub\/..\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/sub\/%2e%2e\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/sub\/%2E%2E\/ok.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/%2e%2e%2fsecret-root.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/..%2fsecret-root.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/%252e%252e%252fsecret-root.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/sub%2f..%2f..%2fsecret-root.pdf" : PDF muss im Medienverzeichnis images liegen.
+ACCEPT  "\/images\/ok.pdf" -> images/ok.pdf
+reject  "images\\ok.pdf" : Ungültiger PDF-Pfad.
+reject  "images\/%5cok.pdf" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/ok.pdf%00.txt" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/ok.pdf%23x" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/ok.pdf%3Fx=1" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/ok.pdf." : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/ok.pdf::$DATA" : Ungültiger PDF-Pfad.
+reject  "images\/ok.pdf%3A%3A$DATA" : PDF muss im Medienverzeichnis images liegen.
+reject  "\\server\\share\\x.pdf" : Ungültiger PDF-Pfad.
+reject  "images\/OK~1.PDF" : PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.
+reject  "images\/ok.pdf\/" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/" : PDF muss im Medienverzeichnis images liegen.
+reject  "images\/sub" : PDF muss im Medienverzeichnis images liegen.
+reject  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" : Ungültiger PDF-Pfad.
+reject  "images\/…\/ok.pdf" : PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.
+reject  "images\/%C0%AE%C0%AE\/secret-root.pdf" : PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.
+reject  "images\/ok‮fdp.pdf" : PDF ist nicht verfügbar oder liegt außerhalb des Medienverzeichnisses.
+ACCEPT  "images\/ok.Pdf" -> images/ok.Pdf
