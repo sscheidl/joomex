@@ -1,6 +1,18 @@
-# Review request: HTML School Editor 0.1.0-alpha.8
+# Review request: HTML School Editor 0.1.0-alpha.8 and 0.1.0-alpha.9
 
 Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository.
+
+## alpha.9: corrections of the interim review
+
+An interim review of alpha.8 by a second reviewer (Claude Fable, 2026-11-20, verdict **HOLD**) repeated your checklist inputs with variations and compared against the alpha.7 build. It found the eight corrections of alpha.8 working for your inputs, carried out 2.12, 2.13, 2.14 and the test audit without a finding, and found eight more defects, F1 to F8, none about lost work without a message or the protective design. Its report was handed over to the owner only. On the owner's request, version 0.1.0-alpha.9, stacked on alpha.8, corrects F1 to F3; F4 to F8 are open (see [STATUS.md](STATUS.md#findings-of-the-interim-review-of-alpha8-and-their-corrections)). **This request covers alpha.8 and alpha.9 together.** The implementer of alpha.9 is the session that carried out the interim review, so the interim review is no independent check of alpha.9.
+
+| Finding | Correction | Code | Case | Please try |
+| --- | --- | --- | --- | --- |
+| F1 (medium) a save waiting behind a hanging write saves whatever page is open when its turn comes | the waiting save remembers the page of the last request (`nextDoc`) and is dropped if another page is open | `src/js/app.js:955` | A8-01 | another page opened and then the first one again while a save waits; "Im Browser öffnen" while a save waits and the page is switched; a save asked for in the new page |
+| F2 (low, alpha.8 regression) mixed table layouts lose a line break after add and delete | a row or cell standing directly behind its neighbour is deleted without the white space behind it, unless the neighbour's end tag is omitted | `src/js/commands.js:623`, `:627` | A8-02 | every layout of rows and cells on lines and not; deleting cells of the source; tables with comments between rows |
+| F3 (low, alpha.8 regression) a new item behind `<li>` without end tag puts its line break into that item | the item gets its end tag if the element behind it starts a line of its own and white space would be written | `src/js/serialize.js:46`, `:120`, `:134` | A8-03 | `dt`/`dd`; list commands that move a paragraph behind such an item; tables with omitted end tags and rows on lines (1.4e must stay corrected) |
+
+A side effect to judge: in `<td>a<td>b</td> <td>c</td>`, deleting the column of b now keeps a's omitted end tag and drops the space behind b; alpha.8 kept the space and wrote `</td>`.
 
 Three reviews ended with FAIL: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md)), of alpha.2 with alpha.3 ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md)) and, on 2026-11-19, of alpha.4 with alpha.5. The report of the third review was handed over to the owner only; it is not in this repository, and this request names its findings by the reviewer's identifiers (ATTR, IMG-QUERY, MEDIA, WRITES, BROWSE-SWITCH, STYLE-SPLIT, LIST, IMG-PENDING, BYTES, ALIGN, NOTICE, TITLE-RELOAD, DIALOG-RESIZE, TARGET-CASE). Version 0.1.0-alpha.6 corrects these fourteen findings and the sentence of the specification about pictures; it adds no function. Version 0.1.0-alpha.7, stacked on it, adds step B of the owner's list: text colour and tables. The owner asked for one review of both. The request is to check whether each finding is really corrected, in general and not only for the reported example, whether the corrections or the new functions broke something else or reopen an earlier kind of defect, and whether the new tests show what they claim. Nothing here is a review result; the implementer's own tests are not a review.
 
@@ -33,7 +45,8 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
 ## State of the repository
 
-* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.8`, stacked on `feature/html-school-editor-0.1.0-alpha.7` (pull request 21). The corrections of alpha.8 are the difference between the two. **Changed in alpha.8:** `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignSometimes`, `setAlign`, `ownCols`, `tableColumn`), `src/js/serialize.js` (`freshLine`, `childIndent`, `emitKids`, `needsEndTag`), `src/js/app.js` (`setStatus`, `saveDoc`, `startSave`, `saveNow`, image dialog, two messages); tests: `tests/browser/review7.mjs` (new), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
+* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.9`, stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22). The corrections of alpha.9 are the difference between the two. **Changed in alpha.9:** `src/js/app.js` (`saveDoc`), `src/js/commands.js` (`takeOut`, new `openEnd`), `src/js/serialize.js` (`freshLine` split into `lineBreakFor`, new `startsLine`, `needsEndTag`); tests: `tests/browser/review8.mjs` (new), `tests/run.mjs`.
+* **alpha.8** is `fix/html-school-editor-0.1.0-alpha.8`, stacked on `feature/html-school-editor-0.1.0-alpha.7` (pull request 21). The corrections of alpha.8 are the difference between the two. **Changed in alpha.8:** `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignSometimes`, `setAlign`, `ownCols`, `tableColumn`), `src/js/serialize.js` (`freshLine`, `childIndent`, `emitKids`, `needsEndTag`), `src/js/app.js` (`setStatus`, `saveDoc`, `startSave`, `saveNow`, image dialog, two messages); tests: `tests/browser/review7.mjs` (new), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
 * **Earlier branches** `fix/html-school-editor-0.1.0-alpha.6` (pull request 20, created from `feature/html-school-editor-0.1.0-alpha.5`, pull request 19) and `feature/html-school-editor-0.1.0-alpha.7`, stacked on it. The corrections are the difference between pull request 19 and pull request 20; step B is the difference between pull request 20 and the alpha.7 branch.
 * **Changed in alpha.6:** `src/js/util.js` (`patchAttrs`, `keepRaw`, `withAlign`, `moveSrc`, `cssRisks`, `decodeFileBytes`), `src/js/project.js` (`cssFacts`, `syncHead`), `src/js/serialize.js` (decoder for `patchAttrs`), `src/js/commands.js` (`toggleList`, `liftOut`, `insertLink`, `opensNewTab`, `changeLink`), `src/js/app.js` (image dialog, saving, "Im Browser öffnen", title field, dialogs); tests: `tests/browser/review6.mjs` (new), `tests/run.mjs`, `tests/lib/cdp.mjs` and `tests/lib/firefox.mjs` (`setViewport`), `tests/unit/attrs.test.mjs`, `tests/unit/core.test.mjs`.
 * **Changed in alpha.7:** `src/js/util.js` (`withDecl`, `plainStyle`, `COLORS`), `src/js/commands.js` (`setColor`, `liftOut` filter, tables), `src/js/serialize.js` (style of new elements, new `tbody`), `src/js/app.js` (colour and table dialogs, Tab in tables, empty cells in the page pane), `src/app.html`, `src/style.css`, `tools/build.mjs` (comment lines left out); tests: `tests/browser/features7.mjs` (new), `tests/run.mjs`, `tests/unit/attrs.test.mjs`, and the geometry of F-08 (`tests/browser/features5.mjs`) and A5-11 (`tests/browser/review6.mjs`) because the help dialog grew by one line. In alpha.6 not changed: `tokenizer.js`, `tree.js`, `format.js`, `highlight.js`, `history.js`, `images.js`, `src/app.html`, `src/style.css`, `tools/build.mjs`, the fixtures, `docs/brief/*`, `docs/reviews/*`.
@@ -41,7 +54,7 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
   ```bash
   git fetch --prune origin
-  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.8 origin/fix/html-school-editor-0.1.0-alpha.8
+  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.9 origin/fix/html-school-editor-0.1.0-alpha.9
   git config user.email                                   # must be the GitHub noreply address
   git log --format='%ae %ce' origin/main..HEAD | sort -u  # must list noreply addresses only
   ```
@@ -53,6 +66,13 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 Run in `html-school-editor/`; the last one from the repository root:
 
 ```bash
+# on the alpha.9 branch:
+node tools/build.mjs --check            # up to date: dist/school-editor.html  182454 bytes  sha256 40992860…
+node --test tests/unit/*.test.mjs       # tests 26, pass 26, fail 0
+node tests/run.mjs --browser edge       # edge: 80 passed, 0 not passed, 0 partial, 0 not measured, 757 checks, 3 part(s) NOT MEASURED
+node tests/run.mjs --browser firefox    # firefox: 74 passed, 0 not passed, 5 partial, 1 not measured, 714 checks, 7 part(s) NOT MEASURED
+node tests/run.mjs --browser edge --no-write --only A8-01,A8-02,A8-03   # 3 passed; against the alpha.8 build 0 of 3
+# your checklist script of the fourth review, unchanged, from a copy: Edge 84 of 88 (as for alpha.8), Firefox 3 of 3
 # on the alpha.8 branch:
 node tools/build.mjs --check            # up to date: dist/school-editor.html  181332 bytes  sha256 6b7e8260…
 node --test tests/unit/*.test.mjs       # tests 26, pass 26, fail 0
@@ -136,7 +156,7 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 ## What comes after this review
 
-After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 18668 bytes are left below the size limit.
+After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 17546 bytes are left below the size limit.
 
 ## Not measured
 

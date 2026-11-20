@@ -614,10 +614,20 @@ const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
 const ownCols = (table) => Array.from(table.children).some((k) => k.localName === 'colgroup' || k.localName === 'col');
 const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
 
-// Takes an element out together with the line break in front of it (behind it, if it is the first child).
+// Takes a row or cell out together with the line break in front of it (behind it, if it is the first child). One
+// that stands directly behind its neighbour, without white space, goes alone: the white space behind it belongs
+// to the next element. Only if the neighbour's end tag is omitted does that white space go too, because behind
+// an open cell or row it would become part of the cell.
+const blankText = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
+const CELL_ROW = words('td th tr');
+function openEnd(env, n) {
+  const inf = n && n.nodeType === 1 && CELL_ROW.has(n.localName) ? env.info.get(n) : null, t = inf && inf.t;
+  return !!t && t.type === 'el' && !t.explicitEnd && !t.implied && !t.synthetic;
+}
 function takeOut(env, el) {
   const before = el.previousSibling;
-  if (before && before.previousSibling) dropSpace(env, before); else dropSpace(env, el.nextSibling);
+  if (blankText(before) && before.previousSibling) dropSpace(env, before);
+  else if (!before || blankText(before) || openEnd(env, before)) dropSpace(env, el.nextSibling);
   el.remove();
 }
 

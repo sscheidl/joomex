@@ -1,14 +1,14 @@
 # Status
 
-**Version:** 0.1.0-alpha.8 · **Date:** 2026-11-20 · **Location:** `html-school-editor/` in this repository, branch `fix/html-school-editor-0.1.0-alpha.8`, stacked on `feature/html-school-editor-0.1.0-alpha.7` (pull request 21)
+**Version:** 0.1.0-alpha.9 · **Date:** 2026-11-20 · **Location:** `html-school-editor/` in this repository, branch `fix/html-school-editor-0.1.0-alpha.9`, stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22)
 
 ## Verdict: HOLD
 
-Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04) and of alpha.2 with alpha.3 together ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md), findings A3-01 to A3-05 and one about the test helper). The second review confirmed RV-01 and RV-03 as corrected and found RV-02 and RV-04 corrected only for the reported examples. The reviewer then measured alpha.3 in Firefox ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)) and found three differences. Version 0.1.0-alpha.4 corrects the five findings and the three Firefox differences, and makes the image dialog show the address it will write, after a report of the owner. After trying it, the owner asked for three more changes, which are in this version too: pictures are shown from the folder of the editor (this widens the content policy, see below), the version number stands in the top bar, and the box of a picture from the network says what to do. A third independent review, of alpha.4 and alpha.5 together, ended with **FAIL** on 2026-11-19: fourteen findings, five of them high ([below](#findings-of-the-review-of-alpha4-and-alpha5-and-their-corrections)). Its report was handed over to the owner only and is not part of this repository. Version 0.1.0-alpha.6 corrects all fourteen findings and one sentence of the specification. Version 0.1.0-alpha.7 adds text colour and tables ([below](#functions-of-alpha7-on-the-owners-request)). A fourth independent review, of alpha.6 and alpha.7 together, ended with **HOLD** on 2026-11-20: eight findings, four of them medium, none about lost work or the protective design ([below](#findings-of-the-review-of-alpha6-and-alpha7-and-their-corrections)); four parts were not reviewed. Its report was handed over to the owner only. Version 0.1.0-alpha.8 corrects all eight. None of these corrections has been reviewed; the implementer's tests are not a review, and four times they passed over defects that a review then found.
+Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04) and of alpha.2 with alpha.3 together ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md), findings A3-01 to A3-05 and one about the test helper). The second review confirmed RV-01 and RV-03 as corrected and found RV-02 and RV-04 corrected only for the reported examples. The reviewer then measured alpha.3 in Firefox ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)) and found three differences. Version 0.1.0-alpha.4 corrects the five findings and the three Firefox differences, and makes the image dialog show the address it will write, after a report of the owner. After trying it, the owner asked for three more changes, which are in this version too: pictures are shown from the folder of the editor (this widens the content policy, see below), the version number stands in the top bar, and the box of a picture from the network says what to do. A third independent review, of alpha.4 and alpha.5 together, ended with **FAIL** on 2026-11-19: fourteen findings, five of them high ([below](#findings-of-the-review-of-alpha4-and-alpha5-and-their-corrections)). Its report was handed over to the owner only and is not part of this repository. Version 0.1.0-alpha.6 corrects all fourteen findings and one sentence of the specification. Version 0.1.0-alpha.7 adds text colour and tables ([below](#functions-of-alpha7-on-the-owners-request)). A fourth independent review, of alpha.6 and alpha.7 together, ended with **HOLD** on 2026-11-20: eight findings, four of them medium, none about lost work or the protective design ([below](#findings-of-the-review-of-alpha6-and-alpha7-and-their-corrections)); four parts were not reviewed. Its report was handed over to the owner only. Version 0.1.0-alpha.8 corrects all eight. An interim review of alpha.8 by a second reviewer (Claude Fable, 2026-11-20, verdict **HOLD**) found the eight corrected for the reported inputs, carried out the four open parts without a finding, and found eight more defects, F1 to F8, none about the protective design ([below](#findings-of-the-interim-review-of-alpha8-and-their-corrections)). Its report was handed over to the owner only. Version 0.1.0-alpha.9 corrects F1 to F3, the owner's choice; F4 to F8 are open. The corrections of alpha.8 and alpha.9 have not been reviewed by Codex; the implementer's tests are not a review, and five times they passed over defects that a review then found.
 
 Open before a release:
 
-1. **The corrections of alpha.8 are not reviewed**, and four parts of the fourth review are open. The request is in [REVIEW_CODEX.md](REVIEW_CODEX.md).
+1. **The corrections of alpha.8 and alpha.9 are not reviewed by Codex**, and F4 to F8 of the interim review are open. The request is in [REVIEW_CODEX.md](REVIEW_CODEX.md).
 2. **Chrome is NOT MEASURED.** Chrome is not installed on the test machine. Measurements are from Microsoft Edge and, since this version, from Firefox.
 3. **Native file dialogs are NOT MEASURED.** The browser's open/save pickers and writing back to a real file handle cannot be driven by the test harness. The code paths behind them are covered with a labelled mock handle (T-10, T-15), with the file input and the file chooser (T-15, RV-01) and with the real download fallback (T-10, T-16). A person has to try Open and Save once in Edge and once in Chrome.
 4. **No recorded visible-window session and no trial with pupils or teachers.** The owner tried alpha.2 and alpha.3 by hand on 2026-11-19; what was tried is not recorded.
@@ -63,6 +63,20 @@ Step B of the owner's list, as decided by the owner: text colour as `<span style
 | Room in the delivered file | The build leaves out lines that are only a comment (owner's agreement); every case runs on the stripped file | `tools/build.mjs:31` | X-06, all cases |
 
 Where the new code meets kinds of defect that earlier reviews found (style text, cut elements, the order of neighbours, tidying, a page that changes while a dialog is open), the review request lists the places ([REVIEW_CODEX.md](REVIEW_CODEX.md#step-b-in-alpha7-text-colour-and-tables)). Two older cases needed a different geometry because the help dialog grew by one line: F-08 drags it 30 instead of 60 pixels up (it opens closer to the top), A5-11 narrows the window to 640 × 800 pixels as in the reviewer's probe instead of 640 × 700, where the taller dialog scrolls.
+
+## Findings of the interim review of alpha.8 and their corrections
+
+The interim review (2026-11-20, verdict HOLD) repeated the fourth review's inputs with variations of its own and compared with the alpha.7 build. It found no lost work without a message and nothing about the protective design. The owner asked for F1 to F3 to be corrected in alpha.9. Each correction has a browser case with a hand-written expectation in `tests/browser/review8.mjs`; each case fails against the alpha.8 build and passes against this one (Edge 157, 2026-11-20).
+
+| Finding | Correction in alpha.9 | Code | Regression |
+| --- | --- | --- | --- |
+| **F1** (medium): a save that waits behind a hanging write saves whatever page is open when its turn comes; after "Änderungen verwerfen" and another page, the first page's waiting save never happened and the other page was saved unasked | The waiting save remembers the page of the last request and is dropped if another page is open when its turn comes. The question before the page is replaced already says that the changes are lost | `src/js/app.js:955` | A8-01 |
+| **F2** (low, regression of alpha.8): in a table whose first row or cell stands without a line break and the others on lines, adding and deleting a row or column removed a line break of the pupil | A deleted row or cell that stands directly behind its neighbour goes without the white space behind it; that white space belongs to the next element. Only behind a cell or row whose end tag is omitted does it go too, because there it would become part of the cell. As a side effect, deleting a cell of the source keeps a line break behind it that alpha.8 removed | `src/js/commands.js:623`, `:627` | A8-02 |
+| **F3** (low, regression of alpha.8): a new item behind a list item without `</li>` (also `dt`, `dd`) put its line break and indentation into the item before; with `white-space: pre` the item grew by one line | The item before gets its end tag when the new element behind it starts a line of its own and white space would be written there; items that end with their own line break keep their omitted end tags | `src/js/serialize.js:46`, `:120`, `:134` | A8-03 |
+
+Open from the interim review: F4 (`!important` in a print rule and "Links"), F5 (another message replaces "Speichert …"), F6 (`!important` is lost when the value stays the same), F7 (a residue of two spaces after adding and deleting a row behind the last row in a formatted table without end tags; the extra `</tr>` that alpha.8 left there is gone in alpha.9), F8 (new cells one per line in a table whose rows stand on lines and whose cells do not).
+
+Changed along the way: in `<td>a<td>b</td> <td>c</td>`, deleting the column of b now keeps the omitted end tag of a and drops the space behind b; alpha.8 kept the space and wrote `</td>` behind a. The third check of A8-03 had a wrong expectation in my first version (it expected the new item on a line of its own in front of the next item; the editor writes it directly in front of it, as in alpha.8); that was a test mistake and is corrected.
 
 ## Findings of the review of alpha.6 and alpha.7 and their corrections
 
@@ -177,11 +191,11 @@ Consequences to know: "Im Browser öffnen" after a save in a browser without fil
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **181,332 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
-| SHA-256 | `6b7e8260123e1de109d7db8e300a468b4cbf041dfda7fd2dbc063ddf4415baf8` |
+| Size | **182,454 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| SHA-256 | `40992860f990437a97f24f59902dff0ee5686470ff916e257c70837084a5e9b5` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
-The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes. **About 18,668 bytes are left below the limit.**
+The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes, alpha.8 181,332 bytes. **About 17,546 bytes are left below the limit.**
 
 ## Measurements
 
@@ -198,24 +212,25 @@ MEASURED 2026-11-20 · Windows 11 Pro (10.0.26300) · Node v24.22.1.
 | Regressions for the Firefox measurement FF-01, FF-02 | same | 2 of 2 pass |
 | Regressions for the third review A5-01…A5-14 | same | 14 of 14 pass; the same cases against the alpha.5 build: 0 of 14 |
 | Regressions for the fourth review A7-01…A7-08 | same | 8 of 8 pass; the same cases against the alpha.7 build: 0 of 8 |
-| All 77 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 71 cases pass, 5 partial, 1 not measured, none failed; 698 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
+| Regressions for the interim review A8-01…A8-03 | same | 3 of 3 pass; the same cases against the alpha.8 build: 0 of 3 |
+| All 80 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 74 cases pass, 5 partial, 1 not measured, none failed; 714 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
 | Reviewer's Firefox diagnostics `tests/firefox-diagnostics.mjs`, unchanged, against the committed alpha.4 build (176,008 bytes, `e9ad516a…`); not re-run for this build | Firefox/160.0.1 | comment sample exact, T-07 fixture formatted, three module round trips exact |
 | Reviewer's probe script `docs/reviews/review-alpha3.mjs`, unchanged, against the committed alpha.4 build; not re-run for this build | Edge 157.0.4341.60 | its probes for A3-01, A3-02, A3-03 and the frame check pass; it then stops in the A3-04 probe with a timeout, because that probe waits for the defect to show; A3-05 and A3-T do not run in that script |
 | All of the above | Chrome | **NOT MEASURED** (not installed) |
 | Reviewer's probe script `docs/reviews/review-alpha1.mjs`, unchanged, against the committed alpha.4 build; not re-run for this build | Edge 157.0.4341.60 | stops in its first probe with a timeout: it waits for the late file to be opened, which no longer happens. Its other probes do not run in that script; their inputs are part of RV-02 to RV-04 |
-| The third reviewer's probes, unchanged, run from a copy outside the repository against the alpha.6, the alpha.7 and this build, with the same result | Edge 157.0.4341.60 | 18 of 19 pass; WRITES NOT MEASURED (Edge refuses an origin-private file from a `file:` address, as in the review) |
+| The third reviewer's probes, unchanged, run from a copy outside the repository against the alpha.6, the alpha.7 and the alpha.8 build, with the same result; not re-run for alpha.9 | Edge 157.0.4341.60 | 18 of 19 pass; WRITES NOT MEASURED (Edge refuses an origin-private file from a `file:` address, as in the review) |
 | same | Firefox/160.0.1 | 18 of 19 pass; WRITES stops with a timeout: the probe holds the first save and waits for the second to finish, which now waits for the first. The order it checks is measured by A5-04 with a real origin-private file |
-| The fourth reviewer's checklist script, unchanged, run from a copy outside the repository against this build | Edge 157.0.4341.60 | 84 of 88 rows (alpha.7: 77); the seven rows of the findings pass; the four list rows 2.6-2 to 2.6-5 expect an unchanged source, which the report itself calls too strict |
+| The fourth reviewer's checklist script, unchanged, run from a copy outside the repository against the alpha.8 build and against this build | Edge 157.0.4341.60 | 84 of 88 rows for both (alpha.7: 77); the seven rows of the findings pass; the four list rows 2.6-2 to 2.6-5 expect an unchanged source, which the report itself calls too strict |
 | same, its Firefox rows | Firefox/160.0.1 | 3 of 3 |
 | Repository publication check (`scripts/check_publication.py`) with the private deny-list | whole repository | 0 findings |
 
-In total 741 individual checks in Edge with 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04), and 698 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
+In total 757 individual checks in Edge with 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04), and 714 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
 
 ## Dependencies and licences
 
 | Component | Version | Licence | In the delivered file |
 | --- | --- | --- | --- |
-| Own code | 0.1.0-alpha.8 | MIT ([LICENSE](../LICENSE)) | yes, everything |
+| Own code | 0.1.0-alpha.9 | MIT ([LICENSE](../LICENSE)) | yes, everything |
 | Runtime libraries | — | — | none |
 | Build and test tools | Node.js standard library only | — | no |
 | Fonts, icons, images | — | — | none (system fonts, text labels) |
@@ -226,7 +241,8 @@ The reference editor that was studied is not a dependency. No part of it is cont
 
 | # | Point | Kind |
 | --- | --- | --- |
-| 1 | Independent review of the corrections in alpha.8 and of the four parts the fourth review did not reach | process |
+| 1 | Independent review of the corrections in alpha.8 and alpha.9 | process |
+| 1a | F4 to F8 of the interim review of alpha.8 (white space, `!important`, the footer while a save hangs) | defects, low |
 | 2 | Run the suite in Chrome | measurement |
 | 3 | Try native Open, Save (write-back with the permission question) and Save-as by hand in Edge and Chrome | measurement |
 | 4 | Visible-window session; input routes that were never tried: spell-check replacement in the page, dragging text inside the source field, speech and handwriting input, autofill | measurement |
@@ -239,7 +255,7 @@ The reference editor that was studied is not a dependency. No part of it is cont
 
 ## Defects found and fixed
 
-Found by the independent reviews: RV-01 to RV-04, A3-01 to A3-05, FF-01 to FF-03, the fourteen findings of the third review and the eight of the fourth, see above.
+Found by the independent reviews: RV-01 to RV-04, A3-01 to A3-05, FF-01 to FF-03, the fourteen findings of the third review, the eight of the fourth and F1 to F3 of the interim review of alpha.8, see above.
 
 Found by the implementer during the development of alpha.1; each has a regression check. The first acceptance run on 2026-11-18 passed 16 of 23 cases; four of the seven failures were wrong expectations in the tests, the others are items 1–3 below. Items 4–9 were found by exploratory scripts and by the corpus tests, not by the numbered cases.
 
@@ -257,4 +273,4 @@ Found by the implementer during the development of alpha.1; each has a regressio
 
 ## Next step
 
-A review of the corrections in alpha.8 and of the parts the fourth review did not reach. All steps of the owner's list are built. After the review: Chrome run, manual check of the native dialogs, a visible-window session with the new image and alignment functions, then a decision about a release. Nothing is merged and there is no release.
+A review of the corrections in alpha.8 and alpha.9. All steps of the owner's list are built. After the review: Chrome run, manual check of the native dialogs, a visible-window session with the new image and alignment functions, then a decision about a release. Nothing is merged and there is no release.

@@ -947,17 +947,17 @@ function downloadDoc(given) {
   return true;
 }
 
-// One save at a time: a save waits until the one before it is finished, so the file is written in the order
-// of the requests and the newest text is the last one written.
 // Saves run one after the other, so that the newest text is written last. While one writes, every further
 // "Speichern" joins one single save that follows it and takes the text as it is then: on a slow network drive
-// pressing the key again and again gives two writes, not a queue of them.
-let saving = null, nextSave = null;
+// pressing the key again and again gives two writes, not a queue of them. The waiting save belongs to the page
+// it was asked for (the last request counts): if another page is open when its turn comes, nothing is saved.
+let saving = null, nextSave = null, nextDoc = -1;
 function saveDoc() {
   if (!saving) return startSave();
+  nextDoc = state.docId;
   if (!nextSave) {
     setStatus('Speichert … Deine neuesten Änderungen werden gleich danach gespeichert.', '', true);
-    const go = () => { nextSave = null; return startSave(); };
+    const go = () => { nextSave = null; return nextDoc === state.docId ? startSave() : false; };
     nextSave = saving.then(go, go);
   }
   return nextSave;

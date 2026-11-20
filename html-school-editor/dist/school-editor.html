@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MMaKGbAQONR+HvuNEc4Lwoi7jRsXxwv7MWHPn04WxEw='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FvYwwixggwbvUW+joJ1mXUzUf59/jIsOBKW6K358NNI='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.8">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.9">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -113,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.8</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.9</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -186,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.8</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.9</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -1403,14 +1403,14 @@ function mark(ctx, el, i, atEnd) {
   for (const p of ctx.points) if (p.out == null && p.node === el && (atEnd ? p.offset >= i : p.offset === i)) p.out = ctx.s.length;
 }
 
-function freshLine(ctx, indent) {
-  if (indent === null) return;
+function lineBreakFor(ctx, indent) {
+  if (indent === null) return '';
   const tail = (ctx.before + ctx.s).slice(-200);
-  if (!tail) return;
+  if (!tail) return '';
   const m = /\n([ \t]*)$/.exec(tail);
-  if (!m) ctx.s += '\n' + indent;
-  else if (!m[1]) ctx.s += indent;
+  return !m ? '\n' + indent : !m[1] ? indent : '';
 }
+function freshLine(ctx, indent) { ctx.s += lineBreakFor(ctx, indent); }
 
 const TABLE_ROWS_IN = words('table thead tbody tfoot tr');
 function childIndent(ctx, el, t, parentIndent) {
@@ -1466,15 +1466,24 @@ function emitKids(ctx, el, t, parentIndent) {
   if (newBlockLast && indent !== null) ctx.s += '\n' + (parentIndent || '');
 }
 
+function startsLine(ctx, node) {
+  if (!node || node.nodeType !== 1) return false;
+  const inf = ctx.info.get(node), t = inf && inf.t;
+  if (!t) return node.namespaceURI === HTML_NS && NEW_OK.has(node.localName) && BLOCKS.has(node.localName) && !node.hasAttribute('data-se-box')
+    && !(node.localName === 'tbody' && node.parentNode && node.parentNode.localName === 'table');
+  return !!inf.rename && BLOCKS.has(inf.rename) && !inPlace(t, mappedT(ctx, node.parentNode));
+}
+
 const ENDS_BEFORE = { td: words('td th'), th: words('td th'), tr: words('tr'), li: words('li'), dt: words('dt dd'), dd: words('dt dd') };
-function needsEndTag(ctx, c, t) {
+function needsEndTag(ctx, c, t, indent) {
   if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
   if (next === origNext) return false;
   const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
-  return !(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))));
+  if (!(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))))) return true;
+  return startsLine(ctx, after) && lineBreakFor(ctx, indent) !== '';
 }
 
 const WS_ONLY = /^[ \t\n\f\r]*$/;
@@ -1620,7 +1629,7 @@ function emitNode(ctx, c, indent) {
     const at = ctx.s.length;
     ctx.s += src.slice(t.lead, t.end);
     for (const p of ctx.points) if (p.out == null && (p.node === c || c.contains(p.node))) p.out = at + srcOffsetOf(ctx.view, ctx.info, p.node, p.offset) - t.lead;
-    if (needsEndTag(ctx, c, t)) ctx.s += '</' + src.slice(t.start + 1, t.nameEnd) + '>';
+    if (needsEndTag(ctx, c, t, indent)) ctx.s += '</' + src.slice(t.start + 1, t.nameEnd) + '>';
     return false;
   }
   if (c.nodeType === 3) { emitText(ctx, c, inf); return false; }
@@ -1643,7 +1652,7 @@ function emitNode(ctx, c, indent) {
   emitKids(ctx, c, t, own == null ? indent : own);
   if (inf.rename) ctx.s += '</' + name + '>';
   else if (t.explicitEnd) ctx.s += src.slice(t.closeStart, t.end);
-  else if (t.synthetic || needsEndTag(ctx, c, t)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
+  else if (t.synthetic || needsEndTag(ctx, c, t, indent)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
   return moved;
 }
 
@@ -2506,9 +2515,16 @@ const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
 const ownCols = (table) => Array.from(table.children).some((k) => k.localName === 'colgroup' || k.localName === 'col');
 const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
 
+const blankText = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
+const CELL_ROW = words('td th tr');
+function openEnd(env, n) {
+  const inf = n && n.nodeType === 1 && CELL_ROW.has(n.localName) ? env.info.get(n) : null, t = inf && inf.t;
+  return !!t && t.type === 'el' && !t.explicitEnd && !t.implied && !t.synthetic;
+}
 function takeOut(env, el) {
   const before = el.previousSibling;
-  if (before && before.previousSibling) dropSpace(env, before); else dropSpace(env, el.nextSibling);
+  if (blankText(before) && before.previousSibling) dropSpace(env, before);
+  else if (!before || blankText(before) || openEnd(env, before)) dropSpace(env, el.nextSibling);
   el.remove();
 }
 
@@ -3485,12 +3501,13 @@ function downloadDoc(given) {
   return true;
 }
 
-let saving = null, nextSave = null;
+let saving = null, nextSave = null, nextDoc = -1;
 function saveDoc() {
   if (!saving) return startSave();
+  nextDoc = state.docId;
   if (!nextSave) {
     setStatus('Speichert … Deine neuesten Änderungen werden gleich danach gespeichert.', '', true);
-    const go = () => { nextSave = null; return startSave(); };
+    const go = () => { nextSave = null; return nextDoc === state.docId ? startSave() : false; };
     nextSave = saving.then(go, go);
   }
   return nextSave;

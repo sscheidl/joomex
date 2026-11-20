@@ -1,6 +1,6 @@
 # Acceptance results
 
-Artefact: `dist/school-editor.html`, version 0.1.0-alpha.8, 181,332 bytes, SHA-256 `6b7e8260123e1de109d7db8e300a468b4cbf041dfda7fd2dbc063ddf4415baf8`.
+Artefact: `dist/school-editor.html`, version 0.1.0-alpha.9, 182,454 bytes, SHA-256 `40992860f990437a97f24f59902dff0ee5686470ff916e257c70837084a5e9b5`.
 
 Contract: [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md). The cases X-07, R-01 and R-02 were added by the implementer and are not part of that contract. The cases RV-01 to RV-04 and A3-01 to A3-05 are the regressions for the findings of the two independent reviews ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), [reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md)). The cases F-01 to F-03 cover the functions the owner asked for after trying alpha.2; where they change what the contract says, the row names the owner's decision.
 
@@ -23,7 +23,7 @@ The independent review of alpha.1 rated the suite as not sufficient for full acc
 | P-03 | Full source left, editable page right, both visible | `src/app.html`, `src/js/app.js:138`, `:239` | T-02, T-03 | PASS |
 | P-04 | New, open, save/download, format, blocks, bold/italic, lists, links, images with alt, undo/redo, keyboard, umlauts | `src/js/app.js`, `src/js/commands.js` | T-01, T-04…T-08, T-10, T-13, F-01…F-11 | PASS. **Owner's decisions of 2026-11-19 that change the wording of the contract:** the description of an image (alt) is offered but optional; an image is written as a file name, not embedded. Added on the owner's request: alignment, width of images, changing existing images and links |
 | P-05 | Plain tags, valid nesting, no spans/fonts/inline CSS for basic text formatting; documented choice `<b>`/`<i>` | `src/js/serialize.js:245`, `src/js/commands.js:300`, `:485` | T-04, T-05, F-03 | PASS. Alignment is written as `style="text-align: …"`, the one style attribute the editor writes: HTML has no tag for it. Paragraph, headings, bold and italic stay plain tags (T-04) |
-| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 181,332 bytes |
+| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 182,454 bytes |
 | P-07 | No mail tools, minify, templates with remote content, tracking, persistence | — | X-06, T-17 | PASS |
 
 ## Safety and data model
@@ -136,6 +136,16 @@ Code: `tests/browser/features7.mjs`. Expected source texts are written by hand. 
 
 Unit test "text colour" (`tests/unit/attrs.test.mjs`): `withDecl()` for `color` with strings, `background-color` and unreadable text; `plainStyle()` accepts only alignment keywords and the eight palette names.
 
+## Regressions for the findings of the interim review of alpha.8
+
+Code: `tests/browser/review8.mjs`. The inputs follow the interim reviewer's probes; the expected source texts are written by hand. Every case fails against the alpha.8 build (0 of 3 pass, Edge 157, 2026-11-20) and passes against this one in Edge and in Firefox.
+
+| ID | Finding | What is checked | Result (Edge) |
+| --- | --- | --- | --- |
+| A8-01 | F1 | A held first save, a second save asked for, another page opened: after "Änderungen verwerfen" only the first write happens, the picker is not called for the new page, the new page is open and saved; after "Abbrechen" both writes happen, the newest text last (mock handle, labelled) | PASS (5) |
+| A8-02 | F2 | Row and column added and deleted in tables whose first row or cell stands without a line break and the others on lines: the original text, byte for byte; a cell of the source deleted keeps the line break behind it; behind a row without end tag the deleted row's white space goes too | PASS (6) |
+| A8-03 | F3 | Enter behind `<li>a` without end tag under `white-space: pre`: `a` gets `</li>`, keeps its text and its height; `dt`/`dd`; an item that ends with its own line break keeps its omitted end tag | PASS (5) |
+
 ## Regressions for the findings of the review of alpha.6 and alpha.7
 
 Code: `tests/browser/review7.mjs`. The inputs follow the reviewer's checklist; the expected source texts are written by hand. Every case fails against the alpha.7 build (0 of 8 pass, Edge 157, 2026-11-20) and passes against this one in Edge and in Firefox.
@@ -193,7 +203,7 @@ The reviewer's probe script (`docs/reviews/review-alpha3.mjs`) is unchanged. Aga
 
 The task brief names Edge and Chrome. The owner had Firefox measured by the reviewer for alpha.3 ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)): four cases failed there (T-03, T-07, R-01, R-02). The same suite now runs in Firefox through `node tests/run.mjs --browser firefox`, with the reviewer's driver `tests/lib/firefox.mjs`.
 
-Result for this version in Firefox/160.0.1: 71 cases pass, 5 partial, 1 not measured, none failed; 698 checks, 7 parts NOT MEASURED.
+Result for this version in Firefox/160.0.1: 74 cases pass, 5 partial, 1 not measured, none failed; 714 checks, 7 parts NOT MEASURED.
 
 | Case | Status in Firefox | Why not complete |
 | --- | --- | --- |
@@ -203,7 +213,7 @@ Result for this version in Firefox/160.0.1: 71 cases pass, 5 partial, 1 not meas
 | RV-02 | PARTIAL (35 checks pass) | scripts cannot be switched off for the ordinary comparison pages; the comparison of accepted results and the held-check schedule do not run |
 | A3-03 | PARTIAL (34 checks pass) | same: all refusals are measured, the comparison of the three accepted results is not |
 | X-04 | NOT MEASURED | a constructed paste event carries no data in Firefox; the system clipboard is not automated |
-| all other 71 cases | PASS | |
+| all other 74 cases | PASS | |
 
 Findings of the Firefox measurement of alpha.3 and their regressions (code: `tests/browser/review3.mjs`; the cases run in every browser):
 

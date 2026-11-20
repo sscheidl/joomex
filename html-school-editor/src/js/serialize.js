@@ -41,16 +41,16 @@ function mark(ctx, el, i, atEnd) {
   for (const p of ctx.points) if (p.out == null && p.node === el && (atEnd ? p.offset >= i : p.offset === i)) p.out = ctx.s.length;
 }
 
-// Starts a new line for a freshly created block element unless the output already is at the start of a line.
-// No line where the neighbours stand without line breaks (indent null).
-function freshLine(ctx, indent) {
-  if (indent === null) return;
+// The white space that starts a new line for a freshly created block element ('' if the output already is at
+// the start of a line). No line where the neighbours stand without line breaks (indent null).
+function lineBreakFor(ctx, indent) {
+  if (indent === null) return '';
   const tail = (ctx.before + ctx.s).slice(-200);
-  if (!tail) return;
+  if (!tail) return '';
   const m = /\n([ \t]*)$/.exec(tail);
-  if (!m) ctx.s += '\n' + indent;
-  else if (!m[1]) ctx.s += indent;
+  return !m ? '\n' + indent : !m[1] ? indent : '';
 }
+function freshLine(ctx, indent) { ctx.s += lineBreakFor(ctx, indent); }
 
 // The indentation of new children of `el`: that of its first child from the source. null for the parts of a
 // table that are written without line breaks: new rows and cells are then written the same way, and so are the
@@ -115,18 +115,31 @@ function emitKids(ctx, el, t, parentIndent) {
   if (newBlockLast && indent !== null) ctx.s += '\n' + (parentIndent || '');
 }
 
+// True if `node` is written on a line of its own behind its previous sibling: a new block element, or a
+// renamed one that was moved (see emitNew and emitNode).
+function startsLine(ctx, node) {
+  if (!node || node.nodeType !== 1) return false;
+  const inf = ctx.info.get(node), t = inf && inf.t;
+  if (!t) return node.namespaceURI === HTML_NS && NEW_OK.has(node.localName) && BLOCKS.has(node.localName) && !node.hasAttribute('data-se-box')
+    && !(node.localName === 'tbody' && node.parentNode && node.parentNode.localName === 'table');
+  return !!inf.rename && BLOCKS.has(inf.rename) && !inPlace(t, mappedT(ctx, node.parentNode));
+}
+
 // An element whose end tag is omitted in the source must get one when what follows it has changed, unless
 // what follows now ends it just as well: the start of an element of the same kind, or the end of the parent
-// (HTML lets cells, rows and list items end that way).
+// (HTML lets cells, rows and list items end that way). It gets one all the same if the element behind it starts
+// a line of its own: the line break would otherwise stand inside the open element and become part of its text.
+// `indent`: the indentation of the siblings, as freshLine() uses it.
 const ENDS_BEFORE = { td: words('td th'), th: words('td th'), tr: words('tr'), li: words('li'), dt: words('dt dd'), dd: words('dt dd') };
-function needsEndTag(ctx, c, t) {
+function needsEndTag(ctx, c, t, indent) {
   if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
   if (next === origNext) return false;
   const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
-  return !(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))));
+  if (!(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))))) return true;
+  return startsLine(ctx, after) && lineBreakFor(ctx, indent) !== '';
 }
 
 const WS_ONLY = /^[ \t\n\f\r]*$/;
@@ -289,7 +302,7 @@ function emitNode(ctx, c, indent) {
     const at = ctx.s.length;
     ctx.s += src.slice(t.lead, t.end);
     for (const p of ctx.points) if (p.out == null && (p.node === c || c.contains(p.node))) p.out = at + srcOffsetOf(ctx.view, ctx.info, p.node, p.offset) - t.lead;
-    if (needsEndTag(ctx, c, t)) ctx.s += '</' + src.slice(t.start + 1, t.nameEnd) + '>';
+    if (needsEndTag(ctx, c, t, indent)) ctx.s += '</' + src.slice(t.start + 1, t.nameEnd) + '>';
     return false;
   }
   if (c.nodeType === 3) { emitText(ctx, c, inf); return false; }
@@ -316,7 +329,7 @@ function emitNode(ctx, c, indent) {
   emitKids(ctx, c, t, own == null ? indent : own);
   if (inf.rename) ctx.s += '</' + name + '>';
   else if (t.explicitEnd) ctx.s += src.slice(t.closeStart, t.end);
-  else if (t.synthetic || needsEndTag(ctx, c, t)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
+  else if (t.synthetic || needsEndTag(ctx, c, t, indent)) ctx.s += '</' + (t.synthetic ? name : src.slice(t.start + 1, t.nameEnd)) + '>';
   return moved;
 }
 

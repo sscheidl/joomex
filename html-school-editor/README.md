@@ -2,7 +2,7 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.8 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 0.1.0-alpha.9 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 ## Use
 
