@@ -2,7 +2,9 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 0.1.0-alpha.11 · **State:** HOLD, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 1.0.0-beta.1 · **State:** beta for an accompanied classroom trial, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+
+A screenshot and the download of the current beta are on the [release page](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.1).
 
 ## Use
 
@@ -51,8 +53,25 @@ A locally branded copy (different product name in the title bar) can be built wi
 | [docs/ANLEITUNG.de.md](docs/ANLEITUNG.de.md) | Guide for pupils (German) |
 | [docs/brief/](docs/brief/) | The task brief this product was built from, with the numbered acceptance contract and the sanitized findings about the reference editor |
 
+## Report a problem, take part
+
+The editor is in beta and is tried in class. Every report helps, especially from real lessons. Please open an issue in this repository with the form "HTML-Schuleditor: Fehler melden" and give:
+
+1. the editor version (bottom right in the editor, for example `html-school-editor 1.0.0-beta.1`),
+2. browser and version, operating system,
+3. what you did, step by step, what you expected and what happened instead,
+4. if possible the smallest HTML file that shows the problem.
+
+Do not post names of pupils or schools, photos or other personal data; shorten or rewrite the example first. Pupils report to their teacher rather than on GitHub (GitHub accounts require an age of at least 13). During the class trial the feature set is frozen: defects are corrected, ideas for new functions are collected as issues with the label `enhancement` and decided after the trial.
+
+Pull requests are welcome. The rules in [AGENTS.md](AGENTS.md) and [RULES.md](../RULES.md) apply: every behaviour change comes with a test, and the delivered file stays one self-contained file below 200,000 bytes.
+
+## How this was made
+
+Most of the code, the tests and the documentation were written by AI coding agents, Claude Code (Anthropic) and Codex (OpenAI), under the direction of the maintainer, who set the requirements, tried the editor by hand and decided on every version. The review rounds were done by other AI models (Codex, Claude, GPT), independently of the implementing agent; their findings and the corrections are recorded in [docs/STATUS.md](docs/STATUS.md) and [docs/reviews/](docs/reviews/). No review is a guarantee; treat the editor like any beta software and keep copies of important pages.
+
 ## Origin and licence
 
 The editor was written new for this project. A third-party single-file editor was studied as a reference for interaction concepts; no code, assets or templates of it are contained here. Details and the limits of that statement are in [docs/SPECIFICATION.md](docs/SPECIFICATION.md#origin). There are no runtime or build dependencies.
 
-Own code in this folder: MIT, see [LICENSE](LICENSE).
+Own code in this folder: MIT, see [LICENSE](LICENSE). The editor may be used, copied, given to pupils and changed, also in schools and commercially, as long as the licence notice is kept. The delivered file contains no third-party code, fonts, icons or images; it uses the system fonts of the computer. Build and tests use the Node.js standard library only. Pages written with the editor belong to their authors; the editor adds nothing to them and sends nothing anywhere.

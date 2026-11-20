@@ -1,0 +1,65 @@
+name: "HTML-Schuleditor: Fehler melden"
+description: Ein Problem mit dem HTML-Schuleditor (html-school-editor) melden / report a problem with the HTML School Editor
+title: "[HTML-Schuleditor] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke, dass du hilfst! Bitte **keine** Namen von Schülerinnen und Schülern oder Schulen, keine Fotos und keine anderen persönlichen Daten eintragen. Kürze oder ändere das Beispiel vorher.
+        Thank you for helping! Please do **not** post names of pupils or schools, photos or other personal data. English is fine too.
+  - type: input
+    id: version
+    attributes:
+      label: Version des Editors / editor version
+      description: Steht unten rechts im Editor, z. B. `html-school-editor 1.0.0-beta.1`
+      placeholder: html-school-editor 1.0.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser und Betriebssystem / browser and operating system
+      placeholder: z. B. Microsoft Edge 158, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Was hast du gemacht? / steps
+      description: Schritt für Schritt, so dass es jemand anderes nachmachen kann.
+      placeholder: |
+        1. Datei geöffnet …
+        2. Im rechten Bereich ein Wort fett gemacht …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Was hast du erwartet? / expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Was ist stattdessen passiert? / what happened
+      description: Auch den Text einer Meldung des Editors, wenn es eine gab.
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Kleinste Beispieldatei / smallest example (optional)
+      description: Der HTML-Code, mit dem der Fehler auftritt, so kurz wie möglich.
+      render: html
+  - type: dropdown
+    id: lost
+    attributes:
+      label: Ist Arbeit verloren gegangen? / was work lost?
+      options:
+        - Nein / no
+        - Ja, Text oder Code fehlte danach / yes
+        - Weiß nicht / not sure
+    validations:
+      required: true
