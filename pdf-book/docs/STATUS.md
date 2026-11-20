@@ -1,6 +1,6 @@
 # Development status 1.0.0
 
-2026-11-14. **Release build prepared and locally validated.** Current validation and exact package identity are tracked in [RELEASE_1.0.0](reviews/RELEASE_1.0.0.md). No new production installation is implied by preparing this version.
+2026-11-20. **Released.** 1.0.0 was built and validated locally on 2026-11-14 and published as the GitHub release `pdf-book-v1.0.0` on 2026-11-20. According to the owner it is live on the owner's Joomla 6 test site. Validation, exact package identity and what the test-site installation does and does not cover are in [RELEASE_1.0.0](reviews/RELEASE_1.0.0.md). No production installation is implied by the release.
 
 ## Current functionality
 

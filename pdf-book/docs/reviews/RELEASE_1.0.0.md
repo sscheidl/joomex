@@ -1,6 +1,6 @@
 # PDF Book 1.0.0 release record
 
-Prepared and locally validated 2026-11-14 at the owner's request. Version 1.0.0 is a new build based on the independently reviewed alpha.19 source and documented deployment follow-up. **The new archive passes the measured local checks below.** No stable tag, published release or production installation is created by preparing this record.
+Prepared and locally validated 2026-11-14 at the owner's request. Version 1.0.0 is a new build based on the independently reviewed alpha.19 source and documented deployment follow-up. **The new archive passes the measured local checks below.** No stable tag, published release or production installation was created by preparing this record; publication and the test-site installation followed later (see [Publication and test site](#publication-and-test-site-update-2026-11-20)).
 
 The package retains its module identifier and settings. The display name loses the prototype suffix. Changes close the archive deletion case N19-1, the numeric edge cases N19-2 and the intermediate letterbox resource concern from [the alpha.19 review](REVIEW_0.1.0-alpha.19.md).
 
@@ -44,8 +44,14 @@ Checked 2026-11-14: [Mozilla's release list](https://github.com/mozilla/pdf.js/r
 
 ## Deployment scope
 
-The prior real-Joomla 48/48 rights/cache checks, normal authenticated/guest HTTPS page checks and owner screen-reader confirmation apply to alpha.19. The 1.0.0 ZIP has **not yet been installed on a real Joomla instance in this follow-up**, and no new physical-device or screen-reader listening run was performed on these changed bytes. Retain a backup and validate the new update on staging before a production update. No new production deployment is performed here.
+The prior real-Joomla 48/48 rights/cache checks, normal authenticated/guest HTTPS page checks and owner screen-reader confirmation apply to alpha.19. When this record was prepared, the 1.0.0 ZIP had not been installed on a real Joomla instance; it now runs on the owner's Joomla 6 test site (see below). No new physical-device or screen-reader listening run was recorded for these changed bytes. Retain a backup and validate the new update on staging before a production update. No new production deployment is performed here.
 
 A separate website CSP rollout is optional additional hardening. The existing page-builder integration conflict does not by itself block the module build. Site/proxy caching should retain the recorded cache-off configuration until its full role/source HTTP matrix is tested when enabling it.
+
+## Publication and test site (update 2026-11-20)
+
+* Published as the GitHub release `pdf-book-v1.0.0` on 2026-11-20, tag on `7050264`, with `mod_pdfbook-1.0.0.zip`, `manifest.json` and `SHA256SUMS.txt` of the exact package above. The assets were downloaded again after publishing: the ZIP has the SHA-256 above, and all 211 entries match the manifest. The repository publication check with `--zip` passed with 0 findings.
+* The manifest names the build commit `92cdd19`, which was not pushed. Its `pdf-book/` tree is identical to the tagged commit and to `main` (`git diff` without differences).
+* Version 1.0.0 is installed and live on the owner's Joomla 6 test site, as reported by the owner on 2026-11-20. This is the owner's statement, not a recorded measurement. The 48 rights and cache checks, the HTTPS page checks and the screen-reader confirmation were not repeated for 1.0.0 and still identify alpha.19.
 
 Structured measurements: [evidence-1.0.0/results.json](evidence-1.0.0/results.json).
