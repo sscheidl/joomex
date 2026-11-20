@@ -209,3 +209,15 @@ test('review findings of alpha.6 and alpha.7: comments, the same value, white sp
   assert.equal(align('p:hover { text-align: center }', false), true);
   assert.equal(align('@media print { p { color: gray } }', false), false, 'a print rule without an alignment');
 });
+
+test('findings of the review of alpha.9: !important is left alone and announced', () => {
+  assert.equal(withDecl('color: red !important', 'color', 'red'), null, 'the same value with !important: left alone (the caller says so)');
+  assert.equal(withDecl('color:red!important', 'color', 'blue'), null, 'another value: left alone');
+  assert.equal(withDecl('text-align: center ! IMPORTANT', 'text-align', ''), null, 'removing: left alone as well');
+  assert.equal(withDecl('font-weight: bold !important; color: red', 'color', 'blue'), 'font-weight: bold !important; color: blue', '!important in another declaration stays where it is written');
+  const strong = (css) => !!cssRisks(css, {}, false).alignImportant;
+  assert.equal(strong('p { text-align: center !important }'), true);
+  assert.equal(strong('@media print { p { text-align: center !important } }'), true);
+  assert.equal(strong('@media print { p { text-align: center } }'), false);
+  assert.equal(strong('p { color: red !important }'), false, 'only an alignment counts');
+});

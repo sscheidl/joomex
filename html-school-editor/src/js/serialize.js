@@ -136,7 +136,8 @@ function needsEndTag(ctx, c, t, indent) {
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
-  if (next === origNext) return false;
+  // the last child of the source followed by a new element: that is a change too, although neither has a successor in the source
+  if (next === origNext && !(next === null && startsLine(ctx, c.nextSibling))) return false;
   const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
   if (!(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))))) return true;
   return startsLine(ctx, after) && lineBreakFor(ctx, indent) !== '';

@@ -47,6 +47,7 @@ const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
+  writingDoc: null,       // the page whose file is being written right now (null: no write runs)
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
@@ -197,8 +198,10 @@ const previewFocused = () => document.activeElement === els.pv;
 
 function updateChrome() {
   els.docName.textContent = state.name;
-  els.docState.textContent = isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = isDirty() ? 'dirty' : 'saved';
+  // while the file of this page is written, the top bar says so, whatever the footer shows meanwhile
+  const writing = state.writingDoc === state.docId;
+  els.docState.textContent = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : 'gespeichert';
+  els.docState.className = writing || isDirty() ? 'dirty' : 'saved';
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -841,7 +844,8 @@ async function mayReplace(op, lateName) {
     const docId = state.docId, rev = state.rev;
     if (op.docId === docId && op.rev === rev) return true;
     if (isDirty()) {
-      const question = op.docId < 0 ? 'Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.'
+      const question = op.docId < 0 && state.writingDoc === docId ? 'Deine Seite wird gerade noch gespeichert. Deine letzten Änderungen gehen verloren, wenn du jetzt fortfährst. Warte am besten, bis oben „gespeichert“ steht.'
+        : op.docId < 0 ? 'Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.'
         : 'Du hast deine Seite noch geändert, während „' + lateName + '“ geöffnet wurde. Wenn du fortfährst, gehen diese Änderungen verloren.';
       if (!(await confirmBox(question, 'Änderungen verwerfen'))) return false;
     }
@@ -980,15 +984,39 @@ async function saveNow() {
     }
   }
   if (!nextSave) setStatus('Speichert …', '', true);
+  state.writingDoc = snap.docId;
+  updateChrome();
   const result = await writeToHandle(handle, snap.blob);
+  state.writingDoc = null;
+  updateChrome();
+  const name = handle.name || snap.name;
+  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok');
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
       : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
     return false;
   }
-  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; state.onDisk = true; }
+  state.handle = handle; state.name = name; state.onDisk = true;
   markSaved(snap);
-  setStatus('Gespeichert: ' + (handle.name || snap.name), 'ok');
+  setStatus('Gespeichert: ' + name, 'ok');
+  return true;
+}
+
+// A write that ends after another page was opened. If the open page comes from the same file (opened again
+// while the write ran), the file now holds the text of the write: the open page counts as saved only if it
+// shows exactly that text, otherwise as not saved, and the pupil is told.
+async function otherPageWritten(snap, handle, name, ok) {
+  if (!ok) { setStatus('Die vorige Seite „' + name + '“ konnte nicht gespeichert werden.', 'warn'); return false; }
+  const docId = state.docId;
+  let same = false;
+  if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
+  else if (!state.handle && state.onDisk) same = state.name === name;     // opened through the file input: only the name is known
+  if (docId !== state.docId) return true;
+  if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
+  state.savedText = snap.text;
+  updateChrome();
+  if (isDirty()) setStatus('Die Datei „' + name + '“ wurde eben noch mit deinem früheren Stand gespeichert. Sie ist jetzt anders als diese Seite. Öffne sie neu, wenn du den gespeicherten Stand sehen willst.', 'warn');
+  else setStatus('Gespeichert: ' + name, 'ok');
   return true;
 }
 
@@ -1194,10 +1222,12 @@ function wireChrome() {
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
   const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Ausrichtung links im Code.';
-  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock, oddStyle));
-  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock, oddStyle));
-  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock, oddStyle));
-  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock, oddStyle));
+  const strongStyle = 'Im <style> der Seite steht eine Ausrichtung mit !important. Sie kann deine Ausrichtung überdecken, zum Beispiel beim Drucken. Ändere sie links im Code.';
+  const align = (value) => runCommand(() => { const r = setAlign(env, value); if (r === 'strong') setStatus(strongStyle, 'warn'); return r; }, noBlock, oddStyle);
+  tool(els.bAlignLeft, () => align('left'));
+  tool(els.bAlignCenter, () => align('center'));
+  tool(els.bAlignRight, () => align('right'));
+  tool(els.bAlignJustify, () => align('justify'));
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));

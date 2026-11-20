@@ -1,6 +1,6 @@
 # Acceptance results
 
-Artefact: `dist/school-editor.html`, version 0.1.0-alpha.9, 182,454 bytes, SHA-256 `40992860f990437a97f24f59902dff0ee5686470ff916e257c70837084a5e9b5`.
+Artefact: `dist/school-editor.html`, version 0.1.0-alpha.10, 184,478 bytes, SHA-256 `5746dedcbd4ece2526cc1aee8a77919c7af23877d78f7d939b39104dc21ccd53`.
 
 Contract: [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md). The cases X-07, R-01 and R-02 were added by the implementer and are not part of that contract. The cases RV-01 to RV-04 and A3-01 to A3-05 are the regressions for the findings of the two independent reviews ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), [reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md)). The cases F-01 to F-03 cover the functions the owner asked for after trying alpha.2; where they change what the contract says, the row names the owner's decision.
 
@@ -23,7 +23,7 @@ The independent review of alpha.1 rated the suite as not sufficient for full acc
 | P-03 | Full source left, editable page right, both visible | `src/app.html`, `src/js/app.js:138`, `:239` | T-02, T-03 | PASS |
 | P-04 | New, open, save/download, format, blocks, bold/italic, lists, links, images with alt, undo/redo, keyboard, umlauts | `src/js/app.js`, `src/js/commands.js` | T-01, T-04…T-08, T-10, T-13, F-01…F-11 | PASS. **Owner's decisions of 2026-11-19 that change the wording of the contract:** the description of an image (alt) is offered but optional; an image is written as a file name, not embedded. Added on the owner's request: alignment, width of images, changing existing images and links |
 | P-05 | Plain tags, valid nesting, no spans/fonts/inline CSS for basic text formatting; documented choice `<b>`/`<i>` | `src/js/serialize.js:245`, `src/js/commands.js:300`, `:485` | T-04, T-05, F-03 | PASS. Alignment is written as `style="text-align: …"`, the one style attribute the editor writes: HTML has no tag for it. Paragraph, headings, bold and italic stay plain tags (T-04) |
-| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 182,454 bytes |
+| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 184,478 bytes |
 | P-07 | No mail tools, minify, templates with remote content, tracking, persistence | — | X-06, T-17 | PASS |
 
 ## Safety and data model
@@ -136,6 +136,20 @@ Code: `tests/browser/features7.mjs`. Expected source texts are written by hand. 
 
 Unit test "text colour" (`tests/unit/attrs.test.mjs`): `withDecl()` for `color` with strings, `background-color` and unreadable text; `plainStyle()` accepts only alignment keywords and the eight palette names.
 
+## Regressions for the findings of the reading review of alpha.9
+
+Code: `tests/browser/review9.mjs`. The inputs follow the measurements that confirmed the reviewer's points; the expected source texts are written by hand. A9-01 to A9-06 fail against the alpha.9 build (Edge 157, 2026-11-20) and pass against this one in Edge and in Firefox; A9-07 closes gaps in the tests and passes against both.
+
+| ID | Finding | What is checked | Result (Edge) |
+| --- | --- | --- | --- |
+| A9-01 | F9, footer | A file with a held first write is opened again: the question names the running save; after the write the open page counts as not saved, with a message; only the first write happens. With another page open: "Die vorige Seite „seite-a.html“ ist gespeichert.", and that page stays saved (mock handles whose content changes on close, labelled) | PASS (8) |
+| A9-02 | F5 | A held write: the top bar says "Speichert …", also after the title message took the footer; afterwards "● nicht gespeichert", because the title changed meanwhile (mock handles) | PASS (4) |
+| A9-03 | F6 | `color: red !important` with red, blue and "Farbe entfernen", `text-align:center !important` with centre and left: the source stays as written, with a message | PASS (8) |
+| A9-04 | F4 | "Links" next to `@media print { p { text-align: center !important } }` writes `text-align: left` and says that the rule can override it; without `!important`, no such message | PASS (3) |
+| A9-05 | S3-01 | Enter behind the only item `<li>a` and behind the last of two: that item gets `</li>`, keeps its height under `white-space: pre`; definition list: the exact source | PASS (4) |
+| A9-06 | first cell | Deleting the first cell keeps the indentation of the next one; deleting the first row of a table on lines keeps the next row's line | PASS (2) |
+| A9-07 | S1 3 and 5 | Another page saved while the first one writes: both written, each through its own handle, no picker; a failed first write and a waiting one: the newest text is written (mock handles) | PASS (5) |
+
 ## Regressions for the findings of the interim review of alpha.8
 
 Code: `tests/browser/review8.mjs`. The inputs follow the interim reviewer's probes; the expected source texts are written by hand. Every case fails against the alpha.8 build (0 of 3 pass, Edge 157, 2026-11-20) and passes against this one in Edge and in Firefox.
@@ -155,7 +169,7 @@ Code: `tests/browser/review7.mjs`. The inputs follow the reviewer's checklist; t
 | A7-01 | 1.1h | Red on `style="/* x */ color: blue"` and centre on `style="text-align: right /* r */"`: nothing changes, with a message; red and removing on `style="font-family: A /* f */; color: blue"`: the comment in the other declaration stays | PASS (6) |
 | A7-02 | 2.3 | "Links" on `style="text-align: right"` writes `text-align: left` with `<style media="print">`, `@media print` and `p:hover` rules that centre; removes the declaration with print rules without an alignment and without style element | PASS (5) |
 | A7-03 | 1.4d | A table with `<colgroup>`: adding and deleting a column change nothing, with a message; a row is added; a table with `<col>` and no `<colgroup>` is not editable in the page pane | PASS (6) |
-| A7-04 | 2.4 | A held first save: "Speichert …" while it hangs, also after nine seconds; the page shows "● nicht gespeichert"; two more saves asked for meanwhile: two writes in all, the older text first and the newest last; then "Gespeichert" (mock handle, labelled) | PASS (8) |
+| A7-04 | 2.4 | A held first save: "Speichert …" while it hangs, also after nine seconds; the top bar shows "Speichert …" too (since alpha.10, before "● nicht gespeichert"); two more saves asked for meanwhile: two writes in all, the older text first and the newest last; then "Gespeichert" (mock handle, labelled) | PASS (8) |
 | A7-05 | 1.4c | A table without line breaks with caption, `thead`, `tbody`, `tfoot`: in each part a row below and a column right are written without line breaks; deleting them gives the original text back, byte for byte | PASS (12) |
 | A7-06 | 1.4e | `<tr><td>a<td>b` with comments around: a new column keeps the omitted end tags; deleting it gives the original back; deleting the second row keeps the omitted end tags of the first | PASS (3) |
 | A7-07 | 2.2-7 | `<img src="?nur">`: accepting unchanged changes nothing; another folder keeps the dialog open with a message; the code stays | PASS (4) |
@@ -203,7 +217,7 @@ The reviewer's probe script (`docs/reviews/review-alpha3.mjs`) is unchanged. Aga
 
 The task brief names Edge and Chrome. The owner had Firefox measured by the reviewer for alpha.3 ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)): four cases failed there (T-03, T-07, R-01, R-02). The same suite now runs in Firefox through `node tests/run.mjs --browser firefox`, with the reviewer's driver `tests/lib/firefox.mjs`.
 
-Result for this version in Firefox/160.0.1: 74 cases pass, 5 partial, 1 not measured, none failed; 714 checks, 7 parts NOT MEASURED.
+Result for this version in Firefox/160.0.1: 81 cases pass, 5 partial, 1 not measured, none failed; 748 checks, 7 parts NOT MEASURED.
 
 | Case | Status in Firefox | Why not complete |
 | --- | --- | --- |
@@ -213,7 +227,7 @@ Result for this version in Firefox/160.0.1: 74 cases pass, 5 partial, 1 not meas
 | RV-02 | PARTIAL (35 checks pass) | scripts cannot be switched off for the ordinary comparison pages; the comparison of accepted results and the held-check schedule do not run |
 | A3-03 | PARTIAL (34 checks pass) | same: all refusals are measured, the comparison of the three accepted results is not |
 | X-04 | NOT MEASURED | a constructed paste event carries no data in Firefox; the system clipboard is not automated |
-| all other 74 cases | PASS | |
+| all other 81 cases | PASS | |
 
 Findings of the Firefox measurement of alpha.3 and their regressions (code: `tests/browser/review3.mjs`; the cases run in every browser):
 

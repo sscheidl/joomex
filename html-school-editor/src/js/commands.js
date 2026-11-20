@@ -466,22 +466,24 @@ function alignOf(el) {
   return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
 }
 
-// True if a style rule of the page sets an alignment that holds only sometimes (in print, for a hovered element,
-// for another window width): the page pane cannot show whether a block without its own alignment stays left.
-function alignSometimes(doc) {
+// What the style rules of the page say about alignment: `align` if one holds only sometimes (in print, for a
+// hovered element, for another window width), so that the page pane cannot show whether a block without its own
+// alignment stays left; `alignImportant` if one is marked "!important" and can override a style attribute.
+function alignFacts(doc) {
   const facts = {};
   for (const st of Array.from(doc.querySelectorAll('style:not(#se-base)'))) {
     const media = (st.getAttribute('media') || '').trim().toLowerCase();
     cssRisks(st.textContent, facts, media !== '' && media !== 'all');
   }
-  return !!facts.align;
+  return facts;
 }
 
 // Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
 // the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
 // style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
 // align the block differently, now or only sometimes (in print, for example). Returns 'odd' if nothing could be done because a style attribute is written in
-// a way that cannot be read with certainty (an open string, comment or bracket).
+// a way that cannot be read with certainty (an open string, comment or bracket), 'strong' if the change was made
+// but a rule of the page marked "!important" can override it.
 export function setAlign(env, value) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -499,7 +501,7 @@ export function setAlign(env, value) {
     targets = [wrapRun(doc, run, 'p')];
   }
   let changed = false, odd = false;
-  const sometimes = value === 'left' && alignSometimes(doc);
+  const facts = alignFacts(doc), sometimes = value === 'left' && !!facts.align;
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
     let next = withAlign(old, value === 'left' ? '' : value);
@@ -512,7 +514,7 @@ export function setAlign(env, value) {
     changed = true;
   }
   restoreSel(doc, keep);
-  return changed ? 'ok' : odd ? 'odd' : 'same';
+  return changed ? (facts.alignImportant ? 'strong' : 'ok') : odd ? 'odd' : 'same';
 }
 
 // ---------------------------------------------------------------- text colour
@@ -614,10 +616,11 @@ const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
 const ownCols = (table) => Array.from(table.children).some((k) => k.localName === 'colgroup' || k.localName === 'col');
 const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
 
-// Takes a row or cell out together with the line break in front of it (behind it, if it is the first child). One
-// that stands directly behind its neighbour, without white space, goes alone: the white space behind it belongs
-// to the next element. Only if the neighbour's end tag is omitted does that white space go too, because behind
-// an open cell or row it would become part of the cell.
+// Takes a row or cell out together with the line break in front of it, so that the next one keeps its own
+// indentation (also for the first child); a first child without white space in front takes the white space behind
+// it. One that stands directly behind its neighbour, without white space, goes alone: the white space behind it
+// belongs to the next element. Only if the neighbour's end tag is omitted does that white space go too, because
+// behind an open cell or row it would become part of the cell.
 const blankText = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
 const CELL_ROW = words('td th tr');
 function openEnd(env, n) {
@@ -625,9 +628,9 @@ function openEnd(env, n) {
   return !!t && t.type === 'el' && !t.explicitEnd && !t.implied && !t.synthetic;
 }
 function takeOut(env, el) {
-  const before = el.previousSibling;
-  if (blankText(before) && before.previousSibling) dropSpace(env, before);
-  else if (!before || blankText(before) || openEnd(env, before)) dropSpace(env, el.nextSibling);
+  const before = el.previousSibling, after = el.nextSibling;
+  if (blankText(before) && (before.previousSibling || blankText(after))) dropSpace(env, before);
+  else if (!before || openEnd(env, before)) dropSpace(env, after);
   el.remove();
 }
 

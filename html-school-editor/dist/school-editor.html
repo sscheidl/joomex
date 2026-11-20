@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FvYwwixggwbvUW+joJ1mXUzUf59/jIsOBKW6K358NNI='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-q66FOM/093moyn4whHCSC/2kCeLC/qASUp2mEUkXaTs='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.9">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.10">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -113,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.9</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.10</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -186,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.9</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.10</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -420,7 +420,7 @@ function withDecl(style, prop, value) {
   const text = String(style), decls = styleDeclarations(text);
   if (!decls) return null;
   const mine = decls.filter((d) => d.name === prop);
-  if (mine.some((d) => text.slice(d.start, d.end).includes('/*'))) return null;
+  if (mine.some((d) => text.slice(d.start, d.end).includes('/*') || /!\s*important/.test(cssPlain(text.slice(d.start, d.end))))) return null;
   const same = mine.length === 1 && /^\s*[a-z-]+\s*:\s*([a-z]+)\s*$/i.exec(text.slice(mine[0].start, mine[0].end));
   if (value && same && same[1].toLowerCase() === value) return text;
   let rest = text;
@@ -504,6 +504,7 @@ function cssRisks(css, facts, sometimes0) {
     if (LAYOUT_PROPS.has(name) && (conditional || /(?:var|if)\s*\(/.test(value))) facts.conditional = true;
     if (conditional && name.startsWith('--')) facts.conditional = true;
     if (conditional && name.toLowerCase() === 'text-align') facts.align = true;     // an alignment that holds only sometimes
+    if (name === 'text-align' && /!\s*important\s*$/.test(plain.slice(colon + 1))) facts.alignImportant = true;     // stronger than a style attribute
   };
   const sometimes = (prelude) => {
     const plain = cssPlain(prelude).trim();
@@ -1480,7 +1481,7 @@ function needsEndTag(ctx, c, t, indent) {
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
-  if (next === origNext) return false;
+  if (next === origNext && !(next === null && startsLine(ctx, c.nextSibling))) return false;
   const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
   if (!(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))))) return true;
   return startsLine(ctx, after) && lineBreakFor(ctx, indent) !== '';
@@ -2388,13 +2389,13 @@ function alignOf(el) {
   return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
 }
 
-function alignSometimes(doc) {
+function alignFacts(doc) {
   const facts = {};
   for (const st of Array.from(doc.querySelectorAll('style:not(#se-base)'))) {
     const media = (st.getAttribute('media') || '').trim().toLowerCase();
     cssRisks(st.textContent, facts, media !== '' && media !== 'all');
   }
-  return !!facts.align;
+  return facts;
 }
 
 function setAlign(env, value) {
@@ -2414,7 +2415,7 @@ function setAlign(env, value) {
     targets = [wrapRun(doc, run, 'p')];
   }
   let changed = false, odd = false;
-  const sometimes = value === 'left' && alignSometimes(doc);
+  const facts = alignFacts(doc), sometimes = value === 'left' && !!facts.align;
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
     let next = withAlign(old, value === 'left' ? '' : value);
@@ -2427,7 +2428,7 @@ function setAlign(env, value) {
     changed = true;
   }
   restoreSel(doc, keep);
-  return changed ? 'ok' : odd ? 'odd' : 'same';
+  return changed ? (facts.alignImportant ? 'strong' : 'ok') : odd ? 'odd' : 'same';
 }
 
 
@@ -2522,9 +2523,9 @@ function openEnd(env, n) {
   return !!t && t.type === 'el' && !t.explicitEnd && !t.implied && !t.synthetic;
 }
 function takeOut(env, el) {
-  const before = el.previousSibling;
-  if (blankText(before) && before.previousSibling) dropSpace(env, before);
-  else if (!before || blankText(before) || openEnd(env, before)) dropSpace(env, el.nextSibling);
+  const before = el.previousSibling, after = el.nextSibling;
+  if (blankText(before) && (before.previousSibling || blankText(after))) dropSpace(env, before);
+  else if (!before || openEnd(env, before)) dropSpace(env, after);
   el.remove();
 }
 
@@ -2668,6 +2669,7 @@ const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
+  writingDoc: null,       // the page whose file is being written right now (null: no write runs)
 };
 const history = createHistory(40000000);
 const info = new WeakMap();
@@ -2806,8 +2808,9 @@ const previewFocused = () => document.activeElement === els.pv;
 
 function updateChrome() {
   els.docName.textContent = state.name;
-  els.docState.textContent = isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = isDirty() ? 'dirty' : 'saved';
+  const writing = state.writingDoc === state.docId;
+  els.docState.textContent = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : 'gespeichert';
+  els.docState.className = writing || isDirty() ? 'dirty' : 'saved';
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -3396,7 +3399,8 @@ async function mayReplace(op, lateName) {
     const docId = state.docId, rev = state.rev;
     if (op.docId === docId && op.rev === rev) return true;
     if (isDirty()) {
-      const question = op.docId < 0 ? 'Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.'
+      const question = op.docId < 0 && state.writingDoc === docId ? 'Deine Seite wird gerade noch gespeichert. Deine letzten Änderungen gehen verloren, wenn du jetzt fortfährst. Warte am besten, bis oben „gespeichert“ steht.'
+        : op.docId < 0 ? 'Deine Änderungen sind noch nicht gespeichert. Wenn du fortfährst, gehen sie verloren.'
         : 'Du hast deine Seite noch geändert, während „' + lateName + '“ geöffnet wurde. Wenn du fortfährst, gehen diese Änderungen verloren.';
       if (!(await confirmBox(question, 'Änderungen verwerfen'))) return false;
     }
@@ -3530,15 +3534,36 @@ async function saveNow() {
     }
   }
   if (!nextSave) setStatus('Speichert …', '', true);
+  state.writingDoc = snap.docId;
+  updateChrome();
   const result = await writeToHandle(handle, snap.blob);
+  state.writingDoc = null;
+  updateChrome();
+  const name = handle.name || snap.name;
+  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok');
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
       : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
     return false;
   }
-  if (snap.docId === state.docId) { state.handle = handle; state.name = handle.name || state.name; state.onDisk = true; }
+  state.handle = handle; state.name = name; state.onDisk = true;
   markSaved(snap);
-  setStatus('Gespeichert: ' + (handle.name || snap.name), 'ok');
+  setStatus('Gespeichert: ' + name, 'ok');
+  return true;
+}
+
+async function otherPageWritten(snap, handle, name, ok) {
+  if (!ok) { setStatus('Die vorige Seite „' + name + '“ konnte nicht gespeichert werden.', 'warn'); return false; }
+  const docId = state.docId;
+  let same = false;
+  if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
+  else if (!state.handle && state.onDisk) same = state.name === name;     // opened through the file input: only the name is known
+  if (docId !== state.docId) return true;
+  if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
+  state.savedText = snap.text;
+  updateChrome();
+  if (isDirty()) setStatus('Die Datei „' + name + '“ wurde eben noch mit deinem früheren Stand gespeichert. Sie ist jetzt anders als diese Seite. Öffne sie neu, wenn du den gespeicherten Stand sehen willst.', 'warn');
+  else setStatus('Gespeichert: ' + name, 'ok');
   return true;
 }
 
@@ -3730,10 +3755,12 @@ function wireChrome() {
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
   const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Ausrichtung links im Code.';
-  tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock, oddStyle));
-  tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock, oddStyle));
-  tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock, oddStyle));
-  tool(els.bAlignJustify, () => runCommand(() => setAlign(env, 'justify'), noBlock, oddStyle));
+  const strongStyle = 'Im <style> der Seite steht eine Ausrichtung mit !important. Sie kann deine Ausrichtung überdecken, zum Beispiel beim Drucken. Ändere sie links im Code.';
+  const align = (value) => runCommand(() => { const r = setAlign(env, value); if (r === 'strong') setStatus(strongStyle, 'warn'); return r; }, noBlock, oddStyle);
+  tool(els.bAlignLeft, () => align('left'));
+  tool(els.bAlignCenter, () => align('center'));
+  tool(els.bAlignRight, () => align('right'));
+  tool(els.bAlignJustify, () => align('justify'));
   tool(els.bLink, linkFlow);
   tool(els.bUnlink, () => runCommand(() => removeLinks(env), 'Hier ist kein Link. Setze den Cursor in einen Link.'));
   tool(els.bImage, () => imageFlow(null));

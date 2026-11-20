@@ -1,6 +1,22 @@
-# Review request: HTML School Editor 0.1.0-alpha.8 and 0.1.0-alpha.9
+# Review request: HTML School Editor 0.1.0-alpha.8, 0.1.0-alpha.9 and 0.1.0-alpha.10
 
 Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository.
+
+## alpha.10: corrections after the reading review of alpha.9
+
+GPT read the code of alpha.9 in seven sections without running it (2026-11-20, verdict **HOLD**). The implementer measured every finding and every unclear point in the browser; the results and the owner's decisions are in [STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha9-and-their-corrections). Version 0.1.0-alpha.10, stacked on alpha.9, corrects the confirmed ones together with F4 to F6 of the interim review. **This request covers alpha.8, alpha.9 and alpha.10 together;** please review the three as one change against alpha.7.
+
+| Finding | Correction | Code | Case | Please try |
+| --- | --- | --- | --- | --- |
+| F9 (medium) the same file opened again while its first write hangs: afterwards "gespeichert" although the file differs | question names the running save; a write that ends for a page that is no longer open marks the open page as saved only if it is the same file and shows exactly the written text | `src/js/app.js:840`, `:976`, `:1008` | A9-01 | a real file (Edge and Chrome by hand); the same file opened through the file input; New instead of Open; another file with the same name |
+| F5 (low) "Speichert …" hidden by other messages | the top bar shows "Speichert …" while the file of the open page is written | `src/js/app.js:199` | A9-02, A7-04 | messages during a hanging write; switching pages during the write |
+| F6 (medium) `!important` lost | a colour or alignment declaration with `!important` is left alone with a message (owner: pupils hardly write it) | `src/js/util.js:172` | A9-03, unit | `!important` in another declaration; upper case; escapes |
+| F4 (low) "Links" against a print rule with `!important` | alignment written as before, plus a message | `src/js/util.js:279`, `src/js/commands.js:472`, `:487` | A9-04, unit | other conditional rules with `!important`; a rule for another element |
+| S3-01 (low) a new item behind the last item without end tag | the last child of the source followed by a new block counts as changed | `src/js/serialize.js:134` | A9-05 | `<p>a<p>b`, Enter at the end; tables (must keep omitted end tags) |
+| first cell deleted (cosmetic) | the white space in front of a deleted first cell goes, the next one keeps its own | `src/js/commands.js:630` | A9-06 | rows and cells on lines and not; first rows |
+| specification "Files" | "or it fails, Save downloads" corrected to what the code does | `docs/SPECIFICATION.md` | — | — |
+
+The implementer of alpha.9 and alpha.10 is the session that carried out the interim review; neither the interim review nor the reading review is an independent check of these corrections.
 
 ## alpha.9: corrections of the interim review
 
@@ -45,7 +61,8 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
 ## State of the repository
 
-* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.9`, stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22). The corrections of alpha.9 are the difference between the two. **Changed in alpha.9:** `src/js/app.js` (`saveDoc`), `src/js/commands.js` (`takeOut`, new `openEnd`), `src/js/serialize.js` (`freshLine` split into `lineBreakFor`, new `startsLine`, `needsEndTag`); tests: `tests/browser/review8.mjs` (new), `tests/run.mjs`.
+* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.10`, stacked on `fix/html-school-editor-0.1.0-alpha.9`. The corrections of alpha.10 are the difference between the two. **Changed in alpha.10:** `src/js/app.js` (`updateChrome`, `mayReplace`, `saveNow`, new `otherPageWritten`, alignment message), `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignFacts` instead of `alignSometimes`, `setAlign`, `takeOut`), `src/js/serialize.js` (`needsEndTag`); tests: `tests/browser/review9.mjs` (new), `tests/browser/review7.mjs` (A7-04, see STATUS.md), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
+* **alpha.9** is `fix/html-school-editor-0.1.0-alpha.9`, stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22). The corrections of alpha.9 are the difference between the two. **Changed in alpha.9:** `src/js/app.js` (`saveDoc`), `src/js/commands.js` (`takeOut`, new `openEnd`), `src/js/serialize.js` (`freshLine` split into `lineBreakFor`, new `startsLine`, `needsEndTag`); tests: `tests/browser/review8.mjs` (new), `tests/run.mjs`.
 * **alpha.8** is `fix/html-school-editor-0.1.0-alpha.8`, stacked on `feature/html-school-editor-0.1.0-alpha.7` (pull request 21). The corrections of alpha.8 are the difference between the two. **Changed in alpha.8:** `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignSometimes`, `setAlign`, `ownCols`, `tableColumn`), `src/js/serialize.js` (`freshLine`, `childIndent`, `emitKids`, `needsEndTag`), `src/js/app.js` (`setStatus`, `saveDoc`, `startSave`, `saveNow`, image dialog, two messages); tests: `tests/browser/review7.mjs` (new), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
 * **Earlier branches** `fix/html-school-editor-0.1.0-alpha.6` (pull request 20, created from `feature/html-school-editor-0.1.0-alpha.5`, pull request 19) and `feature/html-school-editor-0.1.0-alpha.7`, stacked on it. The corrections are the difference between pull request 19 and pull request 20; step B is the difference between pull request 20 and the alpha.7 branch.
 * **Changed in alpha.6:** `src/js/util.js` (`patchAttrs`, `keepRaw`, `withAlign`, `moveSrc`, `cssRisks`, `decodeFileBytes`), `src/js/project.js` (`cssFacts`, `syncHead`), `src/js/serialize.js` (decoder for `patchAttrs`), `src/js/commands.js` (`toggleList`, `liftOut`, `insertLink`, `opensNewTab`, `changeLink`), `src/js/app.js` (image dialog, saving, "Im Browser öffnen", title field, dialogs); tests: `tests/browser/review6.mjs` (new), `tests/run.mjs`, `tests/lib/cdp.mjs` and `tests/lib/firefox.mjs` (`setViewport`), `tests/unit/attrs.test.mjs`, `tests/unit/core.test.mjs`.
@@ -54,7 +71,7 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
   ```bash
   git fetch --prune origin
-  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.9 origin/fix/html-school-editor-0.1.0-alpha.9
+  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.10 origin/fix/html-school-editor-0.1.0-alpha.10
   git config user.email                                   # must be the GitHub noreply address
   git log --format='%ae %ce' origin/main..HEAD | sort -u  # must list noreply addresses only
   ```
@@ -66,6 +83,13 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 Run in `html-school-editor/`; the last one from the repository root:
 
 ```bash
+# on the alpha.10 branch:
+node tools/build.mjs --check            # up to date: dist/school-editor.html  184478 bytes  sha256 5746dedc…
+node --test tests/unit/*.test.mjs       # tests 27, pass 27, fail 0
+node tests/run.mjs --browser edge       # edge: 87 passed, 0 not passed, 0 partial, 0 not measured, 791 checks, 3 part(s) NOT MEASURED
+node tests/run.mjs --browser firefox    # firefox: 81 passed, 0 not passed, 5 partial, 1 not measured, 748 checks, 7 part(s) NOT MEASURED
+node tests/run.mjs --browser edge --no-write --only A9-01,A9-02,A9-03,A9-04,A9-05,A9-06,A9-07   # 7 passed; against the alpha.9 build A9-01 to A9-06 fail, A9-07 passes
+# your checklist script of the fourth review, unchanged, from a copy: Edge 84 of 88 (as for alpha.8 and alpha.9), Firefox 3 of 3
 # on the alpha.9 branch:
 node tools/build.mjs --check            # up to date: dist/school-editor.html  182454 bytes  sha256 40992860…
 node --test tests/unit/*.test.mjs       # tests 26, pass 26, fail 0
@@ -156,7 +180,7 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 ## What comes after this review
 
-After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 17546 bytes are left below the size limit.
+After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 15522 bytes are left below the size limit.
 
 ## Not measured
 

@@ -106,7 +106,8 @@ export const review7 = [
         c.ok((await ed.status()).startsWith('Speichert'), 'still "Speichert …" while the first save hangs', await ed.status());
         await sleep(9500);
         c.ok((await ed.status()).startsWith('Speichert'), 'the message does not disappear after nine seconds, as other messages do', await ed.status());
-        c.eq(await ed.dirtyText(), '● nicht gespeichert', 'and the page is shown as not saved');
+        // since alpha.10 the save state in the top bar says "Speichert …" while the file is written (F5)
+        c.eq(await ed.dirtyText(), 'Speichert …', 'and the top bar shows that the page is being saved, not that it is saved');
         c.eq(await ed.eval('window.a7.opened'), 1, 'nothing else is written while the first save is not finished');
         await ed.eval('window.a7.held()');
         await ed.until('window.a7.closes.length === 2', 'the waiting save finished');

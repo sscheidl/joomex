@@ -82,11 +82,11 @@ Drücke **Speichern** (oder die Tasten Strg+S) und wähle beim ersten Mal, wohin
 
 **Wichtig:** Der Editor merkt sich nichts. Wenn du das Fenster schließt, ohne zu speichern, ist deine Arbeit weg.
 
-Unten steht **Speichert …**, solange die Datei geschrieben wird. Auf einem Netzlaufwerk kann das einen Moment dauern. Drückst du in dieser Zeit noch einmal Speichern, speichert der Editor danach einmal deinen neuesten Stand.
+Oben rechts steht **Speichert …**, solange die Datei geschrieben wird. Auf einem Netzlaufwerk kann das einen Moment dauern. Drückst du in dieser Zeit noch einmal Speichern, speichert der Editor danach einmal deinen neuesten Stand. Öffne in dieser Zeit am besten keine andere Datei.
 
 Mit **Herunterladen** bekommst du eine Kopie in den Ordner „Downloads“.
 
-Oben rechts siehst du, ob deine Seite gespeichert ist: **● nicht gespeichert** (orange) oder **gespeichert** (grün).
+Oben rechts siehst du, ob deine Seite gespeichert ist: **● nicht gespeichert** oder **Speichert …** (orange) oder **gespeichert** (grün).
 
 ## Seite im Browser ansehen und Links testen
 
