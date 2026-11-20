@@ -3,18 +3,18 @@
 // texts are written by hand.
 import { Editor, PV, sleep } from '../lib/harness.mjs';
 
-const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
-const page = (body, head = '') => '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>A9</title>\n' + head + '</head>\n<body>\n' + body + '\n</body>\n</html>\n';
+export const withEditor = async (browser, options, fn) => { const ed = await Editor.open(browser, options); try { return await fn(ed); } finally { await ed.close(); } };
+export const page = (body, head = '') => '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="UTF-8">\n  <title>A9</title>\n' + head + '</head>\n<body>\n' + body + '\n</body>\n</html>\n';
 const tableEdit = async (ed, label) => { await ed.click('bTable'); await ed.dialogButton('dlgTable', label); await ed.settle(); };
-const color = async (ed, label) => { await ed.click('bColor'); await ed.dialogButton('dlgColor', label); await ed.settle(); };
+export const color = async (ed, label) => { await ed.click('bColor'); await ed.dialogButton('dlgColor', label); await ed.settle(); };
 const inCell = (ed, r, c) => ed.eval(`((d, w) => { w.focus(); d.body.focus(); const cell = d.querySelector("table").rows[${r}].cells[${c}]; d.getSelection().collapse(cell, cell.childNodes.length); })(${PV}, document.getElementById("pv").contentWindow)`).then(() => sleep(30));
 const atEnd = (ed, sel, i) => ed.eval(`((d, w) => { w.focus(); d.body.focus(); const el = d.querySelectorAll(${JSON.stringify(sel)})[${i}]; const r = d.createRange(); r.selectNodeContents(el); r.collapse(false); const s = d.getSelection(); s.removeAllRanges(); s.addRange(r); })(${PV}, document.getElementById("pv").contentWindow)`).then(() => sleep(30));
-const msg = (ed) => ed.status();
+export const msg = (ed) => ed.status();
 
 // Labelled mock of files with handles: every file has a content "on disk" that changes only when a writer
 // closes, as with the File System Access API. The open picker hands out the next handle of `a9.queue`; the save
 // picker hands out a new handle. close() of a write waits while `a9.hold` is set; `a9.release(i, fail)` ends it.
-const FILES = `window.a9 = { disk: {}, writes: [], gates: [], hold: true, queue: [], saved: 0, handles: {} };
+export const FILES = `window.a9 = { disk: {}, writes: [], gates: [], hold: true, queue: [], saved: 0, handles: {} };
   window.a9.file = (name, text) => { a9.disk[name] = text; const h = a9.handles[name] || { name, kind: 'file',
     getFile: async () => new File([a9.disk[name]], name, { type: 'text/html' }),
     isSameEntry: async (o) => o === h,
@@ -24,13 +24,13 @@ const FILES = `window.a9 = { disk: {}, writes: [], gates: [], hold: true, queue:
   window.a9.release = (i, fail) => a9.gates[i](fail);
   Object.defineProperty(window, 'showOpenFilePicker', { configurable: true, value: async () => [a9.queue.shift()] });
   Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: async (o) => { a9.saved++; return a9.file((o && o.suggestedName) || 'neu.html', ''); } });`;
-const openMock = async (ed, name, text) => {
+export const openMock = async (ed, name, text) => {
   await ed.eval(`a9.queue.push(a9.file(${JSON.stringify(name)}, ${JSON.stringify(text)}))`);
   await ed.eval('document.getElementById("msg").textContent = ""');
   await ed.click('bOpen');
   await ed.until('document.getElementById("dlgConfirm").open || document.getElementById("msg").textContent.startsWith("Geöffnet")', 'opened or question');
 };
-const typeAt = async (ed, sel, text) => { await atEnd(ed, sel, 0); await ed.type(text); await ed.settle(); };
+export const typeAt = async (ed, sel, text) => { await atEnd(ed, sel, 0); await ed.type(text); await ed.settle(); };
 const state = (ed) => ed.eval('JSON.stringify({ writes: a9.writes, disk: a9.disk, gates: a9.gates.length, saved: a9.saved })').then(JSON.parse);
 
 export const review9 = [

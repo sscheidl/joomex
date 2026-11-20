@@ -539,7 +539,7 @@ function putColor(env, el, color) {
 
 // Text colour from the palette ('' removes it). A whole paragraph, heading or list item gets the colour on its
 // own tag, exactly one whole inline element on its tag; only otherwise the text is wrapped in
-// <span style="color: …">. Colours inside the part that is coloured go, so that the new one is seen.
+// <span style="color: …">. Colours inside the part that is coloured go, so that the new one is seen; a part whose own colour cannot be set stays whole.
 // Returns 'ok', 'none', 'odd' (a style text that cannot be read) or 'part' (when removing: the colour comes
 // from a larger part than the selection and stays).
 export function setColor(env, color) {
@@ -567,7 +567,7 @@ export function setColor(env, color) {
     }
     if (one) targets = [one];
   }
-  if (targets) for (const el of targets) { clearInside(el); put(el, color); }
+  if (targets) for (const el of targets) { if (withDecl(el.getAttribute('style') || '', 'color', color) !== null) clearInside(el); put(el, color); }
   else {
     // the text comes out of the colour spans around it; a colour span that is selected entirely goes
     for (const n of nodes) {

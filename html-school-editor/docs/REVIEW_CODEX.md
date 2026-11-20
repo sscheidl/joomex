@@ -1,10 +1,19 @@
-# Review request: HTML School Editor 0.1.0-alpha.8, 0.1.0-alpha.9 and 0.1.0-alpha.10
+# Review request: HTML School Editor 0.1.0-alpha.8 to 0.1.0-alpha.11
 
 Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository.
 
+## alpha.11: two corrections after the reading review of alpha.10
+
+GPT read the difference between alpha.9 and alpha.10 in four sections without running it (2026-11-20). The owner handed two points on, to be reproduced before anything is changed; both were confirmed in Edge and Firefox ([STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha10-and-their-corrections)). Version 0.1.0-alpha.11, stacked on alpha.10, corrects them with one added condition each. The owner has set a feature freeze after it. **This request covers alpha.8 to alpha.11 together;** please review the four as one change against alpha.7.
+
+| Finding | Correction | Code | Case | Please try |
+| --- | --- | --- | --- | --- |
+| T1-6 (low) a file of the same name opened without a handle while the write of another file hangs was taken for that file | without a handle: the same name and the text the written file had before the write | `src/js/app.js:931`, `:1015` | A10-01 | a real drop in Edge and Chrome by hand; the file input; a page saved for the first time while it hangs |
+| T2-3 (low) a part whose own colour is blocked lost the colours inside it | such a part is not cleared inside | `src/js/commands.js:570` | A10-02 | lists; an inline element as target; "Farbe entfernen" |
+
 ## alpha.10: corrections after the reading review of alpha.9
 
-GPT read the code of alpha.9 in seven sections without running it (2026-11-20, verdict **HOLD**). The implementer measured every finding and every unclear point in the browser; the results and the owner's decisions are in [STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha9-and-their-corrections). Version 0.1.0-alpha.10, stacked on alpha.9, corrects the confirmed ones together with F4 to F6 of the interim review. **This request covers alpha.8, alpha.9 and alpha.10 together;** please review the three as one change against alpha.7.
+GPT read the code of alpha.9 in seven sections without running it (2026-11-20, verdict **HOLD**). The implementer measured every finding and every unclear point in the browser; the results and the owner's decisions are in [STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha9-and-their-corrections). Version 0.1.0-alpha.10, stacked on alpha.9, corrects the confirmed ones together with F4 to F6 of the interim review. The request covers these versions together with alpha.11, see above.
 
 | Finding | Correction | Code | Case | Please try |
 | --- | --- | --- | --- | --- |
@@ -61,7 +70,8 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
 ## State of the repository
 
-* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.10`, stacked on `fix/html-school-editor-0.1.0-alpha.9`. The corrections of alpha.10 are the difference between the two. **Changed in alpha.10:** `src/js/app.js` (`updateChrome`, `mayReplace`, `saveNow`, new `otherPageWritten`, alignment message), `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignFacts` instead of `alignSometimes`, `setAlign`, `takeOut`), `src/js/serialize.js` (`needsEndTag`); tests: `tests/browser/review9.mjs` (new), `tests/browser/review7.mjs` (A7-04, see STATUS.md), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
+* **Branch for this request:** `fix/html-school-editor-0.1.0-alpha.11`, stacked on `fix/html-school-editor-0.1.0-alpha.10`. The corrections of alpha.11 are the difference between the two. **Changed in alpha.11:** `src/js/app.js` (`snapshotForSave`, `otherPageWritten`), `src/js/commands.js` (`setColor`); tests: `tests/browser/review10.mjs` (new), `tests/browser/review9.mjs` (helpers exported), `tests/run.mjs`.
+* **alpha.10** is `fix/html-school-editor-0.1.0-alpha.10`, stacked on `fix/html-school-editor-0.1.0-alpha.9`. The corrections of alpha.10 are the difference between the two. **Changed in alpha.10:** `src/js/app.js` (`updateChrome`, `mayReplace`, `saveNow`, new `otherPageWritten`, alignment message), `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignFacts` instead of `alignSometimes`, `setAlign`, `takeOut`), `src/js/serialize.js` (`needsEndTag`); tests: `tests/browser/review9.mjs` (new), `tests/browser/review7.mjs` (A7-04, see STATUS.md), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
 * **alpha.9** is `fix/html-school-editor-0.1.0-alpha.9`, stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22). The corrections of alpha.9 are the difference between the two. **Changed in alpha.9:** `src/js/app.js` (`saveDoc`), `src/js/commands.js` (`takeOut`, new `openEnd`), `src/js/serialize.js` (`freshLine` split into `lineBreakFor`, new `startsLine`, `needsEndTag`); tests: `tests/browser/review8.mjs` (new), `tests/run.mjs`.
 * **alpha.8** is `fix/html-school-editor-0.1.0-alpha.8`, stacked on `feature/html-school-editor-0.1.0-alpha.7` (pull request 21). The corrections of alpha.8 are the difference between the two. **Changed in alpha.8:** `src/js/util.js` (`withDecl`, `cssRisks`), `src/js/commands.js` (`alignSometimes`, `setAlign`, `ownCols`, `tableColumn`), `src/js/serialize.js` (`freshLine`, `childIndent`, `emitKids`, `needsEndTag`), `src/js/app.js` (`setStatus`, `saveDoc`, `startSave`, `saveNow`, image dialog, two messages); tests: `tests/browser/review7.mjs` (new), `tests/run.mjs`, `tests/unit/attrs.test.mjs`.
 * **Earlier branches** `fix/html-school-editor-0.1.0-alpha.6` (pull request 20, created from `feature/html-school-editor-0.1.0-alpha.5`, pull request 19) and `feature/html-school-editor-0.1.0-alpha.7`, stacked on it. The corrections are the difference between pull request 19 and pull request 20; step B is the difference between pull request 20 and the alpha.7 branch.
@@ -71,7 +81,7 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 
   ```bash
   git fetch --prune origin
-  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.10 origin/fix/html-school-editor-0.1.0-alpha.10
+  git worktree add <new folder> -b review/html-school-editor-0.1.0-alpha.11 origin/fix/html-school-editor-0.1.0-alpha.11
   git config user.email                                   # must be the GitHub noreply address
   git log --format='%ae %ce' origin/main..HEAD | sort -u  # must list noreply addresses only
   ```
@@ -83,6 +93,13 @@ Changed tests: the unit expectation for `text-align/**/: left` (removed together
 Run in `html-school-editor/`; the last one from the repository root:
 
 ```bash
+# on the alpha.11 branch:
+node tools/build.mjs --check            # up to date: dist/school-editor.html  184546 bytes  sha256 9173953d…
+node --test tests/unit/*.test.mjs       # tests 27, pass 27, fail 0
+node tests/run.mjs --browser edge       # edge: 89 passed, 0 not passed, 0 partial, 0 not measured, 809 checks, 3 part(s) NOT MEASURED
+node tests/run.mjs --browser firefox    # firefox: 83 passed, 0 not passed, 5 partial, 1 not measured, 766 checks, 7 part(s) NOT MEASURED
+node tests/run.mjs --browser edge --no-write --only A10-01,A10-02   # 2 passed; against the alpha.10 build 0 of 2 (Firefox the same)
+# your checklist script of the fourth review, unchanged, from a copy: Edge 84 of 88 (as for alpha.8 to alpha.10), Firefox 3 of 3
 # on the alpha.10 branch:
 node tools/build.mjs --check            # up to date: dist/school-editor.html  184478 bytes  sha256 5746dedc…
 node --test tests/unit/*.test.mjs       # tests 27, pass 27, fail 0
@@ -180,7 +197,7 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 ## What comes after this review
 
-After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 15522 bytes are left below the size limit.
+After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 15454 bytes are left below the size limit.
 
 ## Not measured
 

@@ -1,14 +1,14 @@
 # Acceptance results
 
-Artefact: `dist/school-editor.html`, version 0.1.0-alpha.10, 184,478 bytes, SHA-256 `5746dedcbd4ece2526cc1aee8a77919c7af23877d78f7d939b39104dc21ccd53`.
+Artefact: `dist/school-editor.html`, version 0.1.0-alpha.11, 184,546 bytes, SHA-256 `9173953de12bfc9ca98c777477e3d89665092e015414c2ff7b41daecd8612eee`.
 
 Contract: [brief/ACCEPTANCE.md](brief/ACCEPTANCE.md). The cases X-07, R-01 and R-02 were added by the implementer and are not part of that contract. The cases RV-01 to RV-04 and A3-01 to A3-05 are the regressions for the findings of the two independent reviews ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), [reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md)). The cases F-01 to F-03 cover the functions the owner asked for after trying alpha.2; where they change what the contract says, the row names the owner's decision.
 
-MEASURED 2026-11-20 on Windows 11 Pro (10.0.26300) with Microsoft Edge **157.0.4341.60**, new headless mode, and with **Firefox/160.0.1**, headless; fresh browser profile per run, artefact opened from `file://`. Chrome: **NOT MEASURED** (not installed). The tables below give the Edge results; the Firefox results follow in their own section. Evidence with every single check: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json); the Chrome file records the missing measurement.
+MEASURED 2026-11-20 on Windows 11 Pro (10.0.26300) with Microsoft Edge **158.0.4370.33**, new headless mode, and with **Firefox/160.0.1**, headless; fresh browser profile per run, artefact opened from `file://`. Chrome: **NOT MEASURED** (not installed). The tables below give the Edge results; the Firefox results follow in their own section. Evidence with every single check: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json); the Chrome file records the missing measurement.
 
 Command for everything below: `node tests/run.mjs` (one case: `node tests/run.mjs --browser edge --only T-10`). Input is real: key and mouse events are sent through the DevTools protocol, files are opened through the file input of the page, downloads are real browser downloads whose bytes are read from disk. Where a mock is used it is named.
 
-`PASS` means every check of the case held. It does not mean the case was reviewed by someone else. A part of a case that could not be carried out is recorded as `NOT MEASURED` in the result file and in the console output, with the reason; it never counts as a passed check. This run in Edge: 77 cases pass, 741 checks, 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04). The clipboard paste with a trusted key event (X-04) and the file drop (T-15) were carried out in this run.
+`PASS` means every check of the case held. It does not mean the case was reviewed by someone else. A part of a case that could not be carried out is recorded as `NOT MEASURED` in the result file and in the console output, with the reason; it never counts as a passed check. This run in Edge: 89 cases pass, 809 checks, 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04). The clipboard paste with a trusted key event (X-04) and the file drop (T-15) were carried out in this run.
 
 Both independent reviews found defects that this suite had passed over. A `PASS` below therefore says that the listed checks hold for the listed inputs, in one browser, and nothing more. For S-04, S-05, S-06 and S-08 the rows state the limits that are known.
 
@@ -23,7 +23,7 @@ The independent review of alpha.1 rated the suite as not sufficient for full acc
 | P-03 | Full source left, editable page right, both visible | `src/app.html`, `src/js/app.js:138`, `:239` | T-02, T-03 | PASS |
 | P-04 | New, open, save/download, format, blocks, bold/italic, lists, links, images with alt, undo/redo, keyboard, umlauts | `src/js/app.js`, `src/js/commands.js` | T-01, T-04…T-08, T-10, T-13, F-01…F-11 | PASS. **Owner's decisions of 2026-11-19 that change the wording of the contract:** the description of an image (alt) is offered but optional; an image is written as a file name, not embedded. Added on the owner's request: alignment, width of images, changing existing images and links |
 | P-05 | Plain tags, valid nesting, no spans/fonts/inline CSS for basic text formatting; documented choice `<b>`/`<i>` | `src/js/serialize.js:245`, `src/js/commands.js:300`, `:485` | T-04, T-05, F-03 | PASS. Alignment is written as `style="text-align: …"`, the one style attribute the editor writes: HTML has no tag for it. Paragraph, headings, bold and italic stay plain tags (T-04) |
-| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 184,478 bytes |
+| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 184,546 bytes |
 | P-07 | No mail tools, minify, templates with remote content, tracking, persistence | — | X-06, T-17 | PASS |
 
 ## Safety and data model
@@ -136,6 +136,15 @@ Code: `tests/browser/features7.mjs`. Expected source texts are written by hand. 
 
 Unit test "text colour" (`tests/unit/attrs.test.mjs`): `withDecl()` for `color` with strings, `background-color` and unreadable text; `plainStyle()` accepts only alignment keywords and the eight palette names.
 
+## Regressions for the findings of the reading review of alpha.10
+
+Code: `tests/browser/review10.mjs`. The inputs follow the reproductions that confirmed the two points in Edge and Firefox; the expected texts are written by hand. Both cases fail against the alpha.10 build and pass against this one, in Edge and in Firefox. The checks marked "guard" pass against both builds.
+
+| ID | Finding | What is checked | Result (Edge) |
+| --- | --- | --- | --- |
+| A10-01 | T1-6 | The write of A is held; a file of the same name is dropped on the window (no handle). With another text, untouched: it stays "gespeichert" and the footer says "Die vorige Seite „seite-a.html“ ist gespeichert.". With another text, typed until it reads like the text written to A: it stays "● nicht gespeichert". Guard: with the text A had before the write (A itself): "● nicht gespeichert" with the message, as since alpha.10 (mock handle for A whose content changes on `close()`; the dropped file is a File object in a drop event made by the test) | PASS (6) |
+| A10-02 | T2-3 | `<p style="color:red !important">` and `<p style="color:red /* x */">` around a blue span, the whole paragraph selected, "Grün" and "Farbe entfernen": the source stays as written, with a message. Three paragraphs, the middle one with `!important` and a blue span: the outer two turn green, the middle one stays whole; one undo gives the text before. Guard: without `!important` the paragraph is coloured and the colour inside goes | PASS (12) |
+
 ## Regressions for the findings of the reading review of alpha.9
 
 Code: `tests/browser/review9.mjs`. The inputs follow the measurements that confirmed the reviewer's points; the expected source texts are written by hand. A9-01 to A9-06 fail against the alpha.9 build (Edge 157, 2026-11-20) and pass against this one in Edge and in Firefox; A9-07 closes gaps in the tests and passes against both.
@@ -217,7 +226,7 @@ The reviewer's probe script (`docs/reviews/review-alpha3.mjs`) is unchanged. Aga
 
 The task brief names Edge and Chrome. The owner had Firefox measured by the reviewer for alpha.3 ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)): four cases failed there (T-03, T-07, R-01, R-02). The same suite now runs in Firefox through `node tests/run.mjs --browser firefox`, with the reviewer's driver `tests/lib/firefox.mjs`.
 
-Result for this version in Firefox/160.0.1: 81 cases pass, 5 partial, 1 not measured, none failed; 748 checks, 7 parts NOT MEASURED.
+Result for this version in Firefox/160.0.1: 83 cases pass, 5 partial, 1 not measured, none failed; 766 checks, 7 parts NOT MEASURED.
 
 | Case | Status in Firefox | Why not complete |
 | --- | --- | --- |
@@ -227,7 +236,7 @@ Result for this version in Firefox/160.0.1: 81 cases pass, 5 partial, 1 not meas
 | RV-02 | PARTIAL (35 checks pass) | scripts cannot be switched off for the ordinary comparison pages; the comparison of accepted results and the held-check schedule do not run |
 | A3-03 | PARTIAL (34 checks pass) | same: all refusals are measured, the comparison of the three accepted results is not |
 | X-04 | NOT MEASURED | a constructed paste event carries no data in Firefox; the system clipboard is not automated |
-| all other 81 cases | PASS | |
+| all other 83 cases | PASS | |
 
 Findings of the Firefox measurement of alpha.3 and their regressions (code: `tests/browser/review3.mjs`; the cases run in every browser):
 

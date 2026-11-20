@@ -1,11 +1,11 @@
 {
  "artefact": "dist/school-editor.html",
- "bytes": 184478,
- "sha256": "5746dedcbd4ece2526cc1aee8a77919c7af23877d78f7d939b39104dc21ccd53",
+ "bytes": 184546,
+ "sha256": "9173953de12bfc9ca98c777477e3d89665092e015414c2ff7b41daecd8612eee",
  "sizeLimit": 200000,
  "node": "v24.22.1",
  "os": "Windows_NT 10.0.26300",
- "date": "2026-11-20T15:42:24.583Z",
+ "date": "2026-11-20T18:43:59.606Z",
  "browser": "firefox",
  "results": [
   {
@@ -13,7 +13,7 @@
    "title": "fresh offline start from file://, both panes edit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 994,
+   "ms": 1214,
    "error": null,
    "checks": [
     {
@@ -48,7 +48,7 @@
    "title": "source <-> preview on a full document keeps head, comments and attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 911,
+   "ms": 859,
    "error": null,
    "checks": [
     {
@@ -74,7 +74,7 @@
    "title": "selection in each pane maps to the right place, focus stays where the user works",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1167,
+   "ms": 1189,
    "error": null,
    "checks": [
     {
@@ -125,7 +125,7 @@
    "title": "heading, paragraph, bold, italic produce plain tags and keep children/attributes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1501,
+   "ms": 1514,
    "error": null,
    "checks": [
     {
@@ -191,7 +191,7 @@
    "title": "lists: create, add items, switch kind, remove; valid nesting; reopen",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 825,
+   "ms": 868,
    "error": null,
    "checks": [
     {
@@ -241,7 +241,7 @@
    "title": "links and local raster images; text inputs stay data",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2910,
+   "ms": 2960,
    "error": null,
    "checks": [
     {
@@ -369,7 +369,7 @@
    "title": "explicit formatting changes white space only and is verified",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 510,
+   "ms": 494,
    "error": null,
    "checks": [
     {
@@ -449,7 +449,7 @@
    "title": "open -> download without edits is byte-exact (LF, CRLF, BOM); other encodings are not corrupted",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 745,
+   "ms": 768,
    "error": null,
    "checks": [
     {
@@ -539,7 +539,7 @@
    "title": "open -> visual edit -> download keeps doctype, head, inactive content and untouched markup",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1369,
+   "ms": 1394,
    "error": null,
    "checks": [
     {
@@ -593,7 +593,7 @@
    "title": "saving immediately after the last keystroke in the page contains that keystroke",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1907,
+   "ms": 1727,
    "error": null,
    "checks": [
     {
@@ -658,7 +658,7 @@
    "title": "rapid alternating edits never lose the newer text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 27223,
+   "ms": 27082,
    "error": null,
    "checks": [
     {
@@ -680,7 +680,7 @@
    "title": "long document: fast typing, caret, scroll, toolbar selection, composition",
    "status": "PARTIAL",
    "partsNotMeasured": 1,
-   "ms": 2011,
+   "ms": 2263,
    "error": null,
    "checks": [
     {
@@ -698,7 +698,7 @@
      "pass": true,
      "note": true,
      "label": "typing speed",
-     "detail": "162 keystrokes sent in 746 ms, panes in sync after 985 ms"
+     "detail": "162 keystrokes sent in 858 ms, panes in sync after 1096 ms"
     },
     {
      "pass": true,
@@ -747,7 +747,7 @@
    "title": "one undo/redo history across source edits, page edits and toolbar commands",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4135,
+   "ms": 4116,
    "error": null,
    "checks": [
     {
@@ -809,7 +809,7 @@
    "title": "malformed, incomplete, empty and oversized input",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4606,
+   "ms": 4821,
    "error": null,
    "checks": [
     {
@@ -881,7 +881,7 @@
    "title": "new/open/drop while unsaved, failed open, outdated operations",
    "status": "PARTIAL",
    "partsNotMeasured": 1,
-   "ms": 733,
+   "ms": 768,
    "error": null,
    "checks": [
     {
@@ -926,7 +926,7 @@
    "title": "Save falls back to a real download when direct file access is missing",
    "status": "PASS",
    "partsNotMeasured": 1,
-   "ms": 328,
+   "ms": 318,
    "error": null,
    "checks": [
     {
@@ -955,7 +955,7 @@
    "title": "no persistence between sessions",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 907,
+   "ms": 889,
    "error": null,
    "checks": [
     {
@@ -973,7 +973,7 @@
    "title": "scripts and event handlers of an opened file never run and cannot reach the editor",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2037,
+   "ms": 2056,
    "error": null,
    "checks": [
     {
@@ -1019,7 +1019,7 @@
    "title": "links, refresh, base, forms, frames and popups cannot navigate or submit",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4721,
+   "ms": 5171,
    "error": null,
    "checks": [
     {
@@ -1105,7 +1105,7 @@
    "title": "no external resource of an opened document is fetched",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3393,
+   "ms": 3390,
    "error": null,
    "checks": [
     {
@@ -1149,7 +1149,7 @@
    "title": "pasting rich content and markup-shaped text fields create no active content",
    "status": "NOT MEASURED",
    "partsNotMeasured": 1,
-   "ms": 49,
+   "ms": 47,
    "error": null,
    "checks": [
     {
@@ -1208,7 +1208,7 @@
    "title": "residual risk accepted by the owner: the CSS of an opened page can load picture files of this computer, never from the network",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1016,
+   "ms": 1007,
    "error": null,
    "checks": [
     {
@@ -1251,7 +1251,7 @@
    "title": "no message bridge exists",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4,
+   "ms": 3,
    "error": null,
    "checks": [
     {
@@ -1265,7 +1265,7 @@
    "title": "static scan of the delivered file",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 7,
+   "ms": 6,
    "error": null,
    "checks": [
     {
@@ -1308,7 +1308,7 @@
     {
      "pass": true,
      "label": "page policy allows only the one hashed script, inline styles, data: images and picture files of its own origin",
-     "detail": "default-src 'none'; script-src 'sha256-q66FOM/093moyn4whHCSC/2kCeLC/qASUp2mEUkXaTs='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'"
+     "detail": "default-src 'none'; script-src 'sha256-L7njJfNOgkHygt0CG6sfoS+EqeR/TTfed7efuFzElY4='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'"
     },
     {
      "pass": true,
@@ -1328,7 +1328,7 @@
      "pass": true,
      "note": true,
      "label": "size",
-     "detail": "184478 bytes"
+     "detail": "184546 bytes"
     }
    ]
   },
@@ -1337,7 +1337,7 @@
    "title": "corpus of hand-written snippets: every visual edit stays local, undo and formatting are safe",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 27980,
+   "ms": 28506,
    "error": null,
    "checks": [
     {
@@ -1372,7 +1372,7 @@
    "title": "source modules: round-trip properties on generated documents (module-level test page, not the single file)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 696,
+   "ms": 906,
    "error": null,
    "checks": [
     {
@@ -1413,7 +1413,7 @@
    "title": "review finding: a file read that finishes late never replaces newer work unasked (S-06, T-15)",
    "status": "PARTIAL",
    "partsNotMeasured": 1,
-   "ms": 693,
+   "ms": 803,
    "error": null,
    "checks": [
     {
@@ -1454,7 +1454,7 @@
    "title": "review finding: \"tidy up\" never changes how the page looks (S-05, T-07)",
    "status": "PARTIAL",
    "partsNotMeasured": 1,
-   "ms": 1231,
+   "ms": 1379,
    "error": null,
    "checks": [
     {
@@ -1623,7 +1623,7 @@
    "title": "review finding: list commands keep attributes (S-05, T-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1455,
+   "ms": 1495,
    "error": null,
    "checks": [
     {
@@ -1674,7 +1674,7 @@
    "title": "review finding: whatever is switched off in the page pane is announced (S-04, X-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 5400,
+   "ms": 5456,
    "error": null,
    "checks": [
     {
@@ -1794,7 +1794,7 @@
    "title": "images are addressed relative to the page and shown from the folder of the editor; missing files are named; other computers and the network are never asked",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1807,
+   "ms": 1781,
    "error": null,
    "checks": [
     {
@@ -1977,7 +1977,7 @@
    "title": "existing images and links are changed through the dialogs; only the changed attribute is rewritten",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2723,
+   "ms": 2731,
    "error": null,
    "checks": [
     {
@@ -2082,7 +2082,7 @@
    "title": "alignment left, centre, right, justified for text and pictures; the only style the editor writes",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2309,
+   "ms": 2315,
    "error": null,
    "checks": [
     {
@@ -2185,12 +2185,12 @@
    "title": "the version stands small next to the name in the top bar and does not wrap",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 199,
+   "ms": 184,
    "error": null,
    "checks": [
     {
      "pass": true,
-     "label": "the name is followed by the version 0.1.0-alpha.10"
+     "label": "the name is followed by the version 0.1.0-alpha.11"
     },
     {
      "pass": true,
@@ -2216,7 +2216,7 @@
    "title": "review finding: alignment reads the style attribute as CSS and never touches other declarations (S-05, F-03)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1518,
+   "ms": 1568,
    "error": null,
    "checks": [
     {
@@ -2281,7 +2281,7 @@
    "title": "review finding: changing attributes of badly written tags keeps the intended meaning (S-05, F-02)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1030,
+   "ms": 1044,
    "error": null,
    "checks": [
     {
@@ -2323,7 +2323,7 @@
    "title": "review finding: \"tidy up\" refuses pages whose rules hold only sometimes, or in parts that are hidden (S-05, T-07)",
    "status": "PARTIAL",
    "partsNotMeasured": 1,
-   "ms": 1136,
+   "ms": 1273,
    "error": null,
    "checks": [
     {
@@ -2487,7 +2487,7 @@
    "title": "review finding: only the latest choice of the open image dialog counts (S-06, F-01)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1807,
+   "ms": 1869,
    "error": null,
    "checks": [
     {
@@ -2533,7 +2533,7 @@
    "title": "review finding: every stop by the content policy is announced, whatever the address looks like (S-04)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2721,
+   "ms": 2701,
    "error": null,
    "checks": [
     {
@@ -2595,7 +2595,7 @@
    "title": "review finding about the test helper: opening a file waits for that file, also when the name is the same",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 533,
+   "ms": 556,
    "error": null,
    "checks": [
     {
@@ -2617,7 +2617,7 @@
    "title": "Firefox measurement: typing never changes white space in a neighbouring text (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1455,
+   "ms": 1482,
    "error": null,
    "checks": [
     {
@@ -2648,7 +2648,7 @@
    "title": "Firefox measurement: a line break the browser keeps in an empty page is never written into the document (S-05)",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1279,
+   "ms": 1250,
    "error": null,
    "checks": [
     {
@@ -2676,7 +2676,7 @@
    "title": "underline, superscript, subscript and highlight are written as u, sup, sub and mark; superscript and subscript exclude each other",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1579,
+   "ms": 1625,
    "error": null,
    "checks": [
     {
@@ -2730,7 +2730,7 @@
    "title": "the link dialog writes target=\"_blank\" for \"In neuem Tab öffnen\"; changing it rewrites only that attribute",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1448,
+   "ms": 1471,
    "error": null,
    "checks": [
     {
@@ -2780,7 +2780,7 @@
    "title": "a link on a picture: made, its address changed, the picture inside it changed, the link removed",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 656,
+   "ms": 703,
    "error": null,
    "checks": [
     {
@@ -2818,7 +2818,7 @@
    "title": "dialogs are moved by their heading, never out of the window, and open centred again",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 890,
+   "ms": 879,
    "error": null,
    "checks": [
     {
@@ -2873,7 +2873,7 @@
    "title": "\"Im Browser öffnen\" opens the saved file next to the editor in a new tab without connection; unsaved pages are saved first",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 733,
+   "ms": 795,
    "error": null,
    "checks": [
     {
@@ -2923,7 +2923,7 @@
    "title": "the title field changes <title> in the head and nothing else; a page without a title gets one",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1153,
+   "ms": 1209,
    "error": null,
    "checks": [
     {
@@ -2982,7 +2982,7 @@
    "title": "the top bar: save state bold and coloured, groups of buttons separated",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 391,
+   "ms": 420,
    "error": null,
    "checks": [
     {
@@ -3007,7 +3007,7 @@
    "title": "review finding ATTR: removing the width of <img src=tile.png width=\"20\"alt=diagram> keeps address and description",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 402,
+   "ms": 424,
    "error": null,
    "checks": [
     {
@@ -3033,7 +3033,7 @@
    "title": "review finding IMG-QUERY: accepting the image dialog unchanged keeps \"tile.png?view=class/2\"",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 564,
+   "ms": 592,
    "error": null,
    "checks": [
     {
@@ -3059,7 +3059,7 @@
    "title": "review finding MEDIA: \"Code aufräumen\" refuses when a style element applies only under a media condition",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 308,
+   "ms": 439,
    "error": null,
    "checks": [
     {
@@ -3086,7 +3086,7 @@
    "title": "review finding WRITES: a second save waits for the first, so the newest text is written last",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1003,
+   "ms": 1066,
    "error": null,
    "checks": [
     {
@@ -3119,7 +3119,7 @@
    "title": "review finding BROWSE-SWITCH: another page opened while \"Im Browser öffnen\" saves is not opened in a tab",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 853,
+   "ms": 885,
    "error": null,
    "checks": [
     {
@@ -3147,7 +3147,7 @@
    "title": "review finding STYLE-SPLIT: removing bold from one letter keeps the colour of the bold rest",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 482,
+   "ms": 510,
    "error": null,
    "checks": [
     {
@@ -3169,7 +3169,7 @@
    "title": "review finding LIST: a list over two paragraphs with a line between them keeps the order",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 390,
+   "ms": 409,
    "error": null,
    "checks": [
     {
@@ -3187,7 +3187,7 @@
    "title": "review finding IMG-PENDING: \"Einfügen\" waits while the newest picture is still being checked",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 438,
+   "ms": 549,
    "error": null,
    "checks": [
     {
@@ -3214,7 +3214,7 @@
    "title": "review finding NOTICE: a switched-off icon link in the head is named in the note",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 267,
+   "ms": 348,
    "error": null,
    "checks": [
     {
@@ -3236,7 +3236,7 @@
    "title": "review finding TITLE-RELOAD: a title typed into the field and not taken over counts as unsaved",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 228,
+   "ms": 310,
    "error": null,
    "checks": [
     {
@@ -3266,7 +3266,7 @@
    "title": "review finding DIALOG-RESIZE: a moved dialog stays inside the window when the window becomes narrower",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 823,
+   "ms": 841,
    "error": null,
    "checks": [
     {
@@ -3295,7 +3295,7 @@
    "title": "review finding TARGET-CASE: TARGET=\"_BLANK\" is shown as \"new tab\" and can be unticked",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 400,
+   "ms": 409,
    "error": null,
    "checks": [
     {
@@ -3313,7 +3313,7 @@
    "title": "review finding ALIGN: changing the alignment keeps the spelling of the rest of the style, references and outer spaces included",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 514,
+   "ms": 516,
    "error": null,
    "checks": [
     {
@@ -3335,7 +3335,7 @@
    "title": "review finding BYTES: three line feeds in a row outnumber two CRLF; BOM and text are kept",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 264,
+   "ms": 277,
    "error": null,
    "checks": [
     {
@@ -3350,7 +3350,7 @@
    "title": "text colour: a part of a text gets a span, one whole element or a whole paragraph gets the colour on its own tag; changing and removing",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1840,
+   "ms": 1819,
    "error": null,
    "checks": [
     {
@@ -3409,7 +3409,7 @@
    "title": "text colour keeps what it does not change: style text with references, cut colour spans, unreadable style",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1949,
+   "ms": 1989,
    "error": null,
    "checks": [
     {
@@ -3465,7 +3465,7 @@
    "title": "tables: a new table is written as plain, indented HTML with th, td and border=\"1\"; Tab moves between cells",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1501,
+   "ms": 1513,
    "error": null,
    "checks": [
     {
@@ -3523,7 +3523,7 @@
    "title": "tables: rows and columns are added and deleted; neighbours keep their place; merged cells and the last row are left alone",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1972,
+   "ms": 2003,
    "error": null,
    "checks": [
     {
@@ -3583,7 +3583,7 @@
    "title": "tables in the code as written: \"Code aufräumen\" with a table, and a table from the source is edited in place",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 432,
+   "ms": 437,
    "error": null,
    "checks": [
     {
@@ -3610,7 +3610,7 @@
    "title": "review finding 1.1h: a comment in the declaration that the colour or the alignment would change: the style stays as written, with a message",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 809,
+   "ms": 824,
    "error": null,
    "checks": [
     {
@@ -3646,7 +3646,7 @@
    "title": "review finding 2.3: \"Links\" writes text-align: left when a rule of the page centres the paragraph only in print",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1093,
+   "ms": 1108,
    "error": null,
    "checks": [
     {
@@ -3676,7 +3676,7 @@
    "title": "review finding 1.4d: a table whose columns are defined by <colgroup>: columns are not added or deleted, with a message; rows still work",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 796,
+   "ms": 795,
    "error": null,
    "checks": [
     {
@@ -3712,7 +3712,7 @@
    "title": "review finding 2.4: while a save writes, the status says so; saves asked for meanwhile are joined into one that writes the newest text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 10948,
+   "ms": 10946,
    "error": null,
    "checks": [
     {
@@ -3763,7 +3763,7 @@
    "title": "review finding 1.4c: in a table written without line breaks, rows and columns are written without line breaks too, and deleting them gives the text back",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2342,
+   "ms": 2315,
    "error": null,
    "checks": [
     {
@@ -3824,7 +3824,7 @@
    "title": "review finding 1.4e: cells and rows written without end tags keep them omitted when a row or column is added and deleted",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 700,
+   "ms": 716,
    "error": null,
    "checks": [
     {
@@ -3846,7 +3846,7 @@
    "title": "review finding 2.2-7: an image address without a file name: a changed folder is refused with a message instead of being ignored",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 535,
+   "ms": 560,
    "error": null,
    "checks": [
     {
@@ -3873,7 +3873,7 @@
    "title": "review finding 2.9-2: white space around a style attribute that holds only the alignment stays as written",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 464,
+   "ms": 487,
    "error": null,
    "checks": [
     {
@@ -3895,7 +3895,7 @@
    "title": "interim review F1: a save that waits behind a hanging write belongs to its page; another page opened meanwhile is not saved",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 3754,
+   "ms": 3775,
    "error": null,
    "checks": [
     {
@@ -3931,7 +3931,7 @@
    "title": "interim review F2: in a table with rows or cells partly on lines, adding and deleting gives the text back; the line break behind a deleted cell stays",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 1503,
+   "ms": 1556,
    "error": null,
    "checks": [
     {
@@ -3965,7 +3965,7 @@
    "title": "interim review F3: a new list item behind one without end tag: the item gets its end tag, so the line break is not part of its text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4736,
+   "ms": 4756,
    "error": null,
    "checks": [
     {
@@ -3995,7 +3995,7 @@
    "title": "review of alpha.9, S1 (F9): the same file opened again while its first write hangs; after the write it counts as not saved, with a message. Another page: \"Die vorige Seite … ist gespeichert\"",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2386,
+   "ms": 2376,
    "error": null,
    "checks": [
     {
@@ -4045,7 +4045,7 @@
    "title": "interim review F5: while the file is written the top bar says \"Speichert …\", also when another message takes the footer",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 933,
+   "ms": 951,
    "error": null,
    "checks": [
     {
@@ -4078,7 +4078,7 @@
    "title": "interim review F6: a colour or alignment declaration with !important is left as written, with a message",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 980,
+   "ms": 952,
    "error": null,
    "checks": [
     {
@@ -4123,7 +4123,7 @@
    "title": "interim review F4: \"Links\" next to a rule of the page with !important says that the rule can override it",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 515,
+   "ms": 489,
    "error": null,
    "checks": [
     {
@@ -4147,7 +4147,7 @@
    "title": "review of alpha.9, S3-01: a new item behind the last item without end tag; that item gets its end tag, so the line break is not part of its text",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 4701,
+   "ms": 4769,
    "error": null,
    "checks": [
     {
@@ -4173,7 +4173,7 @@
    "title": "review of alpha.9, S2 case 3: deleting the first cell of a row keeps the indentation of the next cell",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 793,
+   "ms": 792,
    "error": null,
    "checks": [
     {
@@ -4191,7 +4191,7 @@
    "title": "review of alpha.9, S1 points 3 and 5: another page saved while the first one writes; a failed first write and a waiting second one",
    "status": "PASS",
    "partsNotMeasured": 0,
-   "ms": 2352,
+   "ms": 2371,
    "error": null,
    "checks": [
     {
@@ -4221,6 +4221,110 @@
      "detail": "labelled mock handles as in A9-01"
     }
    ]
+  },
+  {
+   "id": "A10-01",
+   "title": "review of alpha.10, T1-6: while the write of A hangs, a file of the same name from another folder is opened without a handle; it is not taken for A",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 2893,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "B is as its file is: it stays saved when the write of A ends"
+    },
+    {
+     "pass": true,
+     "label": "and the footer speaks of the page before"
+    },
+    {
+     "pass": true,
+     "label": "B now reads like the text that is being written to A"
+    },
+    {
+     "pass": true,
+     "label": "B was changed and its file was not written: it stays not saved"
+    },
+    {
+     "pass": true,
+     "label": "guard: the file A itself dropped while its write hangs (same name, same text as before the write) counts as not saved afterwards"
+    },
+    {
+     "pass": true,
+     "label": "guard: and the pupil is told",
+     "detail": "Die Datei „seite-a.html“ wurde eben noch mit deinem früheren Stand gespeichert. Sie ist jetzt anders als diese Seite. Öffne sie neu, wenn du den gespeicherten Stand sehen willst."
+    },
+    {
+     "pass": true,
+     "note": true,
+     "label": "mock",
+     "detail": "A: labelled mock handle whose content changes on close(), which the test holds. B: a File object in a drop event made by the test"
+    }
+   ]
+  },
+  {
+   "id": "A10-02",
+   "title": "review of alpha.10, T2-3: a part whose own colour cannot be changed (!important, comment) keeps the colours inside it too",
+   "status": "PASS",
+   "partsNotMeasured": 0,
+   "ms": 1289,
+   "error": null,
+   "checks": [
+    {
+     "pass": true,
+     "label": "!important, green: nothing changes, the blue inside stays"
+    },
+    {
+     "pass": true,
+     "label": "with a message",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code."
+    },
+    {
+     "pass": true,
+     "label": "!important, removed: nothing changes, the blue inside stays"
+    },
+    {
+     "pass": true,
+     "label": "with a message",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code."
+    },
+    {
+     "pass": true,
+     "label": "a comment, green: nothing changes, the blue inside stays"
+    },
+    {
+     "pass": true,
+     "label": "with a message",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code."
+    },
+    {
+     "pass": true,
+     "label": "a comment, removed: nothing changes, the blue inside stays"
+    },
+    {
+     "pass": true,
+     "label": "with a message",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code."
+    },
+    {
+     "pass": true,
+     "label": "three paragraphs: the two that can be coloured are green, the one with !important stays whole"
+    },
+    {
+     "pass": true,
+     "label": "with a message",
+     "detail": "Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code."
+    },
+    {
+     "pass": true,
+     "label": "one undo gives the text before"
+    },
+    {
+     "pass": true,
+     "label": "guard: without !important the paragraph is coloured and the colour inside goes, as before"
+    }
+   ]
   }
  ],
  "version": "Firefox/160.0.1",
@@ -4228,11 +4332,11 @@
  "driver": "WebDriver BiDi",
  "status": "PARTIAL",
  "summary": {
-  "pass": 81,
+  "pass": 83,
   "fail": 0,
   "partial": 5,
   "notMeasured": 1,
-  "checks": 748,
+  "checks": 766,
   "partsNotMeasured": 7
  }
 }

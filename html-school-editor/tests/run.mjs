@@ -23,13 +23,14 @@ import { review6 } from './browser/review6.mjs';
 import { review7 } from './browser/review7.mjs';
 import { review8 } from './browser/review8.mjs';
 import { review9 } from './browser/review9.mjs';
+import { review10 } from './browser/review10.mjs';
 import { features7 } from './browser/features7.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const only = opt('--only') ? opt('--only').split(',') : null;
 const browsers = opt('--browser') ? [opt('--browser')] : ['edge', 'chrome', 'firefox'];
-const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7, ...review7, ...review8, ...review9].filter((t) => !only || only.includes(t.id));
+const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7, ...review7, ...review8, ...review9, ...review10].filter((t) => !only || only.includes(t.id));
 
 const artefact = fs.readFileSync(ARTEFACT);
 const meta = {

@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-q66FOM/093moyn4whHCSC/2kCeLC/qASUp2mEUkXaTs='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L7njJfNOgkHygt0CG6sfoS+EqeR/TTfed7efuFzElY4='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.10">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.11">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -113,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.10</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.11</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -186,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.10</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.11</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -2471,7 +2471,7 @@ function setColor(env, color) {
     }
     if (one) targets = [one];
   }
-  if (targets) for (const el of targets) { clearInside(el); put(el, color); }
+  if (targets) for (const el of targets) { if (withDecl(el.getAttribute('style') || '', 'color', color) !== null) clearInside(el); put(el, color); }
   else {
     for (const n of nodes) {
       for (let f = n.parentElement; f && f !== body && !BLOCKS.has(f.localName); f = f.parentElement) {
@@ -3485,7 +3485,7 @@ async function writeToHandle(handle, blob) {
 function snapshotForSave() {
   commitVisual('vis-type');                 // the file must contain the very last keystroke of the preview
   if (document.activeElement === els.pvTitle) commitTitle();
-  return { text: state.text, docId: state.docId, name: state.name, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
+  return { text: state.text, docId: state.docId, name: state.name, saved: state.savedText, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
 }
 
 function downloadDoc(given) {
@@ -3557,7 +3557,7 @@ async function otherPageWritten(snap, handle, name, ok) {
   const docId = state.docId;
   let same = false;
   if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
-  else if (!state.handle && state.onDisk) same = state.name === name;     // opened through the file input: only the name is known
+  else if (!state.handle && state.onDisk) same = state.name === name && state.savedText === snap.saved;
   if (docId !== state.docId) return true;
   if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
   state.savedText = snap.text;

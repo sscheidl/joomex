@@ -931,7 +931,7 @@ async function writeToHandle(handle, blob) {
 function snapshotForSave() {
   commitVisual('vis-type');                 // the file must contain the very last keystroke of the preview
   if (document.activeElement === els.pvTitle) commitTitle();
-  return { text: state.text, docId: state.docId, name: state.name, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
+  return { text: state.text, docId: state.docId, name: state.name, saved: state.savedText, blob: new Blob([encodeFileText(state.text, state.bom, state.eol)], { type: 'text/html' }) };
 }
 
 function downloadDoc(given) {
@@ -1010,7 +1010,9 @@ async function otherPageWritten(snap, handle, name, ok) {
   const docId = state.docId;
   let same = false;
   if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
-  else if (!state.handle && state.onDisk) same = state.name === name;     // opened through the file input: only the name is known
+  // opened without a handle (dropped, file input): only the name is known. Another file of that name is told apart
+  // by its text: the written file itself was read with the text it had before the write (snap.saved)
+  else if (!state.handle && state.onDisk) same = state.name === name && state.savedText === snap.saved;
   if (docId !== state.docId) return true;
   if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
   state.savedText = snap.text;
