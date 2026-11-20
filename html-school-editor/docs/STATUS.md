@@ -301,6 +301,7 @@ The reference editor that was studied is not a dependency. No part of it is cont
 | --- | --- | --- |
 | 1 | Review of the corrections of B1 to B4 in 1.0.0-beta.1 (a reading review by GPT is planned) | process |
 | 1a | F7 and F8 of the interim review of alpha.8 (white space left in tables) | defects, low |
+| 1b | Firefox only: a space deleted and typed again in front of a bold, italic, underlined, struck-through, raised or lowered word stands inside that element (rest of B4, see [SPECIFICATION.md](SPECIFICATION.md#2-known-limitations-of-version-100-beta1)); left as it is by the owner | defect, low |
 | 2 | Run the suite in Chrome | measurement |
 | 3 | Try native Open, Save (write-back with the permission question) and Save-as by hand in Edge and Chrome | measurement |
 | 4 | Visible-window session; input routes that were never tried: spell-check replacement in the page, dragging text inside the source field, speech and handwriting input, autofill | measurement |
