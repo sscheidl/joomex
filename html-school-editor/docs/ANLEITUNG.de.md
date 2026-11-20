@@ -50,7 +50,7 @@ Markiere Text und drücke **Farbe**. Markierst du einen ganzen Absatz, bekommt d
 3. Mit der **Tab-Taste** springst du in die nächste Zelle, mit Umschalt+Tab zurück.
 4. Fehlt eine Zeile oder Spalte? Setze den Cursor in eine Zelle und drücke wieder **Tabelle**. Dann kannst du Zeilen und Spalten einfügen oder löschen.
 
-Eine ganze Tabelle löschst du links im Code: von `<table` bis `</table>`.
+Eine ganze Tabelle löschst du links im Code: von `<table` bis `</table>`. Auch Tabellen mit `<colgroup>` (dort sind die Spalten eigens festgelegt) und Tabellen mit verbundenen Zellen änderst du links im Code.
 
 ## Titel der Seite
 
@@ -81,6 +81,8 @@ Bilder aus dem Internet zeigt der Editor nicht an. Lade das Bild herunter, lege 
 Drücke **Speichern** (oder die Tasten Strg+S) und wähle beim ersten Mal, wohin die Datei soll. Oben rechts steht, ob deine Seite gespeichert ist.
 
 **Wichtig:** Der Editor merkt sich nichts. Wenn du das Fenster schließt, ohne zu speichern, ist deine Arbeit weg.
+
+Unten steht **Speichert …**, solange die Datei geschrieben wird. Auf einem Netzlaufwerk kann das einen Moment dauern. Drückst du in dieser Zeit noch einmal Speichern, speichert der Editor danach einmal deinen neuesten Stand.
 
 Mit **Herunterladen** bekommst du eine Kopie in den Ordner „Downloads“.
 

@@ -1,7 +1,7 @@
 // Editing commands on the preview document. Block structure (paragraph, headings, lists), links and images
 // are built with plain DOM operations so that the resulting markup is predictable and valid. Only bold and
 // italic use the browser's own editing command. Every command works on the current selection of the preview.
-import { words, withAlign, withDecl, styleDeclarations } from './util.js';
+import { words, withAlign, withDecl, styleDeclarations, cssRisks } from './util.js';
 import { HREF_HOLDER, FILE_HOLDER, TARGET_HOLDER } from './project.js';
 import { BLOCKS } from './serialize.js';
 
@@ -466,10 +466,21 @@ function alignOf(el) {
   return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
 }
 
+// True if a style rule of the page sets an alignment that holds only sometimes (in print, for a hovered element,
+// for another window width): the page pane cannot show whether a block without its own alignment stays left.
+function alignSometimes(doc) {
+  const facts = {};
+  for (const st of Array.from(doc.querySelectorAll('style:not(#se-base)'))) {
+    const media = (st.getAttribute('media') || '').trim().toLowerCase();
+    cssRisks(st.textContent, facts, media !== '' && media !== 'all');
+  }
+  return !!facts.align;
+}
+
 // Alignment of the blocks in the selection (or of the block around a selected image). It is the one thing
 // the editor writes as a style attribute, because HTML has no tag for it; other declarations of an existing
 // style attribute stay as written. 'left' removes the declaration, unless a rule of the page would then
-// align the block differently. Returns 'odd' if nothing could be done because a style attribute is written in
+// align the block differently, now or only sometimes (in print, for example). Returns 'odd' if nothing could be done because a style attribute is written in
 // a way that cannot be read with certainty (an open string, comment or bracket).
 export function setAlign(env, value) {
   const doc = env.doc, range = getRange(doc);
@@ -488,13 +499,14 @@ export function setAlign(env, value) {
     targets = [wrapRun(doc, run, 'p')];
   }
   let changed = false, odd = false;
+  const sometimes = value === 'left' && alignSometimes(doc);
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
     let next = withAlign(old, value === 'left' ? '' : value);
     if (next === null) { odd = true; continue; }       // the style text cannot be read with certainty: leave it alone
     const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
     put(next);
-    if (value === 'left' && alignOf(el) !== 'left') next = put(withAlign(old, 'left'));
+    if (value === 'left' && (sometimes || alignOf(el) !== 'left')) next = put(withAlign(old, 'left'));
     if (next === old) continue;
     record(env, el, { style: next || null });
     changed = true;
@@ -598,6 +610,8 @@ export function tableAt(doc) {
 }
 
 const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
+// <colgroup> and <col> define the columns apart from the cells: the editor would have to change both
+const ownCols = (table) => Array.from(table.children).some((k) => k.localName === 'colgroup' || k.localName === 'col');
 const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
 
 // Takes an element out together with the line break in front of it (behind it, if it is the first child).
@@ -650,11 +664,12 @@ export function tableRow(env, add) {
   return 'ok';
 }
 
-// "Spalte rechts einfügen" (add) or "Spalte löschen". Returns 'ok', 'none', 'merged' or 'last'.
+// "Spalte rechts einfügen" (add) or "Spalte löschen". Returns 'ok', 'none', 'merged', 'cols' or 'last'.
 export function tableColumn(env, add) {
   const doc = env.doc, at = tableAt(doc);
   if (!at) return 'none';
   if (merged(at.table)) return 'merged';
+  if (ownCols(at.table)) return 'cols';
   const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
   if (add) {
     let mine = null;

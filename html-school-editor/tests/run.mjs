@@ -20,13 +20,14 @@ import { features } from './browser/features.mjs';
 import { review3 } from './browser/review3.mjs';
 import { features5 } from './browser/features5.mjs';
 import { review6 } from './browser/review6.mjs';
+import { review7 } from './browser/review7.mjs';
 import { features7 } from './browser/features7.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const only = opt('--only') ? opt('--only').split(',') : null;
 const browsers = opt('--browser') ? [opt('--browser')] : ['edge', 'chrome', 'firefox'];
-const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7].filter((t) => !only || only.includes(t.id));
+const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7, ...review7].filter((t) => !only || only.includes(t.id));
 
 const artefact = fs.readFileSync(ARTEFACT);
 const meta = {

@@ -68,11 +68,12 @@ function tokensFor(text) {
 
 // ---------------------------------------------------------------- status line and dialogs
 
-function setStatus(message, kind) {
+// A message in the footer. It goes after nine seconds, unless `stay` (a save that is still writing).
+function setStatus(message, kind, stay) {
   els.msg.textContent = message;
   els.msg.className = kind || '';
   clearTimeout(statusTimer);
-  if (message) statusTimer = setTimeout(() => { els.msg.textContent = ''; }, 9000);
+  if (message && !stay) statusTimer = setTimeout(() => { els.msg.textContent = ''; }, 9000);
 }
 
 function openDialog(dialog) {
@@ -498,6 +499,7 @@ function validateLinkDialog() {
 
 let picked = null;          // file chosen in the open dialog, not yet accepted
 let imageEdit = null;       // image that the open dialog changes, or null when it inserts
+let dirShown = '';          // the folder field as the dialog opened
 let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
 let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
@@ -550,7 +552,7 @@ async function imageFlow(dropped) {
   els.imgErr.textContent = '';
   els.imgAlt.value = img ? img.getAttribute('alt') || '' : '';
   els.imgWidth.value = img ? img.getAttribute('width') || '' : '';
-  els.imgDir.value = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
+  els.imgDir.value = dirShown = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
   els.imgName.textContent = !img ? 'Noch kein Bild ausgewählt.'
     : address ? 'Jetzt: ' + (address.length > 60 ? address.slice(0, 57) + '…' : address)
     : 'Jetzt: Das Bild steckt im Code der Seite.';
@@ -656,6 +658,8 @@ function validateImageDialog() {
   const result = { alt: els.imgAlt.value.trim(), width };
   const src = dialogAddress();
   if (src === null) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+  // an address that names no file in a folder keeps its address: a changed folder would be ignored
+  if (src === undefined && !picked && els.imgDir.value.trim() !== dirShown.trim()) return fail('Diese Bildadresse nennt keine Datei in einem Ordner. Der Unterordner gilt hier nur für ein neu gewähltes Bild. Die Adresse änderst du links im Code.');
   if (src !== undefined) { result.src = src; result.url = localFileUrl(src, location); }
   imageResult = result;
   return true;
@@ -672,7 +676,7 @@ async function colorFlow() {
   if (answer !== 'none' && !COLORS.has(answer)) return;
   const said = { part: 'Die Farbe kommt von einem größeren Teil, zum Beispiel vom ganzen Absatz. Markiere ihn ganz und entferne dann die Farbe.' };
   runCommand(() => { const r = setColor(env, answer === 'none' ? '' : answer); if (said[r]) setStatus(said[r], 'warn'); return r; },
-    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann. Ändere die Farbe links im Code.');
+    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code.');
 }
 
 // "Tabelle": a new table, or, with the caret in a table, a row or column more or less.
@@ -693,6 +697,7 @@ async function tableFlow() {
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   const said = { intable: 'In eine Tabelle kann keine weitere Tabelle eingefügt werden.', merged: 'Diese Tabelle hat verbundene Zellen. Ändere sie links im Code.',
+    cols: 'Diese Tabelle legt ihre Spalten mit <colgroup> oder <col> fest. Spalten änderst du links im Code.',
     last: 'Die letzte Zeile oder Spalte bleibt stehen. Eine ganze Tabelle löschst du links im Code.' };
   const run = (fn) => runCommand(() => { const r = fn(); if (said[r]) setStatus(said[r], 'warn'); return r; }, 'Setze den Cursor in eine Zelle der Tabelle.');
   if (answer === 'ok' && tableResult) { const t = tableResult; run(() => insertTable(env, getRange(pvDoc) || range, t)); }
@@ -944,11 +949,24 @@ function downloadDoc(given) {
 
 // One save at a time: a save waits until the one before it is finished, so the file is written in the order
 // of the requests and the newest text is the last one written.
-let saving = Promise.resolve(true);
+// Saves run one after the other, so that the newest text is written last. While one writes, every further
+// "Speichern" joins one single save that follows it and takes the text as it is then: on a slow network drive
+// pressing the key again and again gives two writes, not a queue of them.
+let saving = null, nextSave = null;
 function saveDoc() {
-  const run = saving.then(saveNow, saveNow);
-  saving = run;
-  return run;
+  if (!saving) return startSave();
+  if (!nextSave) {
+    setStatus('Speichert … Deine neuesten Änderungen werden gleich danach gespeichert.', '', true);
+    const go = () => { nextSave = null; return startSave(); };
+    nextSave = saving.then(go, go);
+  }
+  return nextSave;
+}
+function startSave() {
+  const done = () => { saving = null; };
+  saving = saveNow();
+  saving.then(done, done);
+  return saving;
 }
 
 async function saveNow() {
@@ -961,6 +979,7 @@ async function saveNow() {
       return downloadDoc(snap);
     }
   }
+  if (!nextSave) setStatus('Speichert …', '', true);
   const result = await writeToHandle(handle, snap.blob);
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
@@ -1174,7 +1193,7 @@ function wireChrome() {
   tool(els.bBrowse, browseDoc);
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
-  const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code.';
+  const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Ausrichtung links im Code.';
   tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock, oddStyle));
   tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock, oddStyle));
   tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock, oddStyle));

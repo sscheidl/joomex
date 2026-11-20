@@ -42,7 +42,9 @@ function mark(ctx, el, i, atEnd) {
 }
 
 // Starts a new line for a freshly created block element unless the output already is at the start of a line.
+// No line where the neighbours stand without line breaks (indent null).
 function freshLine(ctx, indent) {
+  if (indent === null) return;
   const tail = (ctx.before + ctx.s).slice(-200);
   if (!tail) return;
   const m = /\n([ \t]*)$/.exec(tail);
@@ -50,15 +52,21 @@ function freshLine(ctx, indent) {
   else if (!m[1]) ctx.s += indent;
 }
 
+// The indentation of new children of `el`: that of its first child from the source. null for the parts of a
+// table that are written without line breaks: new rows and cells are then written the same way, and so are the
+// new elements in them.
+const TABLE_ROWS_IN = words('table thead tbody tfoot tr');
 function childIndent(ctx, el, t, parentIndent) {
   for (const c of Array.from(el.childNodes)) {
     const ct = mappedT(ctx, c);
     if (ct && ct.type === 'el' && !ct.implied && !ct.synthetic && inPlace(ct, t)) {
       const ind = lineIndentAt(ctx.src, ct.start);
       if (ind != null) return ind;
+      if (TABLE_ROWS_IN.has(el.localName)) return null;
       break;
     }
   }
+  if (parentIndent === null) return null;
   return t && t.virtual ? '' : parentIndent + '  ';
 }
 
@@ -104,16 +112,21 @@ function emitKids(ctx, el, t, parentIndent) {
   }
   mark(ctx, el, kids.length, true);
   if (t) ctx.s += ctx.src.slice(t.tail, t.closeStart);
-  if (newBlockLast) ctx.s += '\n' + parentIndent;
+  if (newBlockLast && indent !== null) ctx.s += '\n' + (parentIndent || '');
 }
 
-// An element whose end tag is omitted in the source must get one when what follows it has changed.
+// An element whose end tag is omitted in the source must get one when what follows it has changed, unless
+// what follows now ends it just as well: the start of an element of the same kind, or the end of the parent
+// (HTML lets cells, rows and list items end that way).
+const ENDS_BEFORE = { td: words('td th'), th: words('td th'), tr: words('tr'), li: words('li'), dt: words('dt dd'), dd: words('dt dd') };
 function needsEndTag(ctx, c, t) {
   if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
-  return next !== origNext;
+  if (next === origNext) return false;
+  const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
+  return !(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))));
 }
 
 const WS_ONLY = /^[ \t\n\f\r]*$/;

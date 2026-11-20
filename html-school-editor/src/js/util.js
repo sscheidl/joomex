@@ -166,11 +166,16 @@ export function withAlign(style, value) {
 // Returns the style text with its declaration of the property `prop` replaced by `value` ('' removes it). Every
 // other declaration stays exactly as written, and adding and removing again gives back the text that was there.
 // Declarations are found by reading the text as CSS (strings, comments, escapes and brackets are respected),
-// never by searching for the word. Returns null if the text cannot be split into declarations with certainty;
-// the caller then leaves the attribute alone.
+// never by searching for the word. Returns null if the text cannot be split into declarations with certainty,
+// or if a declaration that would change holds a comment (the comment would go with it); the caller then leaves
+// the attribute alone. A single declaration that already has the value stays exactly as written.
 export function withDecl(style, prop, value) {
   const text = String(style), decls = styleDeclarations(text);
   if (!decls) return null;
+  const mine = decls.filter((d) => d.name === prop);
+  if (mine.some((d) => text.slice(d.start, d.end).includes('/*'))) return null;
+  const same = mine.length === 1 && /^\s*[a-z-]+\s*:\s*([a-z]+)\s*$/i.exec(text.slice(mine[0].start, mine[0].end));
+  if (value && same && same[1].toLowerCase() === value) return text;
   let rest = text;
   for (let k = decls.length - 1; k >= 0; k--) {
     const d = decls[k];
@@ -183,7 +188,7 @@ export function withDecl(style, prop, value) {
   rest = rest.trim();
   if (!value) return rest ? lead + rest + trail : '';
   const decl = prop + ': ' + value;
-  if (!rest) return decl;
+  if (!rest) return lead + decl + trail;
   return lead + (/;$/.test(rest) ? rest + ' ' + decl + ';' : rest + '; ' + decl) + trail;
 }
 
@@ -269,6 +274,7 @@ export function cssRisks(css, facts, sometimes0) {
     if (SPACE_PROPS.has(name) && !value.split(/[ \t\n\f\r]+/).every((w) => SPACE_KEEP.has(w))) facts.spaces = true;
     if (LAYOUT_PROPS.has(name) && (conditional || /(?:var|if)\s*\(/.test(value))) facts.conditional = true;
     if (conditional && name.startsWith('--')) facts.conditional = true;
+    if (conditional && name.toLowerCase() === 'text-align') facts.align = true;     // an alignment that holds only sometimes
   };
   const sometimes = (prelude) => {
     const plain = cssPlain(prelude).trim();

@@ -121,7 +121,8 @@ test('alignment: the declaration is added, replaced and removed without touching
   assert.equal(withAlign('background:url(a;text-align:b)', 'left'), 'background:url(a;text-align:b); text-align: left');
   assert.equal(withAlign('/* text-align: left */ color: red', ''), '/* text-align: left */ color: red');
   assert.equal(withAlign('te\\78t-align: left; x:y', 'right'), 'x:y; text-align: right', 'a name written with an escape is the same property');
-  assert.equal(withAlign('text-align/**/: left', ''), '');
+  // until alpha.7 the declaration went together with its comment; since review finding 1.1h it is left alone
+  assert.equal(withAlign('text-align/**/: left', ''), null);
   assert.equal(withAlign('text-align: left; a:b; text-align: right;', 'center'), 'a:b; text-align: center;');
   for (const open of ['x:"a', "x:'a", 'x:(a', 'x: a /* b', 'x: a)', 'x:"a\nb"']) assert.equal(withAlign(open, 'center'), null, 'not certain, left alone: ' + JSON.stringify(open));
   assert.deepEqual(styleDeclarations('a:b; c:"d;e"').map((d) => d.name), ['a', 'c']);
@@ -191,4 +192,20 @@ test('text colour: one declaration is set and removed through the CSS reader; ne
   assert.equal(plainStyle('color: red'), 'color: red');
   assert.equal(plainStyle(' COLOR : Navy ; text-align:center; '), 'color: navy; text-align: center');
   for (const style of ['color: #f00', 'color: rgb(1,2,3)', 'color: pink', 'color: red; font-size: 40px', 'color: red !important', 'color: var(--c)', 'background: red', 'text-align: start']) assert.equal(plainStyle(style), '', style);
+});
+
+test('review findings of alpha.6 and alpha.7: comments, the same value, white space, alignments that hold only sometimes', () => {
+  assert.equal(withDecl('/* x */ color: blue', 'color', 'red'), null, 'a comment in the declaration that would change: left alone');
+  assert.equal(withDecl('color: blue /* x */', 'color', ''), null);
+  assert.equal(withDecl('font-family: A /* f */; color: blue', 'color', 'red'), 'font-family: A /* f */; color: red', 'a comment in another declaration stays');
+  assert.equal(withDecl('  text-align:center  ', 'text-align', 'center'), '  text-align:center  ', 'the same value: the text stays exactly as written');
+  assert.equal(withDecl('  text-align:center  ', 'text-align', 'right'), '  text-align: right  ', 'white space around the whole text stays');
+  assert.equal(withDecl('COLOR: Red', 'color', 'red'), 'COLOR: Red');
+  assert.equal(withDecl('color:red;color:blue', 'color', 'red'), 'color: red', 'two declarations of the property: both go, one is written');
+  const align = (css, media) => !!cssRisks(css, {}, media).align;
+  assert.equal(align('p { text-align: center }', false), false, 'a rule that always holds');
+  assert.equal(align('p { text-align: center }', true), true, 'in a style element for print');
+  assert.equal(align('@media print { p { text-align: center } }', false), true);
+  assert.equal(align('p:hover { text-align: center }', false), true);
+  assert.equal(align('@media print { p { color: gray } }', false), false, 'a print rule without an alignment');
 });

@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Mhv5jbAjnzVjAViOOgylhWJOKs7NcM3AerXTDv7AgFM='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MMaKGbAQONR+HvuNEc4Lwoi7jRsXxwv7MWHPn04WxEw='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.7">
+<meta name="generator" content="html-school-editor 0.1.0-alpha.8">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -113,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.7</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.8</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -186,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.7</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.8</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -419,6 +419,10 @@ function withAlign(style, value) {
 function withDecl(style, prop, value) {
   const text = String(style), decls = styleDeclarations(text);
   if (!decls) return null;
+  const mine = decls.filter((d) => d.name === prop);
+  if (mine.some((d) => text.slice(d.start, d.end).includes('/*'))) return null;
+  const same = mine.length === 1 && /^\s*[a-z-]+\s*:\s*([a-z]+)\s*$/i.exec(text.slice(mine[0].start, mine[0].end));
+  if (value && same && same[1].toLowerCase() === value) return text;
   let rest = text;
   for (let k = decls.length - 1; k >= 0; k--) {
     const d = decls[k];
@@ -429,7 +433,7 @@ function withDecl(style, prop, value) {
   rest = rest.trim();
   if (!value) return rest ? lead + rest + trail : '';
   const decl = prop + ': ' + value;
-  if (!rest) return decl;
+  if (!rest) return lead + decl + trail;
   return lead + (/;$/.test(rest) ? rest + ' ' + decl + ';' : rest + '; ' + decl) + trail;
 }
 
@@ -499,6 +503,7 @@ function cssRisks(css, facts, sometimes0) {
     if (SPACE_PROPS.has(name) && !value.split(/[ \t\n\f\r]+/).every((w) => SPACE_KEEP.has(w))) facts.spaces = true;
     if (LAYOUT_PROPS.has(name) && (conditional || /(?:var|if)\s*\(/.test(value))) facts.conditional = true;
     if (conditional && name.startsWith('--')) facts.conditional = true;
+    if (conditional && name.toLowerCase() === 'text-align') facts.align = true;     // an alignment that holds only sometimes
   };
   const sometimes = (prelude) => {
     const plain = cssPlain(prelude).trim();
@@ -1399,6 +1404,7 @@ function mark(ctx, el, i, atEnd) {
 }
 
 function freshLine(ctx, indent) {
+  if (indent === null) return;
   const tail = (ctx.before + ctx.s).slice(-200);
   if (!tail) return;
   const m = /\n([ \t]*)$/.exec(tail);
@@ -1406,15 +1412,18 @@ function freshLine(ctx, indent) {
   else if (!m[1]) ctx.s += indent;
 }
 
+const TABLE_ROWS_IN = words('table thead tbody tfoot tr');
 function childIndent(ctx, el, t, parentIndent) {
   for (const c of Array.from(el.childNodes)) {
     const ct = mappedT(ctx, c);
     if (ct && ct.type === 'el' && !ct.implied && !ct.synthetic && inPlace(ct, t)) {
       const ind = lineIndentAt(ctx.src, ct.start);
       if (ind != null) return ind;
+      if (TABLE_ROWS_IN.has(el.localName)) return null;
       break;
     }
   }
+  if (parentIndent === null) return null;
   return t && t.virtual ? '' : parentIndent + '  ';
 }
 
@@ -1454,15 +1463,18 @@ function emitKids(ctx, el, t, parentIndent) {
   }
   mark(ctx, el, kids.length, true);
   if (t) ctx.s += ctx.src.slice(t.tail, t.closeStart);
-  if (newBlockLast) ctx.s += '\n' + parentIndent;
+  if (newBlockLast && indent !== null) ctx.s += '\n' + (parentIndent || '');
 }
 
+const ENDS_BEFORE = { td: words('td th'), th: words('td th'), tr: words('tr'), li: words('li'), dt: words('dt dd'), dd: words('dt dd') };
 function needsEndTag(ctx, c, t) {
   if (t.type !== 'el' || t.explicitEnd || t.implied || t.synthetic || VOID_TAGS.has(t.name) || t.tagEnd === t.start) return false;
   const sibs = t.parent ? t.parent.kids : [];
   const origNext = sibs[sibs.indexOf(t) + 1] || null;
   const next = c.nextSibling ? mappedT(ctx, c.nextSibling) : null;
-  return next !== origNext;
+  if (next === origNext) return false;
+  const ends = ENDS_BEFORE[t.name], after = c.nextSibling;
+  return !(ends && (!after || (after.nodeType === 1 && ends.has(after.localName))));
 }
 
 const WS_ONLY = /^[ \t\n\f\r]*$/;
@@ -2367,6 +2379,15 @@ function alignOf(el) {
   return /center/.test(v) ? 'center' : /justify/.test(v) ? 'justify' : /right|end/.test(v) ? 'right' : 'left';
 }
 
+function alignSometimes(doc) {
+  const facts = {};
+  for (const st of Array.from(doc.querySelectorAll('style:not(#se-base)'))) {
+    const media = (st.getAttribute('media') || '').trim().toLowerCase();
+    cssRisks(st.textContent, facts, media !== '' && media !== 'all');
+  }
+  return !!facts.align;
+}
+
 function setAlign(env, value) {
   const doc = env.doc, range = getRange(doc);
   if (!range) return 'none';
@@ -2384,13 +2405,14 @@ function setAlign(env, value) {
     targets = [wrapRun(doc, run, 'p')];
   }
   let changed = false, odd = false;
+  const sometimes = value === 'left' && alignSometimes(doc);
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
     let next = withAlign(old, value === 'left' ? '' : value);
     if (next === null) { odd = true; continue; }       // the style text cannot be read with certainty: leave it alone
     const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
     put(next);
-    if (value === 'left' && alignOf(el) !== 'left') next = put(withAlign(old, 'left'));
+    if (value === 'left' && (sometimes || alignOf(el) !== 'left')) next = put(withAlign(old, 'left'));
     if (next === old) continue;
     record(env, el, { style: next || null });
     changed = true;
@@ -2481,6 +2503,7 @@ function tableAt(doc) {
 }
 
 const merged = (table) => !!table.querySelector('[rowspan], [colspan]');
+const ownCols = (table) => Array.from(table.children).some((k) => k.localName === 'colgroup' || k.localName === 'col');
 const cellsOf = (table) => Array.from(table.rows).flatMap((tr) => Array.from(tr.cells));
 
 function takeOut(env, el) {
@@ -2533,6 +2556,7 @@ function tableColumn(env, add) {
   const doc = env.doc, at = tableAt(doc);
   if (!at) return 'none';
   if (merged(at.table)) return 'merged';
+  if (ownCols(at.table)) return 'cols';
   const rows = Array.from(at.table.rows), i = Array.prototype.indexOf.call(at.row.cells, at.cell);
   if (add) {
     let mine = null;
@@ -2646,11 +2670,11 @@ function tokensFor(text) {
 }
 
 
-function setStatus(message, kind) {
+function setStatus(message, kind, stay) {
   els.msg.textContent = message;
   els.msg.className = kind || '';
   clearTimeout(statusTimer);
-  if (message) statusTimer = setTimeout(() => { els.msg.textContent = ''; }, 9000);
+  if (message && !stay) statusTimer = setTimeout(() => { els.msg.textContent = ''; }, 9000);
 }
 
 function openDialog(dialog) {
@@ -3046,6 +3070,7 @@ function validateLinkDialog() {
 
 let picked = null;          // file chosen in the open dialog, not yet accepted
 let imageEdit = null;       // image that the open dialog changes, or null when it inserts
+let dirShown = '';          // the folder field as the dialog opened
 let imageResult = null;     // what the dialog decided: { src, url, alt, width }
 let lastFolder = '';
 let pickSeq = 0;            // counts choices and dialogs: a check that finishes for an older one is dropped
@@ -3092,7 +3117,7 @@ async function imageFlow(dropped) {
   els.imgErr.textContent = '';
   els.imgAlt.value = img ? img.getAttribute('alt') || '' : '';
   els.imgWidth.value = img ? img.getAttribute('width') || '' : '';
-  els.imgDir.value = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
+  els.imgDir.value = dirShown = address && fileOfSrc(address) ? folderOfSrc(address) : lastFolder;
   els.imgName.textContent = !img ? 'Noch kein Bild ausgewählt.'
     : address ? 'Jetzt: ' + (address.length > 60 ? address.slice(0, 57) + '…' : address)
     : 'Jetzt: Das Bild steckt im Code der Seite.';
@@ -3187,6 +3212,7 @@ function validateImageDialog() {
   const result = { alt: els.imgAlt.value.trim(), width };
   const src = dialogAddress();
   if (src === null) return fail('Der Name des Unterordners darf keine Zeichen wie : ? # " < > enthalten.');
+  if (src === undefined && !picked && els.imgDir.value.trim() !== dirShown.trim()) return fail('Diese Bildadresse nennt keine Datei in einem Ordner. Der Unterordner gilt hier nur für ein neu gewähltes Bild. Die Adresse änderst du links im Code.');
   if (src !== undefined) { result.src = src; result.url = localFileUrl(src, location); }
   imageResult = result;
   return true;
@@ -3202,7 +3228,7 @@ async function colorFlow() {
   if (answer !== 'none' && !COLORS.has(answer)) return;
   const said = { part: 'Die Farbe kommt von einem größeren Teil, zum Beispiel vom ganzen Absatz. Markiere ihn ganz und entferne dann die Farbe.' };
   runCommand(() => { const r = setColor(env, answer === 'none' ? '' : answer); if (said[r]) setStatus(said[r], 'warn'); return r; },
-    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann. Ändere die Farbe links im Code.');
+    'Markiere zuerst den Text, den du färben möchtest.', 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Farbe links im Code.');
 }
 
 let tableResult = null;
@@ -3221,6 +3247,7 @@ async function tableFlow() {
   if (state.rev !== rev || state.docId !== docId) return;
   restoreRange(range);
   const said = { intable: 'In eine Tabelle kann keine weitere Tabelle eingefügt werden.', merged: 'Diese Tabelle hat verbundene Zellen. Ändere sie links im Code.',
+    cols: 'Diese Tabelle legt ihre Spalten mit <colgroup> oder <col> fest. Spalten änderst du links im Code.',
     last: 'Die letzte Zeile oder Spalte bleibt stehen. Eine ganze Tabelle löschst du links im Code.' };
   const run = (fn) => runCommand(() => { const r = fn(); if (said[r]) setStatus(said[r], 'warn'); return r; }, 'Setze den Cursor in eine Zelle der Tabelle.');
   if (answer === 'ok' && tableResult) { const t = tableResult; run(() => insertTable(env, getRange(pvDoc) || range, t)); }
@@ -3458,11 +3485,21 @@ function downloadDoc(given) {
   return true;
 }
 
-let saving = Promise.resolve(true);
+let saving = null, nextSave = null;
 function saveDoc() {
-  const run = saving.then(saveNow, saveNow);
-  saving = run;
-  return run;
+  if (!saving) return startSave();
+  if (!nextSave) {
+    setStatus('Speichert … Deine neuesten Änderungen werden gleich danach gespeichert.', '', true);
+    const go = () => { nextSave = null; return startSave(); };
+    nextSave = saving.then(go, go);
+  }
+  return nextSave;
+}
+function startSave() {
+  const done = () => { saving = null; };
+  saving = saveNow();
+  saving.then(done, done);
+  return saving;
 }
 
 async function saveNow() {
@@ -3475,6 +3512,7 @@ async function saveNow() {
       return downloadDoc(snap);
     }
   }
+  if (!nextSave) setStatus('Speichert …', '', true);
   const result = await writeToHandle(handle, snap.blob);
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
@@ -3674,7 +3712,7 @@ function wireChrome() {
   tool(els.bBrowse, browseDoc);
   tool(els.bUl, () => runCommand(() => toggleList(env, 'ul'), noBlock));
   tool(els.bOl, () => runCommand(() => toggleList(env, 'ol'), noBlock));
-  const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen). Ändere die Ausrichtung links im Code.';
+  const oddStyle = 'Hier steht im Code ein style-Attribut, das der Editor nicht sicher lesen kann (zum Beispiel fehlt ein Anführungszeichen oder ein Kommentar steht darin). Ändere die Ausrichtung links im Code.';
   tool(els.bAlignLeft, () => runCommand(() => setAlign(env, 'left'), noBlock, oddStyle));
   tool(els.bAlignCenter, () => runCommand(() => setAlign(env, 'center'), noBlock, oddStyle));
   tool(els.bAlignRight, () => runCommand(() => setAlign(env, 'right'), noBlock, oddStyle));
