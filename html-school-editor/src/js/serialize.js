@@ -177,7 +177,13 @@ const isSolid = (ch) => !!ch && ch !== ' ' && ch !== NBSP && ch !== '\n' && ch !
 
 // Character next to a text node within the same line of text ('' at a block boundary or line break).
 function neighbourChar(c, before) {
-  const sib = before ? c.previousSibling : c.nextSibling;
+  let sib = before ? c.previousSibling : c.nextSibling;
+  // at the edge of an inline element: the text that stands directly next to that element (Firefox puts a typed
+  // space into the bold word behind it, as a no-break space)
+  for (let p = c.parentNode; !sib && p && p.nodeType === 1 && p.localName !== 'body' && !BLOCKS.has(p.localName); p = p.parentNode) {
+    sib = before ? p.previousSibling : p.nextSibling;
+    if (sib && sib.nodeType !== 3) return '';
+  }
   if (!sib) return '';
   if (sib.nodeType === 3) return sib.data ? (before ? sib.data[sib.data.length - 1] : sib.data[0]) : '';
   return sib.nodeType === 1 && !BLOCKS.has(sib.localName) && sib.localName !== 'br' ? 'x' : '';

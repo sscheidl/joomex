@@ -17,7 +17,7 @@ import { formatSource, withTitle, FMT_BLOCK, FMT_KEEP } from './format.js';
 import { highlightLines, patchLines, linePoint } from './highlight.js';
 import { createHistory } from './history.js';
 import { readImage } from './images.js';
-import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink, opensNewTab, setColor, tableAt, insertTable, tableRow, tableColumn, stepCell } from './commands.js';
+import { getRange, isEditableAt, setBlock, toggleList, toggleInline, linkProblem, insertLink, removeLinks, insertImage, insertPlainText, caretState, setAlign, selectedImage, changeImage, linkAround, changeLink, opensNewTab, setColor, tableAt, insertTable, tableRow, tableColumn, stepCell, trimToBlock, dropEmptyLists, joinPlan, joinBlocks } from './commands.js';
 
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
@@ -1127,6 +1127,9 @@ function wireDrop(target, always) {
   });
 }
 
+// Firefox's editing engine; only the join of blocks of different kinds is taken from it (see joinPlan in commands.js).
+const GECKO = /\bGecko\/\d/.test(navigator.userAgent);
+
 function wirePreview() {
   try { pvDoc.execCommand('defaultParagraphSeparator', false, 'p'); pvDoc.execCommand('styleWithCSS', false, false); } catch (e) { /* defaults stay */ }
   const fresh = () => { if (!state.visualDirty) renderIfStale(); };
@@ -1143,11 +1146,18 @@ function wirePreview() {
     else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
     else if (type === 'formatUnderline') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
+    else if (GECKO && !state.composing && /^(?:insertText|insertParagraph|deleteByCut|delete(?:Content|Word)(?:Backward|Forward))$/.test(type) && joinPlan(pvDoc, type)) {
+      // Firefox would lose text in this join of two blocks (see joinPlan in commands.js): the editor does it
+      commitVisual('vis-type');
+      const plan = joinPlan(pvDoc, type);
+      if (plan) { e.preventDefault(); state.onlyInserts = false; runCommand(() => joinBlocks(env, plan, type === 'insertText' ? e.data || '' : '', type === 'insertParagraph')); }
+    }
   });
   pvDoc.addEventListener('input', (e) => {
     // Remembered for the writer: after a deletion, a space that is gone was deleted; while only typing, the
     // browser may have tidied it away next door (see engineTidied in serialize.js).
     if (!/^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/.test(e.inputType || '')) state.onlyInserts = false;
+    if (e.inputType === 'insertParagraph') dropEmptyLists(env);
     markVisualDirty();
     if (!state.composing) scheduleCommit();
   });
@@ -1157,13 +1167,15 @@ function wirePreview() {
     e.preventDefault();
     const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
     if (!text) { setStatus('Hier kannst du nur Text einfügen. Bilder fügst du mit dem Knopf „Bild“ ein.', 'warn'); return; }
-    runCommand(() => insertPlainText(env, text.length > 200000 ? text.slice(0, 200000) : text));
+    const part = text.length > 200000 ? text.slice(0, 200000) : text;
+    runCommand(() => { const plan = GECKO ? joinPlan(pvDoc, 'insertText') : null; return plan ? joinBlocks(env, plan, part) : insertPlainText(env, part); });
   });
   pvDoc.addEventListener('dragstart', (e) => e.preventDefault());
   wireDrop(pvDoc, true);
   pvDoc.addEventListener('click', (e) => {
     const target = e.target;
     if (!target || !target.closest) return;
+    if (e.detail >= 3) trimToBlock(pvDoc, target);
     if (target.closest('a')) e.preventDefault();
     // A click on an image selects it, so that "Bild" and the alignment buttons know which one is meant.
     if (target.localName === 'img' && target.parentNode && target.parentNode.isContentEditable) {

@@ -752,3 +752,90 @@ export function caretState(doc) {
   state.align = alignOf(closestTag(image || range.startContainer, body, ALIGNABLE) || body);
   return state;
 }
+
+// ---------------------------------------------------------------- what the browser's own editing gets wrong
+
+// A triple click in Chromium selects up to the start of the block behind the one clicked; typing or deleting then
+// joins that block. The selection is cut back to the end of the clicked block.
+const CLICKED = words('p h1 h2 h3 h4 h5 h6 li dt dd td th');
+export function trimToBlock(doc, target) {
+  const range = getRange(doc), block = range && !range.collapsed ? closestTag(target, doc.body, CLICKED) : null;
+  if (!block || !block.contains(range.startContainer) || block.contains(range.endContainer)) return false;
+  const rest = doc.createRange();
+  rest.setStart(block, block.childNodes.length);
+  rest.setEnd(range.endContainer, range.endOffset);
+  if (/[^ \t\n\f\r]/.test(rest.toString()) || rest.cloneContents().querySelector('img')) return false;      // more than this block is selected
+  doc.getSelection().setBaseAndExtent(range.startContainer, range.startOffset, block, block.childNodes.length);
+  return true;
+}
+
+// Firefox, on Enter in an empty last list item, leaves a second list without items behind the new paragraph.
+// A list without items that does not come from the source goes.
+export function dropEmptyLists(env) {
+  for (const list of Array.from(env.doc.body.querySelectorAll('ul, ol'))) {
+    if (!list.children.length && !/[^ \t\n\f\r]/.test(list.textContent) && !env.info.get(list)) takeOut(env, list);
+  }
+}
+
+// Firefox loses text when it joins two blocks of different kinds and the second one holds an inline element
+// (measured in Firefox 160: Backspace at the start of a paragraph behind a heading deletes the paragraph from its
+// first bold word on). For exactly these joins the editor moves the content itself; all others stay with the browser.
+const JOIN = words('p h1 h2 h3 h4 h5 h6 li');
+const LIST = words('ul ol');
+const elementNextTo = (el, back) => { let n = back ? el.previousSibling : el.nextSibling; while (blankText(n)) n = back ? n.previousSibling : n.nextSibling; return n && n.nodeType === 1 ? n : null; };
+// a line break at the very end of a block is not seen; in front of more text it would be
+const padBreak = (block) => { let n = block.lastChild; while (blankText(n)) n = n.previousSibling; return n && n.nodeType === 1 && n.localName === 'br' ? n : null; };
+const joinable = (el) => !!el && JOIN.has(el.localName) && el.isContentEditable && !el.querySelector('ul, ol, table') && (el.localName !== 'li' || LIST.has(el.parentNode.localName));
+const around = (el) => (el.localName === 'li' ? el.parentNode.parentNode : el.parentNode);
+const hasInline = (el) => Array.from(el.querySelectorAll('*')).some((k) => k.localName !== 'br');
+
+// The block whose text goes on behind (or in front of) this one, if it is of another kind: a paragraph or heading
+// next to it, the nearest item of a list next to it, or what follows the list behind its last item.
+function otherKindNextTo(block, back) {
+  let from = block;
+  if (block.localName === 'li') {
+    if (back || elementNextTo(block, false)) return null;
+    from = block.parentNode;
+  }
+  let n = elementNextTo(from, back);
+  if (n && LIST.has(n.localName)) n = back ? n.lastElementChild : n.firstElementChild;
+  return joinable(n) && n.localName !== block.localName ? n : null;
+}
+
+// { a, b, range? }: the content of b is to go to the end of a (after the selected part is deleted), or null if
+// the pending input is not such a join. `type`: the input type of the beforeinput event.
+export function joinPlan(doc, type) {
+  const range = getRange(doc), body = doc.body;
+  if (!range) return null;
+  if (!range.collapsed) {
+    const a = closestTag(range.startContainer, body, JOIN), b = closestTag(range.endContainer, body, JOIN);
+    if (!joinable(a) || !joinable(b) || a === b || a.localName === b.localName || around(a) !== around(b) || !hasInline(b)) return null;
+    return blockOf(range.startContainer, body) === a && blockOf(range.endContainer, body) === b ? { a, b, range } : null;
+  }
+  if (!/^delete(?:Content|Word)(?:Backward|Forward)$/.test(type)) return null;
+  const back = /Backward$/.test(type), block = closestTag(range.startContainer, body, JOIN);
+  if (!joinable(block) || blockOf(range.startContainer, body) !== block) return null;
+  const rest = doc.createRange(), pad = padBreak(block);
+  if (back) { rest.setStart(block, 0); rest.setEnd(range.startContainer, range.startOffset); }
+  else { rest.setStart(range.startContainer, range.startOffset); if (pad) rest.setEndBefore(pad); else rest.setEnd(block, block.childNodes.length); }
+  if (/[^ \t\n\f\r]/.test(rest.toString()) || rest.cloneContents().querySelector('img, br')) return null;      // the caret is not at that edge
+  const other = otherKindNextTo(block, back);
+  if (!other || !hasInline(back ? block : other)) return null;
+  return back ? { a: other, b: block } : { a: block, b: other };
+}
+
+// Carries out a plan of joinPlan(); `text` is typed at the place of the join, or the block is split there (`split`).
+export function joinBlocks(env, plan, text, split) {
+  const doc = env.doc, { a, b } = plan;
+  if (plan.range) plan.range.deleteContents();
+  const pad = padBreak(a);
+  if (pad) pad.remove();
+  const last = a.lastChild, at = a.childNodes.length;
+  while (b.firstChild) a.appendChild(b.firstChild);
+  const list = b.localName === 'li' ? b.parentNode : null;
+  takeOut(env, b);
+  if (list && !list.querySelector('li')) takeOut(env, list);
+  try { if (last && last.nodeType === 3) doc.getSelection().collapse(last, last.data.length); else doc.getSelection().collapse(a, at); } catch (e) { /* keep the browser's selection */ }
+  if (split) { try { doc.execCommand('insertParagraph'); } catch (e) { /* the join is done */ } }
+  return text ? insertPlainText(env, text) : 'ok';
+}

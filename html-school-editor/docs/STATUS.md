@@ -1,14 +1,20 @@
 # Status
 
-**Version:** 0.1.0-alpha.11 · **Date:** 2026-11-20 · **Location:** `html-school-editor/` in this repository, branch `fix/html-school-editor-0.1.0-alpha.11`, stacked on `fix/html-school-editor-0.1.0-alpha.10`, stacked on `fix/html-school-editor-0.1.0-alpha.9`, which is stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22)
+**Version:** 1.0.0-beta.1 · **Date:** 2026-11-20 · **Location:** `html-school-editor/` in this repository, branch `fix/html-school-editor-1.0.0-beta.1`, stacked on `fix/html-school-editor-0.1.0-alpha.11`, stacked on `fix/html-school-editor-0.1.0-alpha.10`, stacked on `fix/html-school-editor-0.1.0-alpha.9`, which is stacked on `fix/html-school-editor-0.1.0-alpha.8` (pull request 22)
 
-## Verdict: HOLD
+## Verdict: beta for an accompanied classroom trial (owner's decision); no release
+
+An independent review of alpha.11 with the corrections of alpha.8 to alpha.11 (2026-11-20, a second reviewer, Claude Fable, working without the implementer's context and with probes and expectations of its own; the owner had it carried out in place of the review asked of Codex) ended with **PASS for the accompanied trial in Edge, with two conditions, and HOLD for Firefox**. The corrections held for the reviewer's own inputs, no regression against alpha.7 was found and no earlier class of defect was open again. It found four defects, B1 to B4, all in the editing engines of the browsers and all present in alpha.7 as well ([below](#findings-of-the-independent-review-of-alpha11-and-their-corrections)). The owner asked for all four to be corrected before the trial and named the result 1.0.0-beta.1. **The corrections of B1 to B4 are not reviewed**; a reading review by GPT is planned. The reviewer's report was handed over to the owner only.
+
+The reviewer's two conditions stand: one hand test of the native file dialogs on a school computer before the first lesson (never measured by anyone), and telling pupils about Ctrl+Z. The class works in Edge; in Firefox, Save is always a download.
+
+Earlier verdicts, for the record: HOLD up to alpha.11.
 
 Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.1.0-alpha.1.md](reviews/REVIEW_0.1.0-alpha.1.md), findings RV-01 to RV-04) and of alpha.2 with alpha.3 together ([reviews/REVIEW_0.1.0-alpha.3.md](reviews/REVIEW_0.1.0-alpha.3.md), findings A3-01 to A3-05 and one about the test helper). The second review confirmed RV-01 and RV-03 as corrected and found RV-02 and RV-04 corrected only for the reported examples. The reviewer then measured alpha.3 in Firefox ([reviews/FIREFOX_0.1.0-alpha.3.md](reviews/FIREFOX_0.1.0-alpha.3.md)) and found three differences. Version 0.1.0-alpha.4 corrects the five findings and the three Firefox differences, and makes the image dialog show the address it will write, after a report of the owner. After trying it, the owner asked for three more changes, which are in this version too: pictures are shown from the folder of the editor (this widens the content policy, see below), the version number stands in the top bar, and the box of a picture from the network says what to do. A third independent review, of alpha.4 and alpha.5 together, ended with **FAIL** on 2026-11-19: fourteen findings, five of them high ([below](#findings-of-the-review-of-alpha4-and-alpha5-and-their-corrections)). Its report was handed over to the owner only and is not part of this repository. Version 0.1.0-alpha.6 corrects all fourteen findings and one sentence of the specification. Version 0.1.0-alpha.7 adds text colour and tables ([below](#functions-of-alpha7-on-the-owners-request)). A fourth independent review, of alpha.6 and alpha.7 together, ended with **HOLD** on 2026-11-20: eight findings, four of them medium, none about lost work or the protective design ([below](#findings-of-the-review-of-alpha6-and-alpha7-and-their-corrections)); four parts were not reviewed. Its report was handed over to the owner only. Version 0.1.0-alpha.8 corrects all eight. An interim review of alpha.8 by a second reviewer (Claude Fable, 2026-11-20, verdict **HOLD**) found the eight corrected for the reported inputs, carried out the four open parts without a finding, and found eight more defects, F1 to F8, none about the protective design ([below](#findings-of-the-interim-review-of-alpha8-and-their-corrections)). Its report was handed over to the owner only. Version 0.1.0-alpha.9 corrects F1 to F3, the owner's choice. A reading review of alpha.9 by GPT (2026-11-20, code read section by section without running it, verdict **HOLD**) raised further points; the implementer measured each in the browser and confirmed two new defects (F9 and S3-01) and a wrong sentence of the specification ([below](#findings-of-the-reading-review-of-alpha9-and-their-corrections)). Version 0.1.0-alpha.10 corrects these and F4 to F6 of the interim review; F7 and F8 stay open. A second reading review, of the difference between alpha.9 and alpha.10, left two points that the owner handed on for measurement; both were reproduced in Edge and Firefox and are corrected in version 0.1.0-alpha.11 with one added condition each ([below](#findings-of-the-reading-review-of-alpha10-and-their-corrections)). The owner has set a feature freeze after alpha.11 and decides about an accompanied trial with one class; that decision is the owner's and is not a release. The corrections of alpha.8 to alpha.11 have not been reviewed by Codex; the implementer's tests are not a review, and seven times they passed over defects that a review then found.
 
 Open before a release:
 
-1. **The corrections of alpha.8 to alpha.11 are not reviewed by Codex**, and F7, F8 of the interim review are open. The request is in [REVIEW_CODEX.md](REVIEW_CODEX.md).
+1. **The corrections of 1.0.0-beta.1 (B1 to B4) are not reviewed.** F7 and F8 of the interim review are open (accepted by the owner as no obstacle to the trial).
 2. **Chrome is NOT MEASURED.** Chrome is not installed on the test machine. Measurements are from Microsoft Edge and, since this version, from Firefox.
 3. **Native file dialogs are NOT MEASURED.** The browser's open/save pickers and writing back to a real file handle cannot be driven by the test harness. The code paths behind them are covered with a labelled mock handle (T-10, T-15), with the file input and the file chooser (T-15, RV-01) and with the real download fallback (T-10, T-16). A person has to try Open and Save once in Edge and once in Chrome.
 4. **No recorded visible-window session and no trial with pupils or teachers.** The owner tried alpha.2 and alpha.3 by hand on 2026-11-19; what was tried is not recorded.
@@ -63,6 +69,21 @@ Step B of the owner's list, as decided by the owner: text colour as `<span style
 | Room in the delivered file | The build leaves out lines that are only a comment (owner's agreement); every case runs on the stripped file | `tools/build.mjs:31` | X-06, all cases |
 
 Where the new code meets kinds of defect that earlier reviews found (style text, cut elements, the order of neighbours, tidying, a page that changes while a dialog is open), the review request lists the places ([REVIEW_CODEX.md](REVIEW_CODEX.md#step-b-in-alpha7-text-colour-and-tables)). Two older cases needed a different geometry because the help dialog grew by one line: F-08 drags it 30 instead of 60 pixels up (it opens closer to the top), A5-11 narrows the window to 640 × 800 pixels as in the reviewer's probe instead of 640 × 700, where the taller dialog scrolls.
+
+## Findings of the independent review of alpha.11 and their corrections
+
+The reviewer measured ordinary editing, the toolbar, files, the save chain with a hanging write, every correction of alpha.8 to alpha.11 with inputs of its own, beginner mistakes in the source, random sequences and a sweep over 17 ways of writing a page, in Edge 158 and Firefox 160, with alpha.7 and alpha.10 as control builds. The four findings come from the browsers' own editing: each is the same in an empty editable page without the editor, and in alpha.7. The implementer measured each again with inputs written by hand before changing code (probe outside the repository). The cases are in `tests/browser/review11.mjs`; against the alpha.11 build A11-01 fails in Edge and A11-02 to A11-04 fail in Firefox, and all four pass against this build in both browsers.
+
+| Finding | Measured in alpha.11 | Correction in 1.0.0-beta.1 | Code | Regression |
+| --- | --- | --- | --- | --- |
+| **B1** (high, Firefox only): joining two blocks of different kinds loses text | `<h1>Mein Haustier</h1>` and `<p>Ich habe einen <b>Hund</b> und eine Katze.</p>`, Backspace at the start of the paragraph: `<h1>Mein HaustierIch habe einen </h1>`, no message; one undo restored it. The same with Delete at the end of the first block, with typing, Backspace, Enter, cutting or pasting over a selection across the border; heading and paragraph in both orders, list and paragraph in both orders; only if the second block holds an inline element | For exactly these joins the editor moves the content itself and the browser's step is cancelled: the content of the second block goes to the end of the first, the second block goes (and a list left without items). Active in Firefox only, so that Edge, where the browser's own step is right, runs the code it ran before. Joins of two blocks of the same kind, and blocks in tables or with nested lists, stay with the browser | `src/js/commands.js:794`, `:807`, `:828`; `src/js/app.js:1131`, `:1149`, `:1170` | A11-02 |
+| **B2** (medium, Edge only): a triple click on a block and typing | The selection reached to the start of the next block; typing "Neu" removed the clicked paragraph and wrote `<li>NeuFleisch</li>` into the list behind it; a heading swallowed the paragraph behind it. One undo restored it | After a triple click the selection is cut back to the end of the clicked block, if nothing of the next block is selected. Nothing in the typing itself is changed | `src/js/commands.js:761`, `src/js/app.js:1178` | A11-01 |
+| **B3** (low, Firefox only): Enter twice at the end of a list | An empty second list `<ul>\n</ul>` stayed behind the new paragraph | After Enter, a list without items that does not come from the source is removed; an empty list the pupil wrote stays | `src/js/commands.js:774`, `src/js/app.js:1160` | A11-03 |
+| **B4** (low, Firefox only): the space in front of a bold word deleted and typed again | `<p>Ein<b>&nbsp;fettes</b> Wort</p>` | A no-break space at the edge of an inline element is written as an ordinary space if the text directly outside that element ends with a visible character. The space stands inside the bold element in Firefox (`Ein<b> fettes</b>`); the reviewer expected it in front, as Edge writes it | `src/js/serialize.js:179` | A11-04 |
+
+Control after the corrections (2026-11-20): the reviewer's own probes for these findings and for ordinary editing, unchanged, against this build: joins 52 of 52 in Firefox (alpha.11: 25 of 52) and in Edge; triple click 24 of 24 in Edge (alpha.11: 3 of 24) and in Firefox; ordinary editing 56 of 56 in both; real mouse and keys, spaces and the remaining cases without a new deviation. Two rows of those probes stay: the space of B4 inside the bold element, as described, and a drag with the mouse that the Firefox driver cannot carry out. The owner asked for no second full review.
+
+Measured along the way: cutting over such a border in Firefox still puts the selected text into the clipboard (Ctrl+X, then Ctrl+V gives it back). Left as it is (documented, not corrected): input-method composition over a selection across such a border in Firefox stays with the browser; the space of B4 stands inside the bold element in Firefox; the corrections for Firefox were measured in Firefox 160 only, the one for the triple click in Edge 158 only (Chrome is not installed).
 
 ## Findings of the reading review of alpha.10 and their corrections
 
@@ -225,11 +246,11 @@ Consequences to know: "Im Browser öffnen" after a save in a browser without fil
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **184,546 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
-| SHA-256 | `9173953de12bfc9ca98c777477e3d89665092e015414c2ff7b41daecd8612eee` |
+| Size | **189,813 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| SHA-256 | `af1d99a2aef44ddf18e808551055660ee8c11939d4ddb04fccb9b502ab80c8a0` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
-The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes, alpha.8 181,332 bytes, alpha.9 182,454 bytes, alpha.10 184,478 bytes. **About 15,454 bytes are left below the limit.**
+The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes, alpha.8 181,332 bytes, alpha.9 182,454 bytes, alpha.10 184,478 bytes, alpha.11 184,546 bytes. **About 10,187 bytes are left below the limit.**
 
 ## Measurements
 
@@ -249,7 +270,8 @@ MEASURED 2026-11-20 · Windows 11 Pro (10.0.26300) · Node v24.22.1.
 | Regressions for the interim review A8-01…A8-03 | same | 3 of 3 pass; the same cases against the alpha.8 build: 0 of 3 |
 | Regressions for the reading review A9-01…A9-07 | same | 7 of 7 pass; the same cases against the alpha.9 build: A9-01 to A9-06 fail, A9-07 (closes test gaps) passes |
 | Regressions for the reading review of alpha.10 A10-01, A10-02 | same | 2 of 2 pass; the same cases against the alpha.10 build: 0 of 2, in Edge and in Firefox |
-| All 89 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 83 cases pass, 5 partial, 1 not measured, none failed; 766 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
+| Regressions for the independent review of alpha.11 A11-01…A11-04 | same | 4 of 4 pass; against the alpha.11 build A11-01 fails in Edge, A11-02 to A11-04 fail in Firefox |
+| All 93 cases | Firefox/160.0.1, headless, artefact from `file://`, WebDriver BiDi | 87 cases pass, 5 partial, 1 not measured, none failed; 789 checks. The partial and unmeasured cases lack test automation in Firefox (file chooser, composition, switching scripts off, clipboard), see [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md#firefox) |
 | Reviewer's Firefox diagnostics `tests/firefox-diagnostics.mjs`, unchanged, against the committed alpha.4 build (176,008 bytes, `e9ad516a…`); not re-run for this build | Firefox/160.0.1 | comment sample exact, T-07 fixture formatted, three module round trips exact |
 | Reviewer's probe script `docs/reviews/review-alpha3.mjs`, unchanged, against the committed alpha.4 build; not re-run for this build | Edge 157.0.4341.60 | its probes for A3-01, A3-02, A3-03 and the frame check pass; it then stops in the A3-04 probe with a timeout, because that probe waits for the defect to show; A3-05 and A3-T do not run in that script |
 | All of the above | Chrome | **NOT MEASURED** (not installed) |
@@ -260,7 +282,7 @@ MEASURED 2026-11-20 · Windows 11 Pro (10.0.26300) · Node v24.22.1.
 | same, its Firefox rows | Firefox/160.0.1 | 3 of 3 |
 | Repository publication check (`scripts/check_publication.py`) with the private deny-list | whole repository | 0 findings |
 
-In total 809 individual checks in Edge with 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04), and 766 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
+In total 832 individual checks in Edge with 3 parts NOT MEASURED (native file pickers, in T-16 and RV-01; the real file in A5-04), and 789 checks in Firefox with 7 parts NOT MEASURED. Per-check results: [`tests/results/acceptance-edge.json`](../tests/results/acceptance-edge.json), [`tests/results/acceptance-firefox.json`](../tests/results/acceptance-firefox.json). Summary with code references: [ACCEPTANCE_RESULTS.md](ACCEPTANCE_RESULTS.md).
 
 ## Dependencies and licences
 
@@ -277,7 +299,7 @@ The reference editor that was studied is not a dependency. No part of it is cont
 
 | # | Point | Kind |
 | --- | --- | --- |
-| 1 | Independent review of the corrections in alpha.8 to alpha.11 | process |
+| 1 | Review of the corrections of B1 to B4 in 1.0.0-beta.1 (a reading review by GPT is planned) | process |
 | 1a | F7 and F8 of the interim review of alpha.8 (white space left in tables) | defects, low |
 | 2 | Run the suite in Chrome | measurement |
 | 3 | Try native Open, Save (write-back with the permission question) and Save-as by hand in Edge and Chrome | measurement |
@@ -309,4 +331,4 @@ Found by the implementer during the development of alpha.1; each has a regressio
 
 ## Next step
 
-A review of the corrections in alpha.8 to alpha.11. The owner has set a feature freeze after alpha.11 and plans an accompanied trial with one class from 2026-11-23; no further search for defects before it. All steps of the owner's list are built. After the review: Chrome run, manual check of the native dialogs, a visible-window session with the new image and alignment functions, then a decision about a release. Nothing is merged and there is no release.
+The accompanied trial with one class from 2026-11-23, in Edge, after the hand test of the native file dialogs. The feature set is frozen during the trial. All steps of the owner's list are built. After the review: Chrome run, manual check of the native dialogs, a visible-window session with the new image and alignment functions, then a decision about a release. Nothing is merged and there is no release.

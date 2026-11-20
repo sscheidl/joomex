@@ -2,6 +2,8 @@
 
 Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository.
 
+**State on 2026-11-20:** the owner had this review carried out by a second reviewer (Claude Fable, without the implementer's context) instead. Result: PASS for the accompanied trial in Edge with two conditions, HOLD for Firefox, four findings B1 to B4 from the browsers' own editing. They are corrected in 1.0.0-beta.1 (branch `fix/html-school-editor-1.0.0-beta.1`, stacked on the alpha.11 branch; changed: `src/js/commands.js` (four functions at the end), `src/js/app.js` (`wirePreview`), `src/js/serialize.js` (`neighbourChar`); tests: `tests/browser/review11.mjs`), see [STATUS.md](STATUS.md#findings-of-the-independent-review-of-alpha11-and-their-corrections). On that branch: `node tools/build.mjs --check` gives 189813 bytes, sha256 `af1d99a2…`; unit tests 27 of 27; Edge 93 passed, 832 checks; Firefox 87 passed, 5 partial, 1 not measured, 789 checks. The request below is kept as it was written for alpha.11.
+
 ## alpha.11: two corrections after the reading review of alpha.10
 
 GPT read the difference between alpha.9 and alpha.10 in four sections without running it (2026-11-20). The owner handed two points on, to be reproduced before anything is changed; both were confirmed in Edge and Firefox ([STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha10-and-their-corrections)). Version 0.1.0-alpha.11, stacked on alpha.10, corrects them with one added condition each. The owner has set a feature freeze after it. **This request covers alpha.8 to alpha.11 together;** please review the four as one change against alpha.7.
@@ -197,7 +199,7 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 ## What comes after this review
 
-After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 15454 bytes are left below the size limit.
+After this review: Chrome, the native file dialogs by hand, a visible-window session and a trial with pupils. About 15454 bytes were left below the size limit in alpha.11, about 10187 in 1.0.0-beta.1.
 
 ## Not measured
 

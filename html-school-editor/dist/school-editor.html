@@ -2,10 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L7njJfNOgkHygt0CG6sfoS+EqeR/TTfed7efuFzElY4='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kdGpg12iifws/HCBAxta6RSAZSvuL5wMSyaMTp9ORQE='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 0.1.0-alpha.11">
+<meta name="generator" content="html-school-editor 1.0.0-beta.1">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -113,7 +113,7 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">0.1.0-alpha.11</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">1.0.0-beta.1</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
@@ -186,7 +186,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 0.1.0-alpha.11</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 1.0.0-beta.1</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -1512,7 +1512,11 @@ const NBSP = String.fromCharCode(160);
 const isSolid = (ch) => !!ch && ch !== ' ' && ch !== NBSP && ch !== '\n' && ch !== '\t' && ch !== '\r' && ch !== '\f';
 
 function neighbourChar(c, before) {
-  const sib = before ? c.previousSibling : c.nextSibling;
+  let sib = before ? c.previousSibling : c.nextSibling;
+  for (let p = c.parentNode; !sib && p && p.nodeType === 1 && p.localName !== 'body' && !BLOCKS.has(p.localName); p = p.parentNode) {
+    sib = before ? p.previousSibling : p.nextSibling;
+    if (sib && sib.nodeType !== 3) return '';
+  }
   if (!sib) return '';
   if (sib.nodeType === 3) return sib.data ? (before ? sib.data[sib.data.length - 1] : sib.data[0]) : '';
   return sib.nodeType === 1 && !BLOCKS.has(sib.localName) && sib.localName !== 'br' ? 'x' : '';
@@ -2640,6 +2644,79 @@ function caretState(doc) {
   return state;
 }
 
+
+const CLICKED = words('p h1 h2 h3 h4 h5 h6 li dt dd td th');
+function trimToBlock(doc, target) {
+  const range = getRange(doc), block = range && !range.collapsed ? closestTag(target, doc.body, CLICKED) : null;
+  if (!block || !block.contains(range.startContainer) || block.contains(range.endContainer)) return false;
+  const rest = doc.createRange();
+  rest.setStart(block, block.childNodes.length);
+  rest.setEnd(range.endContainer, range.endOffset);
+  if (/[^ \t\n\f\r]/.test(rest.toString()) || rest.cloneContents().querySelector('img')) return false;      // more than this block is selected
+  doc.getSelection().setBaseAndExtent(range.startContainer, range.startOffset, block, block.childNodes.length);
+  return true;
+}
+
+function dropEmptyLists(env) {
+  for (const list of Array.from(env.doc.body.querySelectorAll('ul, ol'))) {
+    if (!list.children.length && !/[^ \t\n\f\r]/.test(list.textContent) && !env.info.get(list)) takeOut(env, list);
+  }
+}
+
+const JOIN = words('p h1 h2 h3 h4 h5 h6 li');
+const LIST = words('ul ol');
+const elementNextTo = (el, back) => { let n = back ? el.previousSibling : el.nextSibling; while (blankText(n)) n = back ? n.previousSibling : n.nextSibling; return n && n.nodeType === 1 ? n : null; };
+const padBreak = (block) => { let n = block.lastChild; while (blankText(n)) n = n.previousSibling; return n && n.nodeType === 1 && n.localName === 'br' ? n : null; };
+const joinable = (el) => !!el && JOIN.has(el.localName) && el.isContentEditable && !el.querySelector('ul, ol, table') && (el.localName !== 'li' || LIST.has(el.parentNode.localName));
+const around = (el) => (el.localName === 'li' ? el.parentNode.parentNode : el.parentNode);
+const hasInline = (el) => Array.from(el.querySelectorAll('*')).some((k) => k.localName !== 'br');
+
+function otherKindNextTo(block, back) {
+  let from = block;
+  if (block.localName === 'li') {
+    if (back || elementNextTo(block, false)) return null;
+    from = block.parentNode;
+  }
+  let n = elementNextTo(from, back);
+  if (n && LIST.has(n.localName)) n = back ? n.lastElementChild : n.firstElementChild;
+  return joinable(n) && n.localName !== block.localName ? n : null;
+}
+
+function joinPlan(doc, type) {
+  const range = getRange(doc), body = doc.body;
+  if (!range) return null;
+  if (!range.collapsed) {
+    const a = closestTag(range.startContainer, body, JOIN), b = closestTag(range.endContainer, body, JOIN);
+    if (!joinable(a) || !joinable(b) || a === b || a.localName === b.localName || around(a) !== around(b) || !hasInline(b)) return null;
+    return blockOf(range.startContainer, body) === a && blockOf(range.endContainer, body) === b ? { a, b, range } : null;
+  }
+  if (!/^delete(?:Content|Word)(?:Backward|Forward)$/.test(type)) return null;
+  const back = /Backward$/.test(type), block = closestTag(range.startContainer, body, JOIN);
+  if (!joinable(block) || blockOf(range.startContainer, body) !== block) return null;
+  const rest = doc.createRange(), pad = padBreak(block);
+  if (back) { rest.setStart(block, 0); rest.setEnd(range.startContainer, range.startOffset); }
+  else { rest.setStart(range.startContainer, range.startOffset); if (pad) rest.setEndBefore(pad); else rest.setEnd(block, block.childNodes.length); }
+  if (/[^ \t\n\f\r]/.test(rest.toString()) || rest.cloneContents().querySelector('img, br')) return null;      // the caret is not at that edge
+  const other = otherKindNextTo(block, back);
+  if (!other || !hasInline(back ? block : other)) return null;
+  return back ? { a: other, b: block } : { a: block, b: other };
+}
+
+function joinBlocks(env, plan, text, split) {
+  const doc = env.doc, { a, b } = plan;
+  if (plan.range) plan.range.deleteContents();
+  const pad = padBreak(a);
+  if (pad) pad.remove();
+  const last = a.lastChild, at = a.childNodes.length;
+  while (b.firstChild) a.appendChild(b.firstChild);
+  const list = b.localName === 'li' ? b.parentNode : null;
+  takeOut(env, b);
+  if (list && !list.querySelector('li')) takeOut(env, list);
+  try { if (last && last.nodeType === 3) doc.getSelection().collapse(last, last.data.length); else doc.getSelection().collapse(a, at); } catch (e) { /* keep the browser's selection */ }
+  if (split) { try { doc.execCommand('insertParagraph'); } catch (e) { /* the join is done */ } }
+  return text ? insertPlainText(env, text) : 'ok';
+}
+
 // ---- app.js
 const PREVIEW_CSS = 'html{background:#fff}' +
   ':where(body){min-height:85vh}body{outline:none}' +
@@ -3663,6 +3740,8 @@ function wireDrop(target, always) {
   });
 }
 
+const GECKO = /\bGecko\/\d/.test(navigator.userAgent);
+
 function wirePreview() {
   try { pvDoc.execCommand('defaultParagraphSeparator', false, 'p'); pvDoc.execCommand('styleWithCSS', false, false); } catch (e) { /* defaults stay */ }
   const fresh = () => { if (!state.visualDirty) renderIfStale(); };
@@ -3679,9 +3758,15 @@ function wirePreview() {
     else if (type === 'formatItalic') { e.preventDefault(); runCommand(() => toggleInline(env, 'italic')); }
     else if (type === 'formatUnderline') { e.preventDefault(); runCommand(() => toggleInline(env, 'underline')); }
     else if (type.startsWith('format') || type === 'insertFromDrop' || type === 'insertFromPaste' || type === 'insertFromPasteAsQuotation' || type === 'insertLink') e.preventDefault();
+    else if (GECKO && !state.composing && /^(?:insertText|insertParagraph|deleteByCut|delete(?:Content|Word)(?:Backward|Forward))$/.test(type) && joinPlan(pvDoc, type)) {
+      commitVisual('vis-type');
+      const plan = joinPlan(pvDoc, type);
+      if (plan) { e.preventDefault(); state.onlyInserts = false; runCommand(() => joinBlocks(env, plan, type === 'insertText' ? e.data || '' : '', type === 'insertParagraph')); }
+    }
   });
   pvDoc.addEventListener('input', (e) => {
     if (!/^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/.test(e.inputType || '')) state.onlyInserts = false;
+    if (e.inputType === 'insertParagraph') dropEmptyLists(env);
     markVisualDirty();
     if (!state.composing) scheduleCommit();
   });
@@ -3691,13 +3776,15 @@ function wirePreview() {
     e.preventDefault();
     const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
     if (!text) { setStatus('Hier kannst du nur Text einfügen. Bilder fügst du mit dem Knopf „Bild“ ein.', 'warn'); return; }
-    runCommand(() => insertPlainText(env, text.length > 200000 ? text.slice(0, 200000) : text));
+    const part = text.length > 200000 ? text.slice(0, 200000) : text;
+    runCommand(() => { const plan = GECKO ? joinPlan(pvDoc, 'insertText') : null; return plan ? joinBlocks(env, plan, part) : insertPlainText(env, part); });
   });
   pvDoc.addEventListener('dragstart', (e) => e.preventDefault());
   wireDrop(pvDoc, true);
   pvDoc.addEventListener('click', (e) => {
     const target = e.target;
     if (!target || !target.closest) return;
+    if (e.detail >= 3) trimToBlock(pvDoc, target);
     if (target.closest('a')) e.preventDefault();
     if (target.localName === 'img' && target.parentNode && target.parentNode.isContentEditable) {
       const range = pvDoc.createRange();

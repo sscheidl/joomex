@@ -74,7 +74,9 @@ Product: an offline HTML learning editor in one file. Audience: pupils of about 
 | History | 300 steps or 40 million characters |
 | Nesting depth that stays editable | 400 levels |
 
-## 2. Known limitations of version 0.1.0-alpha.11
+## 2. Known limitations of version 1.0.0-beta.1
+
+* Typing, Enter, Backspace and Delete in the page are carried out by the browser's own editing engine; the editor writes down what it leaves. Where a measured defect of an engine loses or moves text, the editor steps in (from 1.0.0-beta.1): a triple click selects the clicked block only, so that typing does not join the block behind it (Chromium); two blocks of different kinds (paragraph, heading, list item) are joined by the editor itself in Firefox, where the browser lost text; a list without items that Firefox leaves behind after Enter is removed; a no-break space at the edge of a bold word or another inline element is written as an ordinary space where that changes nothing visible. In Firefox a space typed in front of a bold word can stand inside the bold element.
 
 * The page pane always renders in standards mode, also for documents without a doctype.
 * Images referenced by file name are shown only if the editor lies in the folder of the page, because the address is read from the editor's own place. The editor does not copy a chosen file to that place; the image dialog says whether the file is found there. A function that opens a whole folder would lift this; it is postponed.
