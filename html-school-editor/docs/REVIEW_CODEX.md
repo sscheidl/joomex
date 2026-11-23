@@ -4,14 +4,16 @@ Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this reposi
 
 **State on 2026-11-20:** the owner had this review carried out by a second reviewer (Claude Fable, without the implementer's context) instead. Result: PASS for the accompanied trial in Edge with two conditions, HOLD for Firefox, four findings B1 to B4 from the browsers' own editing. They are corrected in 1.0.0-beta.1 (branch `fix/html-school-editor-1.0.0-beta.1`, stacked on the alpha.11 branch; changed: `src/js/commands.js` (four functions at the end), `src/js/app.js` (`wirePreview`), `src/js/serialize.js` (`neighbourChar`); tests: `tests/browser/review11.mjs`), see [STATUS.md](STATUS.md#findings-of-the-independent-review-of-alpha11-and-their-corrections). On that branch: `node tools/build.mjs --check` gives 189813 bytes, sha256 `af1d99a2…`; unit tests 27 of 27; Edge 93 passed, 832 checks; Firefox 87 passed, 5 partial, 1 not measured, 789 checks. The request below is kept as it was written for alpha.11.
 
+**State on 2026-11-23:** after the first day with a class the owner asked for small changes for the next class; they are 1.0.0-beta.2 (branch `fix/html-school-editor-1.0.0-beta.2`, from `main`): "Speichern unter …", no download button, a note in browsers that cannot write a file, new toolbar groups, alignment as a switch, and a corrected defect of "Im Browser öffnen" after a download, see [STATUS.md](STATUS.md#100-beta2-changes-after-the-first-day-with-a-class). The owner has asked for a complete review of everything from alpha.8; the brief for it is handed over separately.
+
 ## alpha.11: two corrections after the reading review of alpha.10
 
 GPT read the difference between alpha.9 and alpha.10 in four sections without running it (2026-11-20). The owner handed two points on, to be reproduced before anything is changed; both were confirmed in Edge and Firefox ([STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha10-and-their-corrections)). Version 0.1.0-alpha.11, stacked on alpha.10, corrects them with one added condition each. The owner has set a feature freeze after it. **This request covers alpha.8 to alpha.11 together;** please review the four as one change against alpha.7.
 
 | Finding | Correction | Code | Case | Please try |
 | --- | --- | --- | --- | --- |
-| T1-6 (low) a file of the same name opened without a handle while the write of another file hangs was taken for that file | without a handle: the same name and the text the written file had before the write | `src/js/app.js:931`, `:1015` | A10-01 | a real drop in Edge and Chrome by hand; the file input; a page saved for the first time while it hangs |
-| T2-3 (low) a part whose own colour is blocked lost the colours inside it | such a part is not cleared inside | `src/js/commands.js:570` | A10-02 | lists; an inline element as target; "Farbe entfernen" |
+| T1-6 (low) a file of the same name opened without a handle while the write of another file hangs was taken for that file | without a handle: the same name and the text the written file had before the write | `src/js/app.js:933`, `:1024` | A10-01 | a real drop in Edge and Chrome by hand; the file input; a page saved for the first time while it hangs |
+| T2-3 (low) a part whose own colour is blocked lost the colours inside it | such a part is not cleared inside | `src/js/commands.js:582` | A10-02 | lists; an inline element as target; "Farbe entfernen" |
 
 ## alpha.10: corrections after the reading review of alpha.9
 
@@ -19,12 +21,12 @@ GPT read the code of alpha.9 in seven sections without running it (2026-11-20, v
 
 | Finding | Correction | Code | Case | Please try |
 | --- | --- | --- | --- | --- |
-| F9 (medium) the same file opened again while its first write hangs: afterwards "gespeichert" although the file differs | question names the running save; a write that ends for a page that is no longer open marks the open page as saved only if it is the same file and shows exactly the written text | `src/js/app.js:840`, `:976`, `:1008` | A9-01 | a real file (Edge and Chrome by hand); the same file opened through the file input; New instead of Open; another file with the same name |
-| F5 (low) "Speichert …" hidden by other messages | the top bar shows "Speichert …" while the file of the open page is written | `src/js/app.js:199` | A9-02, A7-04 | messages during a hanging write; switching pages during the write |
+| F9 (medium) the same file opened again while its first write hangs: afterwards "gespeichert" although the file differs | question names the running save; a write that ends for a page that is no longer open marks the open page as saved only if it is the same file and shows exactly the written text | `src/js/app.js:842`, `:985`, `:1017` | A9-01 | a real file (Edge and Chrome by hand); the same file opened through the file input; New instead of Open; another file with the same name |
+| F5 (low) "Speichert …" hidden by other messages | the top bar shows "Speichert …" while the file of the open page is written | `src/js/app.js:200` | A9-02, A7-04 | messages during a hanging write; switching pages during the write |
 | F6 (medium) `!important` lost | a colour or alignment declaration with `!important` is left alone with a message (owner: pupils hardly write it) | `src/js/util.js:172` | A9-03, unit | `!important` in another declaration; upper case; escapes |
 | F4 (low) "Links" against a print rule with `!important` | alignment written as before, plus a message | `src/js/util.js:279`, `src/js/commands.js:472`, `:487` | A9-04, unit | other conditional rules with `!important`; a rule for another element |
 | S3-01 (low) a new item behind the last item without end tag | the last child of the source followed by a new block counts as changed | `src/js/serialize.js:134` | A9-05 | `<p>a<p>b`, Enter at the end; tables (must keep omitted end tags) |
-| first cell deleted (cosmetic) | the white space in front of a deleted first cell goes, the next one keeps its own | `src/js/commands.js:630` | A9-06 | rows and cells on lines and not; first rows |
+| first cell deleted (cosmetic) | the white space in front of a deleted first cell goes, the next one keeps its own | `src/js/commands.js:642` | A9-06 | rows and cells on lines and not; first rows |
 | specification "Files" | "or it fails, Save downloads" corrected to what the code does | `docs/SPECIFICATION.md` | — | — |
 
 The implementer of alpha.9 and alpha.10 is the session that carried out the interim review; neither the interim review nor the reading review is an independent check of these corrections.
@@ -35,8 +37,8 @@ An interim review of alpha.8 by a second reviewer (Claude Fable, 2026-11-20, ver
 
 | Finding | Correction | Code | Case | Please try |
 | --- | --- | --- | --- | --- |
-| F1 (medium) a save waiting behind a hanging write saves whatever page is open when its turn comes | the waiting save remembers the page of the last request (`nextDoc`) and is dropped if another page is open | `src/js/app.js:955` | A8-01 | another page opened and then the first one again while a save waits; "Im Browser öffnen" while a save waits and the page is switched; a save asked for in the new page |
-| F2 (low, alpha.8 regression) mixed table layouts lose a line break after add and delete | a row or cell standing directly behind its neighbour is deleted without the white space behind it, unless the neighbour's end tag is omitted | `src/js/commands.js:623`, `:627` | A8-02 | every layout of rows and cells on lines and not; deleting cells of the source; tables with comments between rows |
+| F1 (medium) a save waiting behind a hanging write saves whatever page is open when its turn comes | the waiting save remembers the page of the last request (`nextDoc`) and is dropped if another page is open | `src/js/app.js:957` | A8-01 | another page opened and then the first one again while a save waits; "Im Browser öffnen" while a save waits and the page is switched; a save asked for in the new page |
+| F2 (low, alpha.8 regression) mixed table layouts lose a line break after add and delete | a row or cell standing directly behind its neighbour is deleted without the white space behind it, unless the neighbour's end tag is omitted | `src/js/commands.js:635`, `:639` | A8-02 | every layout of rows and cells on lines and not; deleting cells of the source; tables with comments between rows |
 | F3 (low, alpha.8 regression) a new item behind `<li>` without end tag puts its line break into that item | the item gets its end tag if the element behind it starts a line of its own and white space would be written | `src/js/serialize.js:46`, `:120`, `:134` | A8-03 | `dt`/`dd`; list commands that move a paragraph behind such an item; tables with omitted end tags and rows on lines (1.4e must stay corrected) |
 
 A side effect to judge: in `<td>a<td>b</td> <td>c</td>`, deleting the column of b now keeps a's omitted end tag and drops the space behind b; alpha.8 kept the space and wrote `</td>`.
@@ -53,11 +55,11 @@ Please check, for each correction, whether it holds in general and not only for 
 | --- | --- | --- | --- | --- |
 | 1.1h comment lost when the colour changes | `withDecl()` leaves the attribute alone if a declaration that would change holds a comment | `src/js/util.js:172` | A7-01, unit | a comment inside the value, behind it, between name and colon; the same for alignment |
 | 2.3 print rule and "Links" | `cssRisks()` notes `text-align` in a rule that holds only sometimes; `setAlign()` then writes `text-align: left` out | `src/js/util.js:277`, `src/js/commands.js:471`, `:485` | A7-02, unit | `@media screen`, `@supports not (…)`, `@layer`, `@container`, nested rules, `<link media>` (refused as external) |
-| 1.4d `<colgroup>` and columns | `tableColumn()` refuses a table with `<colgroup>` or `<col>` | `src/js/commands.js:614`, `:668` | A7-03 | rows in such a table; a nested table with `<colgroup>` inside a table without |
-| 2.4 no message while a save hangs | "Speichert …" while writing, kept until the save ends; every save asked for meanwhile joins one save behind it. No time limit (owner's decision) | `src/js/app.js:72`, `:956`, `:965`, `:972` | A7-04 | a refused or failed first write followed by a waiting one; "Im Browser öffnen" while two saves wait; a document switched while a save waits |
+| 1.4d `<colgroup>` and columns | `tableColumn()` refuses a table with `<colgroup>` or `<col>` | `src/js/commands.js:626`, `:680` | A7-03 | rows in such a table; a nested table with `<colgroup>` inside a table without |
+| 2.4 no message while a save hangs | "Speichert …" while writing, kept until the save ends; every save asked for meanwhile joins one save behind it. No time limit (owner's decision) | `src/js/app.js:73`, `:958`, `:967`, `:974` | A7-04 | a refused or failed first write followed by a waiting one; "Im Browser öffnen" while two saves wait; a document switched while a save waits |
 | 1.4c line breaks left in a table without line breaks | `childIndent()` gives no indentation in table parts whose children stand without line breaks; `freshLine()` then writes no line | `src/js/serialize.js:46`, `:59` | A7-05 | mixed tables (some rows on lines, some not); Enter inside a cell of such a table; "Code aufräumen" afterwards |
 | 1.4e omitted end tags written out | `needsEndTag()` keeps an omitted end tag of `td`, `th`, `tr`, `li`, `dt`, `dd` omitted when an element of the same kind or the end of the parent follows | `src/js/serialize.js:121`, `:122` | A7-06 | lists with omitted `</li>`, `dl` with `dt`/`dd`, a cell followed by text or a comment |
-| 2.2-7 folder change ignored | a changed folder for an address that names no file is refused with a message | `src/js/app.js:661` | A7-07 | a picture from the network or embedded in the code with a changed folder; a new picture chosen afterwards |
+| 2.2-7 folder change ignored | a changed folder for an address that names no file is refused with a message | `src/js/app.js:662` | A7-07 | a picture from the network or embedded in the code with a changed folder; a new picture chosen afterwards |
 | 2.9-2 white space at both ends lost | the same value stays as written; a changed one keeps the white space at both ends | `src/js/util.js:172` | A7-08, unit | the same for colour; upper-case values |
 
 Not reviewed in the fourth review, please carry out: **2.12** a title typed into the title field and the window closed or reloaded without Enter; **2.13** every dialog, colour and table included, moved, the window narrowed to 640 × 800 and widened again; **2.14** a second picture chosen while the check of the first is held; **3** the test audit (F-13, F-15, A5-01, A5-04 against hand-written expectations, A5-01 and A5-04 against the alpha.5 build).
@@ -140,13 +142,13 @@ Requested by the owner; the decisions are in [SPECIFICATION.md](SPECIFICATION.md
 
 | New code | Earlier finding of the same kind | How the new code avoids it | Where to look |
 | --- | --- | --- | --- |
-| Colour declaration added to or removed from a style attribute | A3-01, ALIGN | Through `withDecl()`, the CSS reader that `withAlign()` now also uses; the other declarations keep their spelling through `keepRaw()`; an unreadable style is left alone | `src/js/util.js:172`, `src/js/commands.js:528`; F-13 |
+| Colour declaration added to or removed from a style attribute | A3-01, ALIGN | Through `withDecl()`, the CSS reader that `withAlign()` now also uses; the other declarations keep their spelling through `keepRaw()`; an unreadable style is left alone | `src/js/util.js:172`, `src/js/commands.js:540`; F-13 |
 | Colour on part of a coloured span or of a bold word | STYLE-SPLIT | `liftOut()` with its copy marking; a filter so that only colour spans are unwrapped | `src/js/commands.js:276`; F-13 |
 | Writing the style of a new element | the filter of `emitNew()` | `plainStyle()`: alignment keywords and the eight palette names only | `src/js/util.js:146`, `src/js/serialize.js:259`; unit test |
 | Changing one attribute of an existing element | A3-02, ATTR | Only through `record()` and `patchAttrs()` | F-12, F-13 |
-| Inserting and deleting rows and columns | LIST (order of neighbours) | New elements are placed relative to their neighbours; deleted ones take one line break with them | `src/js/commands.js:618`; F-15 (a comment and paragraphs around the table) |
+| Inserting and deleting rows and columns | LIST (order of neighbours) | New elements are placed relative to their neighbours; deleted ones take one line break with them | `src/js/commands.js:630`; F-15 (a comment and paragraphs around the table) |
 | "Code aufräumen" with tables | RV-02, A3-03, MEDIA | No change to the formatter; tables go through the same checks | F-16 |
-| Dialogs for colour and table | A3-04, IMG-PENDING, BROWSE-SWITCH | Both dialogs check revision and document after they close and do nothing if the page changed | `src/js/app.js:669`, `:684`; F-13, F-14 |
+| Dialogs for colour and table | A3-04, IMG-PENDING, BROWSE-SWITCH | Both dialogs check revision and document after they close and do nothing if the page changed | `src/js/app.js:670`, `:685`; F-13, F-14 |
 | Comment lines left out of the build | — | Only whole `//` lines; the build refuses a template literal that spans lines; the policy hash is computed over the delivered script | `tools/build.mjs:31`; every case runs on the stripped file |
 
 Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Questions: Is there a selection for which `setColor()` picks a target that the pupil would not expect (nested blocks, a selection that ends at the start of the next block, a link)? Can a colour or table command leave the page pane and the source with a different structure (the writer leaves out the new `tbody`)? Does Firefox add something of its own when typing into an empty cell? Do the comment lines left out of the build change anything else?
@@ -155,13 +157,13 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 **ATTR.** `patchAttrs()` (`src/js/util.js:314`). A removal still takes the white space in front of the attribute along, but only if the character behind the removed attribute is white space, `>`, the end of the tag, or a `/` after a quote or directly after the tag name. Otherwise the white space in front stays, and where there is none a single space is written. Please check: other spellings in which removing or adding an attribute changes how the browser reads a neighbour, also unquoted values next to `/`.
 
-**IMG-QUERY.** `dialogAddress()` (`src/js/app.js:611`): with an unchanged folder field the address is returned exactly as written; another folder goes through `moveSrc()` (`src/js/util.js:106`), which replaces only the folder of the path in front of `?` or `#`. `folderOfSrc()` already cut at `?` and `#`. Please check: addresses in which `fileOfSrc()`, `folderOfSrc()` and `moveSrc()` disagree about where the path ends.
+**IMG-QUERY.** `dialogAddress()` (`src/js/app.js:612`): with an unchanged folder field the address is returned exactly as written; another folder goes through `moveSrc()` (`src/js/util.js:106`), which replaces only the folder of the path in front of `?` or `#`. `folderOfSrc()` already cut at `?` and `#`. Please check: addresses in which `fileOfSrc()`, `folderOfSrc()` and `moveSrc()` disagree about where the path ends.
 
 **MEDIA.** `cssFacts()` (`src/js/project.js:483`) passes a third argument to `cssRisks()` (`src/js/util.js:267`): the rules of a style element whose `media` attribute is neither empty nor `all` are read as rules that hold only sometimes. `media="screen"` is conditional too, deliberately. Please check: other ways in which a style element or a link applies only sometimes (`<link>` is already refused as external).
 
-**WRITES.** `saveDoc()` (`src/js/app.js:956`) chains every save to the one before it; `saveNow()` takes its snapshot when its turn comes, so the newest text is written last and `markSaved()` sees the snapshots in order. A save that hangs (a writer whose `close()` never settles) would hold every later save; there is no time limit. "Herunterladen" is not chained.
+**WRITES.** `saveDoc()` (`src/js/app.js:958`) chains every save to the one before it; `saveNow()` takes its snapshot when its turn comes, so the newest text is written last and `markSaved()` sees the snapshots in order. A save that hangs (a writer whose `close()` never settles) would hold every later save; there is no time limit. "Herunterladen" is not chained.
 
-**BROWSE-SWITCH.** `browseDoc()` (`src/js/app.js:998`) remembers `state.docId` before the question and checks it after the question and after saving; if another document is open, nothing is opened and nothing is said.
+**BROWSE-SWITCH.** `browseDoc()` (`src/js/app.js:1007`) remembers `state.docId` before the question and checks it after the question and after saving; if another document is open, nothing is opened and nothing is said.
 
 ## Medium and low findings of the third review (alpha.6)
 
@@ -169,11 +171,11 @@ Cases: F-12 to F-16 in `tests/browser/features7.mjs`, unit test "text colour". Q
 
 **LIST.** `toggleList()` (`src/js/commands.js:194`) starts a new list when anything other than white-space text stands between two paragraphs. A comment between two paragraphs therefore also gives two lists.
 
-**IMG-PENDING.** `pickBusy` (`src/js/app.js:584`) holds the choice whose check runs; `validateImageDialog()` (`:652`) refuses while it is the latest one.
+**IMG-PENDING.** `pickBusy` (`src/js/app.js:585`) holds the choice whose check runs; `validateImageDialog()` (`:653`) refuses while it is the latest one.
 
-**TITLE-RELOAD.** `isDirty()` (`src/js/app.js:195`) also compares the text of the title field with the title of the page; the field updates the save state on every input, and Escape and a refused title update it too.
+**TITLE-RELOAD.** `isDirty()` (`src/js/app.js:196`) also compares the text of the title field with the title of the page; the field updates the save state on every input, and Escape and a refused title update it too.
 
-**DIALOG-RESIZE.** `wireDrag()` (`src/js/app.js:102`) clamps a moved dialog again on every `resize` of the window. A dialog that was not moved is centred by the browser.
+**DIALOG-RESIZE.** `wireDrag()` (`src/js/app.js:103`) clamps a moved dialog again on every `resize` of the window. A dialog that was not moved is centred by the browser.
 
 **BYTES.** `decodeFileBytes()` (`src/js/util.js:386`) counts line feeds as all `\n` minus the CRLF pairs.
 

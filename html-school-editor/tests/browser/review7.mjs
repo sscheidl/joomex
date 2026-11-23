@@ -190,21 +190,23 @@ export const review7 = [
     },
   },
   {
-    id: 'A7-08', title: 'review finding 2.9-2: white space around a style attribute that holds only the alignment stays as written',
+    id: 'A7-08', title: 'review finding 2.9-2: white space around a style attribute that holds only the alignment stays as written when the alignment changes',
     async run(c, { browser }) {
       await withEditor(browser, { noFsa: true }, async (ed) => {
         const source = page('<p style="  text-align:center  ">A</p>');
         await ed.openText('a7-08.html', source);
         await ed.caret('A', 0);
-        await ed.click('bAlignCenter');
-        await ed.settle();
-        c.eq(await ed.source(), source, 'centre on a centred paragraph: the text stays exactly as written');
+        // until 1.0.0-beta.1 this case began with "Mitte" on the centred paragraph and expected no change; since
+        // 1.0.0-beta.2 (owner's request) that press removes the alignment, checked at the end of this case
         await ed.click('bAlignRight');
         await ed.settle();
         c.eq(await ed.source(), page('<p style="  text-align: right  ">A</p>'), 'right: the declaration changes, the white space around it stays');
         await ed.click('bAlignCenter');
         await ed.settle();
         c.eq(await ed.source(), page('<p style="  text-align: center  ">A</p>'), 'and back to centre');
+        await ed.click('bAlignCenter');
+        await ed.settle();
+        c.eq(await ed.source(), page('<p>A</p>'), 'centre again: the alignment is taken away (switch, 1.0.0-beta.2)');
       });
     },
   },

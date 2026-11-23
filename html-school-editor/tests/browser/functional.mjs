@@ -395,7 +395,7 @@ export const functional = [
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.type(' Ganz neu');
         const flag = await ed.syncFlag();
-        const saved = await ed.download('bDownload');
+        const saved = await ed.download();
         c.eq(flag, 'no', 'the page edit was still pending when the button was pressed');
         c.ok(saved.text.includes('<p>Hier steht mein Text. Ganz neu</p>'), 'download button: file contains the final keystroke', saved.text.split('\n')[8]);
         c.eq(await ed.dirtyText(), 'gespeichert', 'document counts as saved afterwards');
@@ -753,7 +753,7 @@ export const functional = [
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.type(' GEHEIM-12345');
         await ed.settle();
-        await ed.click('bDownload');
+        await ed.download();
         await sleep(300);
         const stores = await ed.eval('(async () => JSON.stringify({ local: localStorage.length, session: sessionStorage.length, cookie: document.cookie, idb: (await indexedDB.databases()).length, caches: (await caches.keys().catch(() => [])).length }))()');
         c.eq(stores, '{"local":0,"session":0,"cookie":"","idb":0,"caches":0}', 'no storage is written while working');

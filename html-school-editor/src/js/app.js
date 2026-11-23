@@ -47,6 +47,7 @@ const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
+  inDownloads: false,     // the last save of this page was a download: the saved copy lies in "Downloads"
   writingDoc: null,       // the page whose file is being written right now (null: no write runs)
 };
 const history = createHistory(40000000);
@@ -813,6 +814,7 @@ function replaceDocument(text, meta) {
   state.name = meta.name || DEFAULT_NAME;
   state.handle = meta.handle || null;
   state.onDisk = !!meta.onDisk;
+  state.inDownloads = false;
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
@@ -946,8 +948,8 @@ function downloadDoc(given) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
   markSaved(snap);
-  if (snap.docId === state.docId) state.onDisk = false;      // the saved copy is in "Downloads", not where the page was
-  setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
+  if (snap.docId === state.docId) { state.onDisk = false; state.inDownloads = true; }   // the saved copy is in "Downloads", not where the page was
+  setStatus('Eine neue Kopie „' + a.download + '“ liegt jetzt im Ordner „Downloads“.', 'ok');
   return true;
 }
 
@@ -966,16 +968,23 @@ function saveDoc() {
   }
   return nextSave;
 }
-function startSave() {
+function startSave(asNew) {
   const done = () => { saving = null; };
-  saving = saveNow();
+  saving = saveNow(asNew);
   saving.then(done, done);
   return saving;
 }
 
-async function saveNow() {
+// "Speichern unter …": always asks for a place, also for a page that has a file; later saves go to the new file.
+// While a save runs it waits for nothing: the pupil is asked to try again, so that no picker opens unasked later.
+function saveAsDoc() {
+  if (saving) { setStatus('Gerade wird noch gespeichert. Versuche „Speichern unter …“ gleich noch einmal.', 'warn'); return Promise.resolve(false); }
+  return startSave(true);
+}
+
+async function saveNow(asNew) {
   const snap = snapshotForSave();
-  let handle = state.handle;
+  let handle = asNew ? null : state.handle;
   if (!handle) {
     if (!window.showSaveFilePicker) return downloadDoc(snap);
     try { handle = await window.showSaveFilePicker({ suggestedName: snap.name, types: FILE_TYPES }); } catch (e) {
@@ -993,10 +1002,10 @@ async function saveNow() {
   if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok');
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
-      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
+      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Speichern unter …“ und wähle einen anderen Ort.', 'warn');
     return false;
   }
-  state.handle = handle; state.name = name; state.onDisk = true;
+  state.handle = handle; state.name = name; state.onDisk = true; state.inDownloads = false;
   markSaved(snap);
   setStatus('Gespeichert: ' + name, 'ok');
   return true;
@@ -1025,17 +1034,19 @@ async function otherPageWritten(snap, handle, name, ok) {
 // "Im Browser öffnen": the saved file in a new tab, as a real page with its scripts and links, so that pupils
 // can test their links. It is addressed by its name next to the editor; the tab has no connection back to the
 // editor (noopener). A page that does not lie in the folder of the editor gives "file not found" there.
+const DOWNLOADS_NOTE = 'Deine Seite liegt als Kopie im Ordner „Downloads“. Der Editor kann sie dort nicht im Browser öffnen. Öffne sie in „Downloads“ mit einem Doppelklick.';
 async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
   if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
   const docId = state.docId;          // the page that was asked for; if another one is opened meanwhile, nothing opens
+  if (state.inDownloads && !isDirty()) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }   // just saved as a download: nothing to save again
   if (!state.onDisk || isDirty()) {
     const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
       : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
     if (!(await confirmBox(question, 'Speichern')) || state.docId !== docId) return;
     if (!(await saveDoc()) || state.docId !== docId || isDirty()) return;
-    if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
+    if (!state.onDisk) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }
   }
   window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
   setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
@@ -1215,7 +1226,7 @@ function wireChrome() {
   els.bNew.addEventListener('click', newDoc);
   els.bOpen.addEventListener('click', openDoc);
   tool(els.bSave, saveDoc);
-  tool(els.bDownload, () => downloadDoc(null));
+  tool(els.bSaveAs, saveAsDoc);
   tool(els.bUndo, undo);
   tool(els.bRedo, redo);
   tool(els.bFormat, formatDoc);
@@ -1312,6 +1323,7 @@ function start() {
     wirePreview();
     wireChrome();
     replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
+    els.noWrite.hidden = !!window.showSaveFilePicker;          // a browser that cannot write files: every save is a new copy
     document.documentElement.dataset.ready = 'yes';
   });
   els.pv.srcdoc = PREVIEW_SHELL;

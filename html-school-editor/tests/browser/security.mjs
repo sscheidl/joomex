@@ -195,7 +195,7 @@ export const security = [
         await ed.type('x');
         await ed.settle();
         await ed.format();
-        await ed.click('bDownload');
+        await ed.download();
         await sleep(1500);
         const delivered = sink.hits.slice(before);
         c.eq(delivered.join(','), '', 'requests delivered to the server: none');

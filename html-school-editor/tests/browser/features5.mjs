@@ -288,8 +288,9 @@ export const features5 = [
         c.ok(clean[0] === 'gespeichert' && Number(clean[1]) >= 700, '"gespeichert" is bold', JSON.stringify(clean));
         c.ok(dirty[0] === '● nicht gespeichert' && Number(dirty[1]) >= 700 && dirty[2] !== clean[2], '"nicht gespeichert" is bold in another colour', JSON.stringify(dirty));
         const groups = JSON.parse(await ed.eval('JSON.stringify(Array.from(document.querySelectorAll("#top > .group, #fmt > .group"), (g) => [getComputedStyle(g).borderLeftWidth, parseFloat(getComputedStyle(g).columnGap)]))'));
-        // four groups in the top bar, then the groups above the page; the first of those needs no line in front
-        c.ok(groups.length === 9 && groups[4][0] === '0px' && groups.filter((g, i) => i !== 4).every((g) => g[0] === '1px') && groups.every((g) => g[1] <= 4), 'groups are separated by a line; buttons inside a group stand close together', JSON.stringify(groups));
+        // four groups in the top bar, then the groups above the page (six since 1.0.0-beta.2, with marker and colour
+        // on their own); the first of those needs no line in front
+        c.ok(groups.length === 10 && groups[4][0] === '0px' && groups.filter((g, i) => i !== 4).every((g) => g[0] === '1px') && groups.every((g) => g[1] <= 4), 'groups are separated by a line; buttons inside a group stand close together', JSON.stringify(groups));
       });
     },
   },

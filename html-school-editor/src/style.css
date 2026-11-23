@@ -60,6 +60,9 @@ dialog label.check { display: flex; gap: 8px; align-items: center; font-weight: 
 dialog .swatches, dialog .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 dialog .swatches button { font-weight: 700; text-align: left; }
 #fmt .c { color: #c92a2a; font-weight: 700; }
+#fmt .insert { background: #d3f9d8; border-color: #69db7c; font-weight: 600; }
+#fmt .insert:hover:not(:disabled) { background: #b2f2bb; }
+#noWrite { font-size: 14px; font-weight: 600; }
 dialog h3, #infoText, #confirmText { cursor: move; user-select: none; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }

@@ -2,9 +2,9 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 1.0.0-beta.1 · **State:** beta for an accompanied classroom trial, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 1.0.0-beta.2 · **State:** beta for an accompanied classroom trial, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
-A screenshot and the download of the current beta are on the [release page](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.1).
+A screenshot and the download of 1.0.0-beta.1 are on its [release page](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.1).
 
 ## Use
 
@@ -12,7 +12,7 @@ Give pupils the single file [`dist/school-editor.html`](dist/school-editor.html)
 
 What the editor does:
 
-* New page, open an HTML file, save, download a copy.
+* New page, open an HTML file, save, save as a new file (in a browser without file access, Firefox for example, every save is a new copy in "Downloads", and the editor says so).
 * Edit in either pane; the other pane follows. The source text is always the complete document.
 * Paragraph, headings 1–3, bold (`<b>`), italic (`<i>`), underline (`<u>`), superscript (`<sup>`), subscript (`<sub>`), highlight (`<mark>`), text colour from a palette of eight names, tables, bulleted and numbered lists, alignment (left, centre, right, justified), links, images from the computer. An image is written as its file name (`<img src="bilder/katze.jpg">`, with optional folder, description and width); the picture file itself lies in the project folder, and the editor shows it from there. A missing file is shown as a box that names it. Existing links and images are changed through the same dialogs; a link can open in a new tab. The page title is edited in a field above the page.
 * "Im Browser öffnen" shows the saved page in a new tab, where its links and scripts work, so that pupils can test their links.
@@ -57,7 +57,7 @@ A locally branded copy (different product name in the title bar) can be built wi
 
 The editor is in beta and is tried in class. Every report helps, especially from real lessons. Please open an issue in this repository with the form "HTML-Schuleditor: Fehler melden" and give:
 
-1. the editor version (bottom right in the editor, for example `html-school-editor 1.0.0-beta.1`),
+1. the editor version (bottom right in the editor, for example `html-school-editor 1.0.0-beta.2`),
 2. browser and version, operating system,
 3. what you did, step by step, what you expected and what happened instead,
 4. if possible the smallest HTML file that shows the problem.
