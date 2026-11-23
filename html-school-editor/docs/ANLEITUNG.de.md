@@ -30,10 +30,10 @@ Du kannst auf beiden Seiten schreiben. Die andere Seite ändert sich mit.
 | • Liste | Liste mit Punkten | `<ul>` und `<li>` |
 | 1. Liste | Liste mit Nummern | `<ol>` und `<li>` |
 | Tabelle | fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, fügst du Zeilen und Spalten ein oder löschst sie. | `<table>`, `<tr>`, `<th>`, `<td>` |
-| Links, Mitte, Rechts, Block | richtet den Absatz aus (oder das angeklickte Bild): linksbündig, zentriert, rechtsbündig, Blocksatz. Drückst du denselben Knopf noch einmal, ist die Ausrichtung wieder weg. | `style="text-align: …"` |
-| Link | macht aus dem markierten Text oder dem angeklickten Bild einen Link. Steht der Cursor in einem Link, änderst du seine Adresse. Mit dem Häkchen „In neuem Tab öffnen“ öffnet sich der Link später in einem neuen Tab. | `<a href="…">`, `target="_blank"` |
+| Linksbündig, Zentriert, Rechtsbündig, Blocksatz | richtet den Absatz aus (oder das angeklickte Bild): linksbündig, zentriert, rechtsbündig, Blocksatz. Drückst du denselben Knopf noch einmal, ist die Ausrichtung wieder weg. | `style="text-align: …"` |
+| Link einfügen | macht aus dem markierten Text oder dem angeklickten Bild einen Link. Steht der Cursor in einem Link, änderst du seine Adresse. Mit dem Häkchen „In neuem Tab öffnen“ öffnet sich der Link später in einem neuen Tab. | `<a href="…">`, `target="_blank"` |
 | Link entfernen | macht aus dem Link wieder normalen Text | |
-| Bild | fügt ein Bild von deinem Computer ein. Ist ein Bild angeklickt, änderst du es. | `<img src="…">` |
+| Bild einfügen | fügt ein Bild von deinem Computer ein. Ist ein Bild angeklickt, änderst du es. | `<img src="…">` |
 
 Tipp: Klicke rechts in einen Text. Links wird der passende Code gelb markiert. So siehst du, welches Tag was bewirkt.
 
@@ -88,11 +88,15 @@ Mit **Speichern unter …** speicherst du deine Seite als neue Datei und wählst
 
 **Arbeite mit Microsoft Edge.** Nur dort schreibt der Editor in deine geöffnete Datei. In Firefox kann er das nicht: Jedes Speichern legt dort eine neue Kopie im Ordner „Downloads“ an, zum Beispiel `meine-seite (1).html`, `meine-seite (2).html`. Darauf weist der Editor in Firefox oben hin.
 
-Oben rechts siehst du, ob deine Seite gespeichert ist: **● nicht gespeichert** oder **Speichert …** (orange) oder **gespeichert** (grün).
+Oben rechts siehst du, ob deine Seite gespeichert ist: **● nicht gespeichert** oder **Speichert …** (orange), **gespeichert** (grün, deine Datei ist auf dem neuesten Stand), **Kopie in Downloads** (in Firefox) oder **noch keine Datei** (eine neue Seite).
+
+Hat jemand deine Datei inzwischen woanders geändert, zum Beispiel in einem zweiten Tab, überschreibt der Editor sie nicht. Speichere deine Seite dann als neue Datei.
+
+Hängt das Speichern lange („Speichert …“), kannst du mit **Speichern unter …** eine Kopie retten.
 
 ## Seite im Browser ansehen und Links testen
 
-Drücke **Im Browser öffnen**. Deine gespeicherte Seite öffnet sich in einem neuen Tab, so wie andere sie später sehen. Dort funktionieren deine Links und Skripte. Probiere alle Links aus: Führen sie wirklich zu deinen anderen Seiten?
+Drücke **Gespeicherte Seite ansehen**. Der Editor sagt dir vorher, welche Datei sich öffnet. Deine gespeicherte Seite öffnet sich in einem neuen Tab, so wie andere sie später sehen. Dort funktionieren deine Links und Skripte. Probiere alle Links aus: Führen sie wirklich zu deinen anderen Seiten?
 
 * Ist deine Seite noch nicht gespeichert, fragt der Editor zuerst.
 * Liegt deine gespeicherte Seite als Kopie im Ordner „Downloads“ (in Firefox), kann der Editor sie nicht öffnen. Öffne sie dann in „Downloads“ mit einem Doppelklick.

@@ -25,7 +25,7 @@ export const beta2 = [
         await ed.type(' neu');
         const saved = await ed.download('bSave');
         c.ok(saved.text.includes('mein Text. neu'), 'Speichern without file access is a download of the page', saved.name);
-        c.eq(await ed.dirtyText(), 'gespeichert', 'afterwards the page counts as saved');
+        c.eq(await ed.dirtyText(), 'Kopie in Downloads', 'afterwards the page counts as saved, as a copy in "Downloads" (top bar since 1.0.0-beta.3)');
         const before = ed.browser.downloadEvents.length;
         await ed.click('bBrowse');
         await sleep(800);
@@ -73,7 +73,7 @@ export const beta2 = [
       await withEditor(browser, {}, async (ed) => {
         c.eq(await labels(ed, '#top > .group[aria-label="Datei"]'), JSON.stringify(['Neu|Öffnen|Speichern|Speichern unter …']), 'file buttons: no "Herunterladen" any more');
         c.eq(await ed.eval('document.getElementById("bDownload") === null'), true, 'the download button is gone');
-        c.eq(await labels(ed, '#fmt > .group'), JSON.stringify(['Absatz|Ü1|Ü2|Ü3', 'F|K|U|x²|x₂', 'Marker|Farbe', '• Liste|1. Liste|Tabelle', 'Links|Mitte|Rechts|Block', 'Link|Link entfernen|Bild']), 'groups: marker and colour on their own, the table next to the lists');
+        c.eq(await labels(ed, '#fmt > .group'), JSON.stringify(['Absatz|Ü1|Ü2|Ü3', 'F|K|U|x²|x₂', 'Marker|Farbe', '• Liste|1. Liste|Tabelle', 'Linksbündig|Zentriert|Rechtsbündig|Blocksatz', 'Link einfügen|Link entfernen|Bild einfügen']), 'groups: marker and colour on their own, the table next to the lists');
         c.eq(await ed.eval('JSON.stringify(["bLink", "bImage", "bUnlink", "bBold"].map((id) => document.getElementById(id).classList.contains("insert")))'), '[true,true,false,false]', '"Link" and "Bild" are marked as insert buttons');
         c.ok(await ed.eval('(() => { const a = getComputedStyle(document.getElementById("bLink")).backgroundColor, b = getComputedStyle(document.getElementById("bUnlink")).backgroundColor; return a !== b; })()'), '"Link" has another colour than "Link entfernen"');
       });

@@ -2,7 +2,7 @@
 
 A small offline HTML learning editor for pupils of about 12–13 years. One HTML file, opened by double-click: the complete HTML source on the left, the directly editable page on the right. No installation, no server, no internet.
 
-**Version:** 1.0.0-beta.2 · **State:** beta for an accompanied classroom trial, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
+**Version:** 1.0.0-beta.3 · **State:** beta for an accompanied classroom trial, see [docs/STATUS.md](docs/STATUS.md) · **User interface:** German
 
 A screenshot and the download of 1.0.0-beta.1 are on its [release page](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.1).
 
@@ -57,7 +57,7 @@ A locally branded copy (different product name in the title bar) can be built wi
 
 The editor is in beta and is tried in class. Every report helps, especially from real lessons. Please open an issue in this repository with the form "HTML-Schuleditor: Fehler melden" and give:
 
-1. the editor version (bottom right in the editor, for example `html-school-editor 1.0.0-beta.2`),
+1. the editor version (bottom right in the editor, for example `html-school-editor 1.0.0-beta.3`),
 2. browser and version, operating system,
 3. what you did, step by step, what you expected and what happened instead,
 4. if possible the smallest HTML file that shows the problem.

@@ -233,13 +233,13 @@ export const review6 = [
     async run(c, { browser }) {
       await withEditor(browser, {}, async (ed) => {
         const leave = () => ed.eval('(() => { const e = new Event("beforeunload", { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; })()');
-        c.eq(await ed.dirtyText() + '|' + await leave(), 'gespeichert|false', 'a fresh page is saved and may be closed');
+        c.eq(await ed.dirtyText() + '|' + await leave(), 'noch keine Datei|false', 'a fresh page is saved and may be closed');
         await ed.field('pvTitle', 'Neuer Titel');
         c.eq(await ed.eval('document.activeElement.id'), 'pvTitle', 'the field keeps the focus');
         c.eq(await ed.dirtyText(), '● nicht gespeichert', 'while typing the page shows "nicht gespeichert"');
         c.eq(await leave(), true, 'and closing the tab asks first (beforeunload is prevented)');
         await ed.key('Escape');
-        c.eq(await ed.dirtyText() + '|' + await leave(), 'gespeichert|false', 'Escape takes the typing back: saved again');
+        c.eq(await ed.dirtyText() + '|' + await leave(), 'noch keine Datei|false', 'Escape takes the typing back: saved again');
       });
     },
   },

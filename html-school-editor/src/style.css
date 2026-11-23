@@ -26,6 +26,7 @@ button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); 
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
 #docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
 #docState.dirty { color: #d9480f; }
+#docState.copy { color: var(--soft); }
 
 #work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, var(--left, 50%)) 8px minmax(0, 1fr); }
 #work.dragging iframe, #work.dragging textarea { pointer-events: none; }

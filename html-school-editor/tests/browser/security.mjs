@@ -129,7 +129,7 @@ export const security = [
         await ed.clickPv('d.getElementById("js")');
         await ed.settle();
         await sleep(1200);
-        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'no marker was set in the editor window, the storage sentinel was not read, the title is untouched');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"x01-aktive-inhalte.html – HTML-Schuleditor"}', 'no marker was set in the editor window, the storage sentinel was not read, the title is untouched');
         c.eq(await ed.eval(PV + '.documentElement.dataset.scriptRan || ""'), '', 'no marker inside the preview document either');
         c.eq(await ed.eval(PV + '.querySelectorAll("script").length'), 0, 'the preview contains no script elements');
         c.eq(await ed.eval(`((d) => Array.from(d.querySelectorAll("*")).filter((el) => el.getAttributeNames().some((n) => n.startsWith("on"))).length)(${PV})`), 0, 'the preview contains no event-handler attributes');
@@ -169,7 +169,7 @@ export const security = [
         c.eq(await ed.eval('location.href'), url, variant + 'the editor window did not navigate');
         c.eq(await ed.eval(PV + '.URL'), 'about:srcdoc', variant + 'the preview frame did not navigate');
         c.eq((await browser.conn.send('Target.getTargets')).targetInfos.filter((t) => !targetsBefore.has(t.targetId)).length, 0, variant + 'no window or tab was opened');
-        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', variant + 'no script URL was executed');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"x02-navigation.html – HTML-Schuleditor"}', variant + 'no script URL was executed');
         c.eq(await ed.eval(PV + '.body.querySelectorAll("iframe, frame, object, embed, base, meta, form[action], a[href], area[href]").length'), 0, variant + 'the preview has no frames, base, refresh, form targets or live link addresses');
         c.eq(await ed.source(), navigationDoc(sink.origin, withFrameset), variant + 'the source is unchanged');
         c.note(variant + 'request attempts seen by the browser', JSON.stringify(attempts(ed, sink.origin)));
@@ -244,7 +244,7 @@ export const security = [
         await ed.eval(`((d) => { const dt = new DataTransfer(); dt.setData("text/html", ${JSON.stringify(rich)}); const ev = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }); d.body.dispatchEvent(ev); document.documentElement.dataset.dropPrevented = String(ev.defaultPrevented); })(${PV})`);
         c.eq(await ed.eval('document.documentElement.dataset.dropPrevented'), 'true', 'dropping rich content into the page is cancelled');
         await sleep(500);
-        c.eq(await markers(ed), '{"parent":"","leak":"","title":"HTML-Schuleditor"}', 'nothing executed');
+        c.eq(await markers(ed), '{"parent":"","leak":"","title":"meine-seite.html – HTML-Schuleditor"}', 'nothing executed');
         c.eq(sink.hits.slice(before).join(','), '', 'nothing was fetched');
       });
     },
