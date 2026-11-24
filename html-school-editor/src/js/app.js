@@ -40,6 +40,16 @@ const LINE_HEIGHT = 20;
 const FILE_TYPES = [{ description: 'HTML-Datei', accept: { 'text/html': ['.html', '.htm'] } }];
 
 const $ = (id) => document.getElementById(id);
+const BASE_TITLE = document.title;
+// The editor's own file carries this tag in its head; a file that has it is the editor, not a pupil's page.
+const EDITOR_MARK = /<meta\s+name\s*=\s*["']?html-school-editor["'\s>]/i;
+const fileText = (buffer) => new TextDecoder().decode(buffer);
+async function readDisk(handle) {
+  try { return fileText(await (await handle.getFile()).arrayBuffer()); } catch (e) { return null; }
+}
+async function isEditorTarget(handle) {
+  try { const f = await handle.getFile(); return f.size > 0 && EDITOR_MARK.test(await f.slice(0, 4096).text()); } catch (e) { return false; }
+}
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const now = () => performance.now();
 
@@ -47,6 +57,8 @@ const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
+  inDownloads: false,     // the last save of this page was a download: the saved copy lies in "Downloads"
+  diskText: null,         // the file as this page last read or wrote it (null: not known); a different file is not overwritten
   writingDoc: null,       // the page whose file is being written right now (null: no write runs)
 };
 const history = createHistory(40000000);
@@ -200,8 +212,12 @@ function updateChrome() {
   els.docName.textContent = state.name;
   // while the file of this page is written, the top bar says so, whatever the footer shows meanwhile
   const writing = state.writingDoc === state.docId;
-  els.docState.textContent = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = writing || isDirty() ? 'dirty' : 'saved';
+  // green "gespeichert" only for a page that is as its file is; a download is a copy, a new page has no file yet
+  const label = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : state.inDownloads ? 'Kopie in Downloads'
+    : !state.onDisk && !state.handle ? 'noch keine Datei' : 'gespeichert';
+  els.docState.textContent = label;
+  els.docState.className = writing || isDirty() ? 'dirty' : label === 'gespeichert' ? 'saved' : 'copy';
+  document.title = state.name + ' – ' + BASE_TITLE;
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -813,6 +829,8 @@ function replaceDocument(text, meta) {
   state.name = meta.name || DEFAULT_NAME;
   state.handle = meta.handle || null;
   state.onDisk = !!meta.onDisk;
+  state.inDownloads = false;
+  state.diskText = meta.diskText == null ? null : meta.diskText;
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
@@ -882,13 +900,18 @@ async function loadFile(file, handle, op) {
       : 'Die Datei „' + file.name + '“ ist keine Textdatei. Deine aktuelle Seite bleibt unverändert.');
     return false;
   }
+  if (EDITOR_MARK.test(decoded.text)) {
+    await infoBox('Die Datei „' + file.name + '“ ist der Editor selbst, nicht deine Seite. Öffne deine eigene HTML-Datei.');
+    return false;
+  }
   // Last step before the document is replaced; nothing is awaited between this check and the replacement.
   if (!(await mayReplace(op, file.name))) {
     setStatus(op.seq !== state.opSeq ? '„' + file.name + '“ wurde nicht geöffnet, weil du inzwischen etwas anderes begonnen hast.'
       : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
     return false;
   }
-  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy });
+  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy,
+    diskText: handle && !decoded.legacy ? fileText(bytes) : null });
   setStatus(decoded.legacy ? 'Geöffnet und in UTF-8 umgewandelt: ' + file.name + '. Bitte unter neuem Namen speichern.'
     : decoded.mixedEol ? 'Geöffnet: ' + file.name + '. Die Zeilenenden waren uneinheitlich und werden beim Speichern vereinheitlicht.'
     : 'Geöffnet: ' + file.name, decoded.legacy ? 'warn' : '');
@@ -945,9 +968,9 @@ function downloadDoc(given) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+  if (snap.docId === state.docId) { state.onDisk = false; state.inDownloads = true; }   // the saved copy is in "Downloads", not where the page was
   markSaved(snap);
-  if (snap.docId === state.docId) state.onDisk = false;      // the saved copy is in "Downloads", not where the page was
-  setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
+  setStatus('Eine neue Kopie „' + a.download + '“ liegt jetzt im Ordner „Downloads“.', 'ok');
   return true;
 }
 
@@ -966,23 +989,71 @@ function saveDoc() {
   }
   return nextSave;
 }
-function startSave() {
+function startSave(asNew) {
   const done = () => { saving = null; };
-  saving = saveNow();
+  saving = saveNow(asNew);
   saving.then(done, done);
   return saving;
 }
 
-async function saveNow() {
+// "Speichern unter …": always asks for a place, also for a page that has a file; later saves go to the new file.
+// While a save runs it waits for nothing: the pupil is asked to try again, so that no picker opens unasked later.
+function saveAsDoc() {
+  if (saving) return rescueCopy();
+  return startSave(true);
+}
+
+// While a write hangs (a slow network drive), "Speichern unter …" saves the newest text as an independent copy.
+// The page stays with its file, whose write keeps running; the copy does not count as saving the page.
+async function rescueCopy() {
   const snap = snapshotForSave();
-  let handle = state.handle;
+  if (!window.showSaveFilePicker) return downloadDoc(snap);
+  const pending = () => saving ? ' Die Datei „' + snap.name + '“ wird noch gespeichert.' : '';
+  let handle;
+  try { handle = await window.showSaveFilePicker({ suggestedName: snap.name.replace(/(\.html?)?$/i, (m) => '-kopie' + (m || '.html')), types: FILE_TYPES }); } catch (e) {
+    setStatus((e && e.name === 'AbortError' ? 'Kopie abgebrochen.' : 'Die Kopie konnte nicht angelegt werden.') + pending(), 'warn');
+    return false;
+  }
+  if (await isEditorTarget(handle)) { setStatus('Die Datei „' + handle.name + '“ ist der Editor selbst. Wähle für die Kopie einen anderen Namen.' + pending(), 'warn'); return false; }
+  const result = await writeToHandle(handle, snap.blob);
+  setStatus(result === 'ok' ? 'Kopie gespeichert: ' + (handle.name || snap.name) + '.' + pending() : 'Die Kopie konnte nicht gespeichert werden.' + pending(), result === 'ok' ? 'ok' : 'warn');
+  return result === 'ok';
+}
+
+const CONFLICT = (name) => 'Die Datei „' + name + '“ wurde inzwischen woanders geändert, zum Beispiel in einem zweiten Tab oder in einem anderen Programm. Wenn der Editor jetzt speichert, geht diese andere Fassung verloren. Speichere deine Seite deshalb als neue Datei.';
+
+async function saveNow(asNew) {
+  let snap = snapshotForSave();
+  let handle = asNew ? null : state.handle;
+  // the file is written only if it is still as this page last read or wrote it: a second tab or another program may
+  // have changed it meanwhile (the check and the write are not one step; a change in between is not seen)
+  if (handle && state.diskText !== null && snap.docId === state.docId) {
+    const now = await readDisk(handle);
+    if (now !== null && now !== state.diskText) {
+      const name = state.name;
+      if (!(await confirmBox(CONFLICT(name), 'Als neue Datei speichern …')) || snap.docId !== state.docId) {
+        if (snap.docId === state.docId) setStatus('Nicht gespeichert. Die Datei „' + name + '“ bleibt, wie sie ist. Deine Seite bleibt im Editor.', 'warn');
+        return false;
+      }
+      snap = snapshotForSave();
+      handle = null;
+    }
+  }
   if (!handle) {
     if (!window.showSaveFilePicker) return downloadDoc(snap);
     try { handle = await window.showSaveFilePicker({ suggestedName: snap.name, types: FILE_TYPES }); } catch (e) {
-      if (e && e.name === 'AbortError') { setStatus('Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.', 'warn'); return false; }
+      if (e && e.name === 'AbortError') {
+        setStatus(!isDirty() && state.onDisk ? 'Speichern unter … abgebrochen. Deine Datei „' + state.name + '“ bleibt, wie sie ist.' : 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.', 'warn');
+        return false;
+      }
       return downloadDoc(snap);
     }
+    if (await isEditorTarget(handle)) {
+      setStatus('Die Datei „' + handle.name + '“ ist der Editor selbst. Wähle für deine Seite einen anderen Namen. Deine Seite ist noch nicht gespeichert.', 'warn');
+      return false;
+    }
   }
+  const written = fileText(await snap.blob.arrayBuffer());
   if (!nextSave) setStatus('Speichert …', '', true);
   state.writingDoc = snap.docId;
   updateChrome();
@@ -990,13 +1061,13 @@ async function saveNow() {
   state.writingDoc = null;
   updateChrome();
   const name = handle.name || snap.name;
-  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok');
+  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok', written);
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
-      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
+      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Speichern unter …“ und wähle einen anderen Ort.', 'warn');
     return false;
   }
-  state.handle = handle; state.name = name; state.onDisk = true;
+  state.handle = handle; state.name = name; state.onDisk = true; state.inDownloads = false; state.diskText = written;
   markSaved(snap);
   setStatus('Gespeichert: ' + name, 'ok');
   return true;
@@ -1005,17 +1076,24 @@ async function saveNow() {
 // A write that ends after another page was opened. If the open page comes from the same file (opened again
 // while the write ran), the file now holds the text of the write: the open page counts as saved only if it
 // shows exactly that text, otherwise as not saved, and the pupil is told.
-async function otherPageWritten(snap, handle, name, ok) {
+async function otherPageWritten(snap, handle, name, ok, written) {
   if (!ok) { setStatus('Die vorige Seite „' + name + '“ konnte nicht gespeichert werden.', 'warn'); return false; }
   const docId = state.docId;
-  let same = false;
+  let same = false, unsure = false;
   if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
-  // opened without a handle (dropped, file input): only the name is known. Another file of that name is told apart
-  // by its text: the written file itself was read with the text it had before the write (snap.saved)
-  else if (!state.handle && state.onDisk) same = state.name === name && state.savedText === snap.saved;
+  // opened without a handle (dropped, file input): only the name is known. A file of that name that was read with
+  // the text the written file had before the write may be that file or a copy of it: it never counts as saved then
+  else if (!state.handle && state.onDisk) unsure = state.name === name && state.savedText === snap.saved;
   if (docId !== state.docId) return true;
+  if (unsure) {
+    state.savedText = null;
+    updateChrome();
+    setStatus('Die Seite „' + name + '“ wurde eben gespeichert. Ob es dieselbe Datei ist wie diese Seite, kann der Editor nicht erkennen. Diese Seite gilt deshalb als nicht gespeichert. Speichere sie, wenn du sicher sein willst.', 'warn');
+    return true;
+  }
   if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
   state.savedText = snap.text;
+  state.diskText = written;
   updateChrome();
   if (isDirty()) setStatus('Die Datei „' + name + '“ wurde eben noch mit deinem früheren Stand gespeichert. Sie ist jetzt anders als diese Seite. Öffne sie neu, wenn du den gespeicherten Stand sehen willst.', 'warn');
   else setStatus('Gespeichert: ' + name, 'ok');
@@ -1025,19 +1103,23 @@ async function otherPageWritten(snap, handle, name, ok) {
 // "Im Browser öffnen": the saved file in a new tab, as a real page with its scripts and links, so that pupils
 // can test their links. It is addressed by its name next to the editor; the tab has no connection back to the
 // editor (noopener). A page that does not lie in the folder of the editor gives "file not found" there.
+const DOWNLOADS_NOTE = 'Deine Seite liegt als Kopie im Ordner „Downloads“. Der Editor kann sie dort nicht im Browser öffnen. Öffne sie in „Downloads“ mit einem Doppelklick.';
 async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
   if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
   const docId = state.docId;          // the page that was asked for; if another one is opened meanwhile, nothing opens
+  if (state.inDownloads && !isDirty()) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }   // just saved as a download: nothing to save again
   if (!state.onDisk || isDirty()) {
     const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
       : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
     if (!(await confirmBox(question, 'Speichern')) || state.docId !== docId) return;
     if (!(await saveDoc()) || state.docId !== docId || isDirty()) return;
-    if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
+    if (!state.onDisk) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }
   }
-  window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
+  const shown = state.name;
+  if (!(await confirmBox('Der Browser öffnet die Datei „' + shown + '“ aus dem Ordner des Editors. Liegt deine Seite in einem anderen Ordner, siehst du dort eine andere oder gar keine Seite. Öffne deine Seite dann in ihrem Ordner mit einem Doppelklick.', 'Ansehen')) || state.docId !== docId) return;
+  window.open(new URL(encodeURIComponent(shown), location.href).href, '_blank', 'noopener');
   setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
 }
 
@@ -1215,7 +1297,7 @@ function wireChrome() {
   els.bNew.addEventListener('click', newDoc);
   els.bOpen.addEventListener('click', openDoc);
   tool(els.bSave, saveDoc);
-  tool(els.bDownload, () => downloadDoc(null));
+  tool(els.bSaveAs, saveAsDoc);
   tool(els.bUndo, undo);
   tool(els.bRedo, redo);
   tool(els.bFormat, formatDoc);
@@ -1312,6 +1394,7 @@ function start() {
     wirePreview();
     wireChrome();
     replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
+    els.noWrite.hidden = !!window.showSaveFilePicker;          // a browser that cannot write files: every save is a new copy
     document.documentElement.dataset.ready = 'yes';
   });
   els.pv.srcdoc = PREVIEW_SHELL;

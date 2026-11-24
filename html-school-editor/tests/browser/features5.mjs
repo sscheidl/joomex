@@ -215,6 +215,8 @@ export const features5 = [
         c.eq((await opened()).length, 0, 'cancelled: nothing is opened');
         await ed.openFile(file);
         await ed.click('bBrowse');
+        await ed.until('document.getElementById("dlgConfirm").open', 'note which file opens (since 1.0.0-beta.3)');
+        await ed.dialogButton('dlgConfirm', 'Ansehen');
         await sleep(100);
         const calls = await opened();
         const here = await ed.eval('location.href.slice(0, location.href.lastIndexOf("/") + 1)');
@@ -285,11 +287,12 @@ export const features5 = [
         await ed.type('x');
         await ed.settle();
         const dirty = await look();
-        c.ok(clean[0] === 'gespeichert' && Number(clean[1]) >= 700, '"gespeichert" is bold', JSON.stringify(clean));
+        c.ok(clean[0] === 'noch keine Datei' && Number(clean[1]) >= 700, 'the state of a new page ("noch keine Datei" since 1.0.0-beta.3) is bold', JSON.stringify(clean));
         c.ok(dirty[0] === '● nicht gespeichert' && Number(dirty[1]) >= 700 && dirty[2] !== clean[2], '"nicht gespeichert" is bold in another colour', JSON.stringify(dirty));
         const groups = JSON.parse(await ed.eval('JSON.stringify(Array.from(document.querySelectorAll("#top > .group, #fmt > .group"), (g) => [getComputedStyle(g).borderLeftWidth, parseFloat(getComputedStyle(g).columnGap)]))'));
-        // four groups in the top bar, then the groups above the page; the first of those needs no line in front
-        c.ok(groups.length === 9 && groups[4][0] === '0px' && groups.filter((g, i) => i !== 4).every((g) => g[0] === '1px') && groups.every((g) => g[1] <= 4), 'groups are separated by a line; buttons inside a group stand close together', JSON.stringify(groups));
+        // four groups in the top bar, then the groups above the page (six since 1.0.0-beta.2, with marker and colour
+        // on their own); the first of those needs no line in front
+        c.ok(groups.length === 10 && groups[4][0] === '0px' && groups.filter((g, i) => i !== 4).every((g) => g[0] === '1px') && groups.every((g) => g[1] <= 4), 'groups are separated by a line; buttons inside a group stand close together', JSON.stringify(groups));
       });
     },
   },

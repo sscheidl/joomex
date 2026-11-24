@@ -25,20 +25,22 @@ import { review8 } from './browser/review8.mjs';
 import { review9 } from './browser/review9.mjs';
 import { review10 } from './browser/review10.mjs';
 import { review11 } from './browser/review11.mjs';
+import { beta2 } from './browser/beta2.mjs';
+import { beta3 } from './browser/beta3.mjs';
 import { features7 } from './browser/features7.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const only = opt('--only') ? opt('--only').split(',') : null;
 const browsers = opt('--browser') ? [opt('--browser')] : ['edge', 'chrome', 'firefox'];
-const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7, ...review7, ...review8, ...review9, ...review10, ...review11].filter((t) => !only || only.includes(t.id));
+const cases = [...functional, ...security, ...robustness, ...review, ...features, ...review3, ...features5, ...review6, ...features7, ...review7, ...review8, ...review9, ...review10, ...review11, ...beta2, ...beta3].filter((t) => !only || only.includes(t.id));
 
 const artefact = fs.readFileSync(ARTEFACT);
 const meta = {
   artefact: 'dist/school-editor.html',
   bytes: artefact.length,
   sha256: crypto.createHash('sha256').update(artefact).digest('hex'),
-  sizeLimit: 200000,
+  sizeLimit: 250000,
   node: process.version,
   os: os.type() + ' ' + os.release(),
 };

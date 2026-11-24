@@ -211,9 +211,12 @@ export class Editor {
   inactiveNote() { return this.eval('document.getElementById("inactive").hidden ? "" : document.getElementById("inactiveText").textContent'); }
   key(name, mods) { return this.page.key(name, mods); }
 
-  // Clicks a button that triggers a real browser download and returns the downloaded bytes.
-  async download(buttonId = 'bDownload', trigger = null) {
+  // Clicks a button that triggers a real browser download and returns the downloaded bytes. Without a button:
+  // "Speichern" with the file pickers hidden from then on, the save of a browser without file access (the
+  // button "Herunterladen" that these calls clicked until 1.0.0-beta.1 is gone since 1.0.0-beta.2).
+  async download(buttonId = null, trigger = null) {
     const at = this.browser.downloadEvents.length;
+    if (!buttonId && !trigger) { await this.eval(NO_FSA + ' void 0;'); buttonId = 'bSave'; }
     if (trigger) await trigger(); else await this.click(buttonId);
     const done = await this.browser.waitDownload(at);
     for (let i = 0; i < 40 && !fs.existsSync(done.path); i++) await sleep(50);

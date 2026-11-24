@@ -1,6 +1,6 @@
 {
   "name": "html-school-editor",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.3",
   "description": "Offline single-file HTML learning editor with source and visual editing side by side",
   "private": true,
   "type": "module",

@@ -395,10 +395,10 @@ export const functional = [
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.type(' Ganz neu');
         const flag = await ed.syncFlag();
-        const saved = await ed.download('bDownload');
+        const saved = await ed.download();
         c.eq(flag, 'no', 'the page edit was still pending when the button was pressed');
         c.ok(saved.text.includes('<p>Hier steht mein Text. Ganz neu</p>'), 'download button: file contains the final keystroke', saved.text.split('\n')[8]);
-        c.eq(await ed.dirtyText(), 'gespeichert', 'document counts as saved afterwards');
+        c.eq(await ed.dirtyText(), 'Kopie in Downloads', 'document counts as saved afterwards, as a copy (top bar since 1.0.0-beta.3)');
       });
       await withEditor(browser, { noFsa: true }, async (ed) => {
         await ed.caret('mein Text.', 'mein Text.'.length);
@@ -681,7 +681,7 @@ export const functional = [
         await ed.click('bNew');
         await ed.dialogButton('dlgConfirm', 'Änderungen verwerfen');
         await ed.settle();
-        c.ok(!(await ed.source()).includes('Arbeit') && (await ed.dirtyText()) === 'gespeichert', 'confirming discards and starts a new page');
+        c.ok(!(await ed.source()).includes('Arbeit') && (await ed.dirtyText()) === 'noch keine Datei', 'confirming discards and starts a new page');
         await ed.page.send('Page.setInterceptFileChooserDialog', { enabled: true });
         const chooser = ed.page.waitFor('Page.fileChooserOpened');
         await ed.click('bOpen');
@@ -741,7 +741,7 @@ export const functional = [
         const saved = await ed.download('bSave');
         c.eq(saved.text, readFixture('basic.html').replace('Punkt A', 'Punkt A!'), 'Save button produces a real download with the current text');
         c.eq(saved.name, 'basic.html', 'download uses the document name');
-        c.eq(await ed.dirtyText(), 'gespeichert', 'state shows saved');
+        c.eq(await ed.dirtyText(), 'Kopie in Downloads', 'state shows saved, as a copy (top bar since 1.0.0-beta.3)');
       });
       c.skip('native open/save pickers and write-back to a real file handle', 'cannot be driven by this harness; handle logic is covered with a labelled mock in T-10 and T-15');
     },
@@ -753,7 +753,7 @@ export const functional = [
         await ed.caret('mein Text.', 'mein Text.'.length);
         await ed.type(' GEHEIM-12345');
         await ed.settle();
-        await ed.click('bDownload');
+        await ed.download();
         await sleep(300);
         const stores = await ed.eval('(async () => JSON.stringify({ local: localStorage.length, session: sessionStorage.length, cookie: document.cookie, idb: (await indexedDB.databases()).length, caches: (await caches.keys().catch(() => [])).length }))()');
         c.eq(stores, '{"local":0,"session":0,"cookie":"","idb":0,"caches":0}', 'no storage is written while working');

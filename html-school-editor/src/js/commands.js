@@ -502,8 +502,20 @@ export function setAlign(env, value) {
   }
   let changed = false, odd = false;
   const facts = alignFacts(doc), sometimes = value === 'left' && !!facts.align;
+  // a switch: if every block already carries this alignment in its own style, pressing again takes it away
+  const own = (el) => { const v = el.style.textAlign; return v === 'start' ? 'left' : v === 'end' ? 'right' : v; };
+  const off = targets.every((el) => own(el) === value);
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
+    if (off) {
+      const next = withAlign(old, '');
+      if (next === null) { odd = true; continue; }
+      if (next === old) continue;
+      if (next) el.setAttribute('style', next); else el.removeAttribute('style');
+      record(env, el, { style: next || null });
+      changed = true;
+      continue;
+    }
     let next = withAlign(old, value === 'left' ? '' : value);
     if (next === null) { odd = true; continue; }       // the style text cannot be read with certainty: leave it alone
     const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };

@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="html-school-editor" content="__VERSION__">
 <meta http-equiv="Content-Security-Policy" content="__CSP__">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,7 +19,7 @@ __CSS__
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
     <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)">Speichern</button>
-    <button id="bDownload" type="button" title="Eine Kopie in den Ordner „Downloads“ laden">Herunterladen</button>
+    <button id="bSaveAs" type="button" title="Die Seite als neue Datei speichern und den Ort selbst wählen">Speichern unter …</button>
   </div>
   <div class="group" role="group" aria-label="Verlauf">
     <button id="bUndo" type="button" title="Rückgängig (Strg+Z)">Rückgängig</button>
@@ -28,11 +29,12 @@ __CSS__
     <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
   </div>
   <div class="group">
-    <button id="bBrowse" type="button" title="Die gespeicherte Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Im Browser öffnen</button>
+    <button id="bBrowse" type="button" title="Die gespeicherte Datei deiner Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Gespeicherte Seite ansehen</button>
   </div>
   <div class="doc"><span id="docName"></span><span id="docState"></span></div>
   <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
 </header>
+<div id="noWrite" class="note warn" role="note" hidden>In diesem Browser kann der Editor deine Datei nicht überschreiben. Jedes Speichern legt eine neue Kopie im Ordner „Downloads“ an. Arbeite deshalb mit Microsoft Edge.</div>
 
 <main id="work">
   <section id="srcPane" aria-label="HTML-Code">
@@ -59,24 +61,26 @@ __CSS__
         <button id="bUnderline" type="button" class="u" title="Unterstrichen &lt;u&gt; (Strg+U)">U</button>
         <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
         <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
+      </span>
+      <span class="group">
         <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
         <button id="bColor" type="button" class="c" title="Textfarbe &lt;span style=&quot;color: …&quot;&gt;">Farbe</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
         <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
+        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
       </span>
       <span class="group" role="group" aria-label="Ausrichtung">
-        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links)">Links</button>
-        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte)">Mitte</button>
-        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts)">Rechts</button>
-        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile)">Block</button>
+        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links). Noch einmal drücken nimmt es wieder weg.">Linksbündig</button>
+        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte). Noch einmal drücken nimmt es wieder weg.">Zentriert</button>
+        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts). Noch einmal drücken nimmt es wieder weg.">Rechtsbündig</button>
+        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile). Noch einmal drücken nimmt es wieder weg.">Blocksatz</button>
       </span>
       <span class="group">
-        <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
+        <button id="bLink" type="button" class="insert" title="Link einfügen oder ändern &lt;a&gt;">Link einfügen</button>
         <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
-        <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
-        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
+        <button id="bImage" type="button" class="insert" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild einfügen</button>
       </span>
     </div>
     <div id="lockNote" class="note warn" hidden></div>
@@ -164,11 +168,11 @@ __CSS__
     <li><b>Links</b> steht der HTML-Code, <b>rechts</b> siehst du deine Seite. Du kannst auf beiden Seiten schreiben – die andere Seite ändert sich mit.</li>
     <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
     <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
-    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts. <b>Speichern unter …</b> legt eine neue Datei an.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
     <li><b>Farbe</b> färbt den markierten Text. <b>Tabelle</b> fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, kannst du damit Zeilen und Spalten einfügen oder löschen. Mit der Tab-Taste springst du in die nächste Zelle.</li>
-    <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
+    <li><b>Gespeicherte Seite ansehen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
     <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>
   <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>

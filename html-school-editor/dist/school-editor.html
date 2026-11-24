@@ -2,10 +2,11 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kdGpg12iifws/HCBAxta6RSAZSvuL5wMSyaMTp9ORQE='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
+<meta name="html-school-editor" content="1.0.0-beta.3">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5GWTJMWlNp2Q2WCk1/pBxyTPFD/u9udXHNxZM9TpTBs='; style-src 'unsafe-inline'; img-src data: 'self'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="generator" content="html-school-editor 1.0.0-beta.1">
+<meta name="generator" content="html-school-editor 1.0.0-beta.3">
 <title>HTML-Schuleditor</title>
 <style>
 :root {
@@ -36,6 +37,7 @@ button[aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); 
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
 #docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
 #docState.dirty { color: #d9480f; }
+#docState.copy { color: var(--soft); }
 
 #work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, var(--left, 50%)) 8px minmax(0, 1fr); }
 #work.dragging iframe, #work.dragging textarea { pointer-events: none; }
@@ -70,6 +72,9 @@ dialog label.check { display: flex; gap: 8px; align-items: center; font-weight: 
 dialog .swatches, dialog .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 dialog .swatches button { font-weight: 700; text-align: left; }
 #fmt .c { color: #c92a2a; font-weight: 700; }
+#fmt .insert { background: #d3f9d8; border-color: #69db7c; font-weight: 600; }
+#fmt .insert:hover:not(:disabled) { background: #b2f2bb; }
+#noWrite { font-size: 14px; font-weight: 600; }
 dialog h3, #infoText, #confirmText { cursor: move; user-select: none; }
 #pvBox { flex: 1; min-height: 0; display: flex; }
 #pv { flex: 1; width: 100%; border: 0; background: #fff; }
@@ -113,12 +118,12 @@ dialog .found:empty { display: none; }
 </head>
 <body>
 <header id="top">
-  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">1.0.0-beta.1</small></strong><span>Webseiten schreiben und verstehen</span></div>
+  <div class="brand"><strong>HTML-Schuleditor <small id="appVer">1.0.0-beta.3</small></strong><span>Webseiten schreiben und verstehen</span></div>
   <div class="group" role="group" aria-label="Datei">
     <button id="bNew" type="button" title="Neue Seite beginnen">Neu</button>
     <button id="bOpen" type="button" title="HTML-Datei öffnen (Strg+O)">Öffnen</button>
     <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)">Speichern</button>
-    <button id="bDownload" type="button" title="Eine Kopie in den Ordner „Downloads“ laden">Herunterladen</button>
+    <button id="bSaveAs" type="button" title="Die Seite als neue Datei speichern und den Ort selbst wählen">Speichern unter …</button>
   </div>
   <div class="group" role="group" aria-label="Verlauf">
     <button id="bUndo" type="button" title="Rückgängig (Strg+Z)">Rückgängig</button>
@@ -128,11 +133,12 @@ dialog .found:empty { display: none; }
     <button id="bFormat" type="button" title="Den HTML-Code ordentlich einrücken (formatieren)">Code aufräumen</button>
   </div>
   <div class="group">
-    <button id="bBrowse" type="button" title="Die gespeicherte Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Im Browser öffnen</button>
+    <button id="bBrowse" type="button" title="Die gespeicherte Datei deiner Seite in einem neuen Tab des Browsers öffnen, damit du deine Links testen kannst">Gespeicherte Seite ansehen</button>
   </div>
   <div class="doc"><span id="docName"></span><span id="docState"></span></div>
   <button id="bHelp" type="button" title="Kurze Hilfe">Hilfe</button>
 </header>
+<div id="noWrite" class="note warn" role="note" hidden>In diesem Browser kann der Editor deine Datei nicht überschreiben. Jedes Speichern legt eine neue Kopie im Ordner „Downloads“ an. Arbeite deshalb mit Microsoft Edge.</div>
 
 <main id="work">
   <section id="srcPane" aria-label="HTML-Code">
@@ -159,24 +165,26 @@ dialog .found:empty { display: none; }
         <button id="bUnderline" type="button" class="u" title="Unterstrichen &lt;u&gt; (Strg+U)">U</button>
         <button id="bSup" type="button" title="Hochgestellt &lt;sup&gt;, zum Beispiel für m²">x²</button>
         <button id="bSub" type="button" title="Tiefgestellt &lt;sub&gt;, zum Beispiel für H₂O">x₂</button>
+      </span>
+      <span class="group">
         <button id="bMark" type="button" class="m" title="Markieren wie mit einem Textmarker &lt;mark&gt;">Marker</button>
         <button id="bColor" type="button" class="c" title="Textfarbe &lt;span style=&quot;color: …&quot;&gt;">Farbe</button>
       </span>
       <span class="group">
         <button id="bUl" type="button" title="Liste mit Punkten &lt;ul&gt;">• Liste</button>
         <button id="bOl" type="button" title="Liste mit Nummern &lt;ol&gt;">1. Liste</button>
+        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
       </span>
       <span class="group" role="group" aria-label="Ausrichtung">
-        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links)">Links</button>
-        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte)">Mitte</button>
-        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts)">Rechts</button>
-        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile)">Block</button>
+        <button id="bAlignLeft" type="button" title="Linksbündig (Text oder Bild steht links). Noch einmal drücken nimmt es wieder weg.">Linksbündig</button>
+        <button id="bAlignCenter" type="button" title="Zentriert (Text oder Bild steht in der Mitte). Noch einmal drücken nimmt es wieder weg.">Zentriert</button>
+        <button id="bAlignRight" type="button" title="Rechtsbündig (Text oder Bild steht rechts). Noch einmal drücken nimmt es wieder weg.">Rechtsbündig</button>
+        <button id="bAlignJustify" type="button" title="Blocksatz (Text füllt die ganze Zeile). Noch einmal drücken nimmt es wieder weg.">Blocksatz</button>
       </span>
       <span class="group">
-        <button id="bLink" type="button" title="Link einfügen oder ändern &lt;a&gt;">Link</button>
+        <button id="bLink" type="button" class="insert" title="Link einfügen oder ändern &lt;a&gt;">Link einfügen</button>
         <button id="bUnlink" type="button" title="Link entfernen">Link entfernen</button>
-        <button id="bImage" type="button" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild</button>
-        <button id="bTable" type="button" title="Tabelle einfügen oder die Tabelle mit dem Cursor ändern &lt;table&gt;">Tabelle</button>
+        <button id="bImage" type="button" class="insert" title="Bild einfügen oder das angeklickte Bild ändern &lt;img&gt;">Bild einfügen</button>
       </span>
     </div>
     <div id="lockNote" class="note warn" hidden></div>
@@ -186,7 +194,7 @@ dialog .found:empty { display: none; }
   </section>
 </main>
 
-<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 1.0.0-beta.1</span></footer>
+<footer id="foot"><span id="msg" role="status" aria-live="polite"></span><span id="pos"></span><span class="ver">html-school-editor 1.0.0-beta.3</span></footer>
 
 <div id="fatal" hidden>Dieser Browser kann den Editor nicht starten. Bitte öffne die Datei mit Microsoft Edge oder Google Chrome.</div>
 
@@ -264,11 +272,11 @@ dialog .found:empty { display: none; }
     <li><b>Links</b> steht der HTML-Code, <b>rechts</b> siehst du deine Seite. Du kannst auf beiden Seiten schreiben – die andere Seite ändert sich mit.</li>
     <li>Klicke rechts in einen Text: Links wird der passende Code gelb markiert.</li>
     <li>Für Überschriften, Listen, Links und Bilder: zuerst rechts den Cursor setzen oder Text markieren, dann den Knopf drücken.</li>
-    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts, wenn du das Fenster schließt.</li>
+    <li><b>Speichern</b> nicht vergessen! Der Editor merkt sich nichts. <b>Speichern unter …</b> legt eine neue Datei an.</li>
     <li>Bilder: Lege das Bild in den Ordner deiner Seite. Im Code steht dann der Dateiname. Zum Ändern klickst du das Bild an und drückst „Bild“. Der Editor zeigt die Bilder nur, wenn deine Seite im selben Ordner liegt wie der Editor.</li>
     <li>Skripte und Bilder aus dem Internet zeigt der Editor nicht an. Im Code bleiben sie erhalten. Ein Bild aus dem Internet lädst du herunter (denk an das Urheberrecht) und legst es in den Ordner deiner Seite.</li>
     <li><b>Farbe</b> färbt den markierten Text. <b>Tabelle</b> fügt eine Tabelle ein. Steht der Cursor in einer Tabelle, kannst du damit Zeilen und Spalten einfügen oder löschen. Mit der Tab-Taste springst du in die nächste Zelle.</li>
-    <li><b>Im Browser öffnen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
+    <li><b>Gespeicherte Seite ansehen</b> zeigt deine gespeicherte Seite in einem neuen Tab. Dort kannst du deine Links ausprobieren. Deine Seite muss dafür im Ordner des Editors liegen.</li>
     <li>Tasten: Strg+S speichern · Strg+Z rückgängig · Strg+Y wiederholen · Strg+B fett · Strg+I kursiv · Strg+U unterstrichen</li>
   </ul>
   <div class="row"><button type="button" class="primary" data-close="ok">Schließen</button></div>
@@ -2420,8 +2428,19 @@ function setAlign(env, value) {
   }
   let changed = false, odd = false;
   const facts = alignFacts(doc), sometimes = value === 'left' && !!facts.align;
+  const own = (el) => { const v = el.style.textAlign; return v === 'start' ? 'left' : v === 'end' ? 'right' : v; };
+  const off = targets.every((el) => own(el) === value);
   for (const el of targets) {
     const old = el.getAttribute('style') || '';
+    if (off) {
+      const next = withAlign(old, '');
+      if (next === null) { odd = true; continue; }
+      if (next === old) continue;
+      if (next) el.setAttribute('style', next); else el.removeAttribute('style');
+      record(env, el, { style: next || null });
+      changed = true;
+      continue;
+    }
     let next = withAlign(old, value === 'left' ? '' : value);
     if (next === null) { odd = true; continue; }       // the style text cannot be read with certainty: leave it alone
     const put = (style) => { if (style) el.setAttribute('style', style); else el.removeAttribute('style'); return style; };
@@ -2739,6 +2758,15 @@ const LINE_HEIGHT = 20;
 const FILE_TYPES = [{ description: 'HTML-Datei', accept: { 'text/html': ['.html', '.htm'] } }];
 
 const $ = (id) => document.getElementById(id);
+const BASE_TITLE = document.title;
+const EDITOR_MARK = /<meta\s+name\s*=\s*["']?html-school-editor["'\s>]/i;
+const fileText = (buffer) => new TextDecoder().decode(buffer);
+async function readDisk(handle) {
+  try { return fileText(await (await handle.getFile()).arrayBuffer()); } catch (e) { return null; }
+}
+async function isEditorTarget(handle) {
+  try { const f = await handle.getFile(); return f.size > 0 && EDITOR_MARK.test(await f.slice(0, 4096).text()); } catch (e) { return false; }
+}
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const now = () => performance.now();
 
@@ -2746,6 +2774,8 @@ const state = {
   text: '', rev: 0, pvRev: -1, view: null, visualDirty: false, onlyInserts: true, composing: false, inCommand: false,
   name: DEFAULT_NAME, handle: null, bom: false, eol: '\n', savedText: '', docId: 0, opSeq: 0, report: '', blocked: false,
   srcMark: null, lineStarts: [0], lineCount: 0, plain: false, lost: [], title: '', onDisk: false,
+  inDownloads: false,     // the last save of this page was a download: the saved copy lies in "Downloads"
+  diskText: null,         // the file as this page last read or wrote it (null: not known); a different file is not overwritten
   writingDoc: null,       // the page whose file is being written right now (null: no write runs)
 };
 const history = createHistory(40000000);
@@ -2886,8 +2916,11 @@ const previewFocused = () => document.activeElement === els.pv;
 function updateChrome() {
   els.docName.textContent = state.name;
   const writing = state.writingDoc === state.docId;
-  els.docState.textContent = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : 'gespeichert';
-  els.docState.className = writing || isDirty() ? 'dirty' : 'saved';
+  const label = writing ? 'Speichert …' : isDirty() ? '● nicht gespeichert' : state.inDownloads ? 'Kopie in Downloads'
+    : !state.onDisk && !state.handle ? 'noch keine Datei' : 'gespeichert';
+  els.docState.textContent = label;
+  els.docState.className = writing || isDirty() ? 'dirty' : label === 'gespeichert' ? 'saved' : 'copy';
+  document.title = state.name + ' – ' + BASE_TITLE;
   els.bUndo.disabled = !history.canUndo();
   els.bRedo.disabled = !history.canRedo();
   document.documentElement.dataset.sync = state.pvRev === state.rev && !state.visualDirty ? 'yes' : 'no';
@@ -3448,6 +3481,8 @@ function replaceDocument(text, meta) {
   state.name = meta.name || DEFAULT_NAME;
   state.handle = meta.handle || null;
   state.onDisk = !!meta.onDisk;
+  state.inDownloads = false;
+  state.diskText = meta.diskText == null ? null : meta.diskText;
   state.bom = !!meta.bom;
   state.eol = meta.eol || '\n';
   state.srcMark = null;
@@ -3514,12 +3549,17 @@ async function loadFile(file, handle, op) {
       : 'Die Datei „' + file.name + '“ ist keine Textdatei. Deine aktuelle Seite bleibt unverändert.');
     return false;
   }
+  if (EDITOR_MARK.test(decoded.text)) {
+    await infoBox('Die Datei „' + file.name + '“ ist der Editor selbst, nicht deine Seite. Öffne deine eigene HTML-Datei.');
+    return false;
+  }
   if (!(await mayReplace(op, file.name))) {
     setStatus(op.seq !== state.opSeq ? '„' + file.name + '“ wurde nicht geöffnet, weil du inzwischen etwas anderes begonnen hast.'
       : '„' + file.name + '“ wurde nicht geöffnet. Deine Seite bleibt, wie sie ist.', 'warn');
     return false;
   }
-  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy });
+  replaceDocument(decoded.text, { name: file.name, handle: decoded.legacy ? null : handle, bom: decoded.bom, eol: decoded.eol, unsaved: decoded.legacy, onDisk: !decoded.legacy,
+    diskText: handle && !decoded.legacy ? fileText(bytes) : null });
   setStatus(decoded.legacy ? 'Geöffnet und in UTF-8 umgewandelt: ' + file.name + '. Bitte unter neuem Namen speichern.'
     : decoded.mixedEol ? 'Geöffnet: ' + file.name + '. Die Zeilenenden waren uneinheitlich und werden beim Speichern vereinheitlicht.'
     : 'Geöffnet: ' + file.name, decoded.legacy ? 'warn' : '');
@@ -3576,9 +3616,9 @@ function downloadDoc(given) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+  if (snap.docId === state.docId) { state.onDisk = false; state.inDownloads = true; }   // the saved copy is in "Downloads", not where the page was
   markSaved(snap);
-  if (snap.docId === state.docId) state.onDisk = false;      // the saved copy is in "Downloads", not where the page was
-  setStatus('Heruntergeladen: ' + a.download + ' (im Ordner „Downloads“).', 'ok');
+  setStatus('Eine neue Kopie „' + a.download + '“ liegt jetzt im Ordner „Downloads“.', 'ok');
   return true;
 }
 
@@ -3593,23 +3633,65 @@ function saveDoc() {
   }
   return nextSave;
 }
-function startSave() {
+function startSave(asNew) {
   const done = () => { saving = null; };
-  saving = saveNow();
+  saving = saveNow(asNew);
   saving.then(done, done);
   return saving;
 }
 
-async function saveNow() {
+function saveAsDoc() {
+  if (saving) return rescueCopy();
+  return startSave(true);
+}
+
+async function rescueCopy() {
   const snap = snapshotForSave();
-  let handle = state.handle;
+  if (!window.showSaveFilePicker) return downloadDoc(snap);
+  const pending = () => saving ? ' Die Datei „' + snap.name + '“ wird noch gespeichert.' : '';
+  let handle;
+  try { handle = await window.showSaveFilePicker({ suggestedName: snap.name.replace(/(\.html?)?$/i, (m) => '-kopie' + (m || '.html')), types: FILE_TYPES }); } catch (e) {
+    setStatus((e && e.name === 'AbortError' ? 'Kopie abgebrochen.' : 'Die Kopie konnte nicht angelegt werden.') + pending(), 'warn');
+    return false;
+  }
+  if (await isEditorTarget(handle)) { setStatus('Die Datei „' + handle.name + '“ ist der Editor selbst. Wähle für die Kopie einen anderen Namen.' + pending(), 'warn'); return false; }
+  const result = await writeToHandle(handle, snap.blob);
+  setStatus(result === 'ok' ? 'Kopie gespeichert: ' + (handle.name || snap.name) + '.' + pending() : 'Die Kopie konnte nicht gespeichert werden.' + pending(), result === 'ok' ? 'ok' : 'warn');
+  return result === 'ok';
+}
+
+const CONFLICT = (name) => 'Die Datei „' + name + '“ wurde inzwischen woanders geändert, zum Beispiel in einem zweiten Tab oder in einem anderen Programm. Wenn der Editor jetzt speichert, geht diese andere Fassung verloren. Speichere deine Seite deshalb als neue Datei.';
+
+async function saveNow(asNew) {
+  let snap = snapshotForSave();
+  let handle = asNew ? null : state.handle;
+  if (handle && state.diskText !== null && snap.docId === state.docId) {
+    const now = await readDisk(handle);
+    if (now !== null && now !== state.diskText) {
+      const name = state.name;
+      if (!(await confirmBox(CONFLICT(name), 'Als neue Datei speichern …')) || snap.docId !== state.docId) {
+        if (snap.docId === state.docId) setStatus('Nicht gespeichert. Die Datei „' + name + '“ bleibt, wie sie ist. Deine Seite bleibt im Editor.', 'warn');
+        return false;
+      }
+      snap = snapshotForSave();
+      handle = null;
+    }
+  }
   if (!handle) {
     if (!window.showSaveFilePicker) return downloadDoc(snap);
     try { handle = await window.showSaveFilePicker({ suggestedName: snap.name, types: FILE_TYPES }); } catch (e) {
-      if (e && e.name === 'AbortError') { setStatus('Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.', 'warn'); return false; }
+      if (e && e.name === 'AbortError') {
+        setStatus(!isDirty() && state.onDisk ? 'Speichern unter … abgebrochen. Deine Datei „' + state.name + '“ bleibt, wie sie ist.' : 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.', 'warn');
+        return false;
+      }
       return downloadDoc(snap);
     }
+    if (await isEditorTarget(handle)) {
+      setStatus('Die Datei „' + handle.name + '“ ist der Editor selbst. Wähle für deine Seite einen anderen Namen. Deine Seite ist noch nicht gespeichert.', 'warn');
+      return false;
+    }
   }
+  const written = fileText(await snap.blob.arrayBuffer());
   if (!nextSave) setStatus('Speichert …', '', true);
   state.writingDoc = snap.docId;
   updateChrome();
@@ -3617,46 +3699,57 @@ async function saveNow() {
   state.writingDoc = null;
   updateChrome();
   const name = handle.name || snap.name;
-  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok');
+  if (snap.docId !== state.docId) return otherPageWritten(snap, handle, name, result === 'ok', written);
   if (result !== 'ok') {
     setStatus(result === 'abort' ? 'Speichern abgebrochen. Deine Seite ist noch nicht gespeichert.'
-      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Herunterladen“.', 'warn');
+      : 'Die Datei konnte nicht gespeichert werden. Deine Seite ist noch nicht gespeichert – nutze „Speichern unter …“ und wähle einen anderen Ort.', 'warn');
     return false;
   }
-  state.handle = handle; state.name = name; state.onDisk = true;
+  state.handle = handle; state.name = name; state.onDisk = true; state.inDownloads = false; state.diskText = written;
   markSaved(snap);
   setStatus('Gespeichert: ' + name, 'ok');
   return true;
 }
 
-async function otherPageWritten(snap, handle, name, ok) {
+async function otherPageWritten(snap, handle, name, ok, written) {
   if (!ok) { setStatus('Die vorige Seite „' + name + '“ konnte nicht gespeichert werden.', 'warn'); return false; }
   const docId = state.docId;
-  let same = false;
+  let same = false, unsure = false;
   if (state.handle && handle.isSameEntry) { try { same = await handle.isSameEntry(state.handle); } catch (e) { same = false; } }
-  else if (!state.handle && state.onDisk) same = state.name === name && state.savedText === snap.saved;
+  else if (!state.handle && state.onDisk) unsure = state.name === name && state.savedText === snap.saved;
   if (docId !== state.docId) return true;
+  if (unsure) {
+    state.savedText = null;
+    updateChrome();
+    setStatus('Die Seite „' + name + '“ wurde eben gespeichert. Ob es dieselbe Datei ist wie diese Seite, kann der Editor nicht erkennen. Diese Seite gilt deshalb als nicht gespeichert. Speichere sie, wenn du sicher sein willst.', 'warn');
+    return true;
+  }
   if (!same) { setStatus('Die vorige Seite „' + name + '“ ist gespeichert.', 'ok'); return true; }
   state.savedText = snap.text;
+  state.diskText = written;
   updateChrome();
   if (isDirty()) setStatus('Die Datei „' + name + '“ wurde eben noch mit deinem früheren Stand gespeichert. Sie ist jetzt anders als diese Seite. Öffne sie neu, wenn du den gespeicherten Stand sehen willst.', 'warn');
   else setStatus('Gespeichert: ' + name, 'ok');
   return true;
 }
 
+const DOWNLOADS_NOTE = 'Deine Seite liegt als Kopie im Ordner „Downloads“. Der Editor kann sie dort nicht im Browser öffnen. Öffne sie in „Downloads“ mit einem Doppelklick.';
 async function browseDoc() {
   commitVisual('vis-type');
   if (document.activeElement === els.pvTitle) commitTitle();
   if (location.protocol !== 'file:') { setStatus('Das geht nur, wenn der Editor als Datei geöffnet ist.', 'warn'); return; }
   const docId = state.docId;          // the page that was asked for; if another one is opened meanwhile, nothing opens
+  if (state.inDownloads && !isDirty()) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }   // just saved as a download: nothing to save again
   if (!state.onDisk || isDirty()) {
     const question = state.onDisk ? 'Deine Seite hat Änderungen, die noch nicht gespeichert sind. Der Browser zeigt nur, was gespeichert ist. Erst speichern?'
       : 'Deine Seite ist noch nicht gespeichert. Speichere sie zuerst in den Ordner des Editors. Erst speichern?';
     if (!(await confirmBox(question, 'Speichern')) || state.docId !== docId) return;
     if (!(await saveDoc()) || state.docId !== docId || isDirty()) return;
-    if (!state.onDisk) { setStatus('Deine Seite liegt jetzt im Ordner „Downloads“. Lege sie in den Ordner des Editors und öffne sie dort mit einem Doppelklick.', 'warn'); return; }
+    if (!state.onDisk) { setStatus(DOWNLOADS_NOTE, 'warn'); return; }
   }
-  window.open(new URL(encodeURIComponent(state.name), location.href).href, '_blank', 'noopener');
+  const shown = state.name;
+  if (!(await confirmBox('Der Browser öffnet die Datei „' + shown + '“ aus dem Ordner des Editors. Liegt deine Seite in einem anderen Ordner, siehst du dort eine andere oder gar keine Seite. Öffne deine Seite dann in ihrem Ordner mit einem Doppelklick.', 'Ansehen')) || state.docId !== docId) return;
+  window.open(new URL(encodeURIComponent(shown), location.href).href, '_blank', 'noopener');
   setStatus('„' + state.name + '“ ist in einem neuen Tab geöffnet. Steht dort „Datei nicht gefunden“, liegt deine Seite nicht im Ordner des Editors.', 'ok');
 }
 
@@ -3821,7 +3914,7 @@ function wireChrome() {
   els.bNew.addEventListener('click', newDoc);
   els.bOpen.addEventListener('click', openDoc);
   tool(els.bSave, saveDoc);
-  tool(els.bDownload, () => downloadDoc(null));
+  tool(els.bSaveAs, saveAsDoc);
   tool(els.bUndo, undo);
   tool(els.bRedo, redo);
   tool(els.bFormat, formatDoc);
@@ -3918,6 +4011,7 @@ function start() {
     wirePreview();
     wireChrome();
     replaceDocument(TEMPLATE, { name: DEFAULT_NAME });
+    els.noWrite.hidden = !!window.showSaveFilePicker;          // a browser that cannot write files: every save is a new copy
     document.documentElement.dataset.ready = 'yes';
   });
   els.pv.srcdoc = PREVIEW_SHELL;

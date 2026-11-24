@@ -52,7 +52,7 @@ export const review10 = [
         await drop(ed, 'seite-a.html', '<p>alt</p>');
         await endWrite(ed);
         c.eq(await ed.dirtyText(), '● nicht gespeichert', 'guard: the file A itself dropped while its write hangs (same name, same text as before the write) counts as not saved afterwards');
-        c.ok((await msg(ed)).includes('früheren Stand'), 'guard: and the pupil is told', await msg(ed));
+        c.ok((await msg(ed)).includes('nicht erkennen'), 'guard: and the pupil is told', await msg(ed));
       });
       c.note('mock', 'A: labelled mock handle whose content changes on close(), which the test holds. B: a File object in a drop event made by the test');
     },

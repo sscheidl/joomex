@@ -12,8 +12,8 @@ body:
     id: version
     attributes:
       label: Version des Editors / editor version
-      description: Steht unten rechts im Editor, z. B. `html-school-editor 1.0.0-beta.1`
-      placeholder: html-school-editor 1.0.0-beta.1
+      description: Steht unten rechts im Editor, z. B. `html-school-editor 1.0.0-beta.3`
+      placeholder: html-school-editor 1.0.0-beta.3
     validations:
       required: true
   - type: input
