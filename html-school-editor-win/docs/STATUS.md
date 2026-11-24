@@ -10,7 +10,7 @@ The owner's decisions of 2026-11-24 are listed in [SPECIFICATION.md](SPECIFICATI
 
 | Date | Report | State |
 | --- | --- | --- |
-| 2026-11-24 | A portable third-party `.exe` provided on the school server was started locally by pupils without administrator rights and without installation. | owner's report, NOT MEASURED here; whether that exe is code-signed is not known |
+| 2026-11-24 | A portable third-party `.exe` provided on the school server was started locally by pupils without administrator rights and without installation. | owner's report. The file itself, checked here on 2026-11-24: no Authenticode signature, manifest `asInvoker`, 32-bit, built 2018. So unsigned portable programs run from the school server |
 | 2026-11-24 | In the single-file editor, pictures one folder below the page work if the folder name is written; nested folders and folders above the page do not, and in one case a picture in the same folder as editor and page was not shown. | owner's report; the cause (resolution from the editor's place) is measured in [../html-school-editor/](../html-school-editor/), the single case is not explained |
 
 ## Build environment
