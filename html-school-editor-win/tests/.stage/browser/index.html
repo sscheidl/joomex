@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>HTML-Schuleditor</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+<header id="top">
+  <div class="brand"><strong>HTML-Schuleditor</strong><small id="version"></small></div>
+  <span class="group">
+    <button id="bProject" type="button" title="Den Ordner wählen, in dem deine Seiten und Bilder liegen">Projektordner öffnen</button>
+    <button id="bNew" type="button" title="Eine neue Seite im Projektordner anlegen" disabled>Neue Seite</button>
+    <button id="bOpen" type="button" title="Eine Seite mit dem Datei-Dialog öffnen">Seite öffnen …</button>
+  </span>
+  <span class="group">
+    <button id="bSave" type="button" class="primary" title="Speichern (Strg+S)" disabled>Speichern</button>
+    <button id="bSaveAs" type="button" title="Unter einem neuen Namen im Projektordner speichern" disabled>Speichern unter …</button>
+  </span>
+  <span class="group">
+    <button id="bUndo" type="button" title="Rückgängig (Strg+Z)" disabled>Rückgängig</button>
+    <button id="bRedo" type="button" title="Wiederholen (Strg+Y)" disabled>Wiederholen</button>
+    <button id="bFind" type="button" title="Im Code suchen (Strg+F)" disabled>Suchen</button>
+  </span>
+  <span class="group">
+    <button id="bPicture" type="button" class="insert" title="Ein Bild aus deinem Projektordner einfügen" disabled>Bild einfügen</button>
+    <button id="bBrowser" type="button" title="Die gespeicherte Seite im Browser ansehen" disabled>Im Browser ansehen</button>
+  </span>
+  <div class="doc"><span id="docName"></span><span id="docState"></span></div>
+</header>
+
+<main id="work">
+  <aside id="projectPane" aria-label="Projektordner">
+    <div class="paneHead"><h2 id="projectName">Kein Projektordner</h2><button id="bFold" type="button" class="small" title="Liste einklappen" aria-expanded="true">«</button></div>
+    <ul id="files" role="list"></ul>
+  </aside>
+  <section id="srcPane" aria-label="HTML-Code">
+    <div class="paneHead"><h2>HTML-Code</h2><span class="hint" id="pos"></span></div>
+    <div id="findBar" hidden>
+      <input id="findText" type="search" autocomplete="off" spellcheck="false" aria-label="Suchen nach">
+      <button id="bFindPrev" type="button" class="small" title="Vorheriger Treffer (Umschalt+Enter)">▲</button>
+      <button id="bFindNext" type="button" class="small" title="Nächster Treffer (Enter)">▼</button>
+      <span id="findCount" class="hint"></span>
+      <button id="bFindClose" type="button" class="small" title="Suche schließen (Esc)">✕</button>
+    </div>
+    <div id="srcBox">
+      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
+      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite" readonly></textarea>
+    </div>
+  </section>
+  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
+  <section id="pvPane" aria-label="Deine Seite">
+    <div class="paneHead"><h2>Deine Seite</h2><span class="hint">So zeigt sie der Browser.</span></div>
+    <div id="notes" hidden>
+      <button id="bNotes" type="button" class="notesHead" aria-expanded="false"></button>
+      <ul id="noteList" hidden></ul>
+    </div>
+    <div id="pvSlot">
+      <div id="welcome">
+        <p><strong>Öffne zuerst deinen Projektordner.</strong></p>
+        <p>Das ist der Ordner, in dem deine Seiten und Bilder liegen.</p>
+        <button id="bProject2" type="button" class="primary">Projektordner öffnen</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="bottom"><span id="status" role="status"></span><span id="versionBottom"></span></footer>
+
+<dialog id="dlg">
+  <form method="dialog">
+    <h3 id="dlgTitle"></h3>
+    <div id="dlgBody"></div>
+    <div class="buttons" id="dlgButtons"></div>
+  </form>
+</dialog>
+</body>
+</html>

@@ -8,6 +8,8 @@ Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this reposi
 
 **State on 2026-11-23 (late):** that review (of beta.2, verdict HOLD) was handed over locally. 1.0.0-beta.3 (branch `fix/html-school-editor-1.0.0-beta.3`, stacked on beta.2) corrects its findings E5a, B2-Hang, T1-copy, E6, E1c/E1d, E2/E4 and E8 (names), see [STATUS.md](STATUS.md#100-beta3-corrections-after-the-complete-review-of-beta2).
 
+**State on 2026-11-24:** the request for the corrections of beta.3 is [reviews/REQUEST_1.0.0-beta.3.md](reviews/REQUEST_1.0.0-beta.3.md). Everything below is the earlier request and stays as background.
+
 ## alpha.11: two corrections after the reading review of alpha.10
 
 GPT read the difference between alpha.9 and alpha.10 in four sections without running it (2026-11-20). The owner handed two points on, to be reproduced before anything is changed; both were confirmed in Edge and Firefox ([STATUS.md](STATUS.md#findings-of-the-reading-review-of-alpha10-and-their-corrections)). Version 0.1.0-alpha.11, stacked on alpha.10, corrects them with one added condition each. The owner has set a feature freeze after it. **This request covers alpha.8 to alpha.11 together;** please review the four as one change against alpha.7.
