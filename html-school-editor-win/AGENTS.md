@@ -14,6 +14,7 @@ These rules are binding for every contributor and every agent working in this fo
 
 * Work on a branch and merge by pull request, as RULES.md requires. No merge, release or new CI workflow without the owner's explicit approval.
 * Every behaviour change needs a test with a concrete expectation.
+* The user interface uses four modules of the single-file editor directly (`../html-school-editor/src/js/`: `util.js`, `tokenizer.js`, `highlight.js`, `history.js`; list in `ui/resources.json`). A change there must pass the tests of both folders.
 * A new version number for every changed exe that leaves the repository.
 * Third-party components only for a demonstrated need; pin version, source, licence and SHA-256 in `dependencies.json`. Never commit downloaded packages or built binaries.
 

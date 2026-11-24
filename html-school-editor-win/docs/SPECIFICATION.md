@@ -24,6 +24,8 @@ The new program loads the page from its real place on disk. A relative address i
 | D4 | The program lives in this repository, folder `html-school-editor-win/`. |
 | D5 | The single-file editor 1.0.0-beta.3 stays in class until this program is ready; only defects are corrected there. |
 | D6 | The code editor is the own source pane of the single-file editor (MIT, own code), in a user interface of HTML, CSS and JavaScript inside WebView2; no Scintilla (answer to Q4). Search and automatic indentation are added to it. |
+| D7 | Built locally on the owner's Windows computer with Visual Studio 2022 (CMake); no CI workflow for now (answer to Q5). |
+| D8 | Pupils' project folders lie on a network drive of the school server as a rule; OneDrive is not used by pupils (answer to Q3). |
 
 ## 3. Stage 1: scope
 
@@ -31,6 +33,7 @@ The new program loads the page from its real place on disk. A relative address i
 
 * "Projektordner öffnen" chooses a folder, using the system's folder dialog. The program remembers the last folder per Windows user.
 * The left edge lists the HTML pages, pictures and style sheets of the folder and its subfolders. Changes made in Explorer appear without restarting.
+* The project folder lies on a network drive of the school server as a rule (D8). Reading and saving there must not freeze the window; a lost connection is reported in plain words.
 * "Neue Seite" creates a page in the project folder, or in a subfolder, from a minimal skeleton (doctype, `lang="de"`, `meta charset`, `title`, `body`).
 * A page can also be opened on its own (double-click on an `.html` file, "Öffnen" in the program). Its folder then becomes the project folder, and the program says so.
 
@@ -95,6 +98,6 @@ The new program loads the page from its real place on disk. A relative address i
 | --- | --- | --- |
 | Q1 | Does an unsigned `.exe` run on the school computers (AppLocker, SmartScreen, software restriction)? Is a code-signing certificate needed? **Owner's report of 2026-11-24 (not measured here):** a portable third-party `.exe` provided on the school server was started locally by pupils without administrator rights and without installation. **Checked on 2026-11-24 from the copy the owner provided:** that exe carries **no Authenticode signature** (empty security directory), asks for no elevation (manifest `asInvoker`) and is a 32-bit GUI program built in 2018. So an unsigned portable program started from the school server runs on the school computers; a code-signing certificate is not needed for that route. Still open: whether an exe downloaded from GitHub (marked as coming from the internet) is stopped by SmartScreen; distribution through the school server is the planned route. | owner, school IT |
 | Q2 | Are the school computers Windows 10 or 11, and is the WebView2 runtime present and not disabled by policy? | owner, school IT |
-| Q3 | Where do pupils keep their project folders: local profile, network drive, OneDrive? (Network paths and cloud placeholders need a test.) | owner |
+| Q3 | ~~Where do project folders lie?~~ — answered by D8: on a network drive; no OneDrive. | owner, 2026-11-24 |
 | Q4 | ~~Code editor component~~ — answered by D6: the own source pane in WebView2. | owner, 2026-11-24 |
-| Q5 | Build and test route: Visual Studio 2022 on the owner's Windows computer, or a GitHub Actions workflow on a Windows runner (needs the owner's approval under RULES.md). | owner |
+| Q5 | ~~Build and test route~~ — answered by D7: local build with Visual Studio 2022. | owner, 2026-11-24 |

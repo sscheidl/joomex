@@ -1,0 +1,11 @@
+{
+  "webview2-sdk": {
+    "package": "Microsoft.Web.WebView2",
+    "version": "1.0.4314.35",
+    "source": "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.4314.35",
+    "archive_sha256": "",
+    "license": "Microsoft WebView2 SDK licence (LICENSE.txt in the package); to be checked at the first download and copied into THIRD-PARTY-NOTICES.md",
+    "use": "Downloaded by tools/fetch-webview2.ps1 into third_party/ (never committed). Headers at build time; the loader library WebView2LoaderStatic.lib is linked into the exe. The WebView2 runtime is part of Windows and is not shipped.",
+    "note": "archive_sha256 is pinned by the owner after checking the first download; while it is empty the fetch script prints the hash and stops."
+  }
+}

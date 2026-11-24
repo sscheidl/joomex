@@ -1,0 +1,29 @@
+#pragma code_page(65001)
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+ PRODUCTVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040704b0"
+        BEGIN
+            VALUE "FileDescription", "HTML-Schuleditor"
+            VALUE "FileVersion", "@HSE_VERSION@"
+            VALUE "ProductName", "HTML School Editor for Windows"
+            VALUE "ProductVersion", "@HSE_VERSION@"
+            VALUE "LegalCopyright", "MIT licence"
+            VALUE "OriginalFilename", "HtmlSchulEditor.exe"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x407, 1200
+    END
+END

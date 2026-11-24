@@ -1,0 +1,4 @@
+tests/.stage/
+build/
+out/
+third_party/
