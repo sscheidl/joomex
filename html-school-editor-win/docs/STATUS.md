@@ -4,7 +4,7 @@
 
 ## Decisions so far
 
-The owner's decisions of 2026-11-24 are listed in [SPECIFICATION.md](SPECIFICATION.md#2-decisions-of-the-owner-2026-11-24): a native C++ program with the WebView2 engine; stage 1 shows the page only; a fixed project folder; this folder of the repository; the single-file editor stays in class with defect corrections only.
+The owner's decisions of 2026-11-24 are listed in [SPECIFICATION.md](SPECIFICATION.md#2-decisions-of-the-owner-2026-11-24): a native C++ program with the WebView2 engine; stage 1 shows the page only; a fixed project folder; this folder of the repository; the single-file editor stays in class with defect corrections only; the code editor is the own source pane of the single-file editor inside a WebView2 user interface (D6).
 
 ## Evidence from the school
 
@@ -19,4 +19,4 @@ NOT AVAILABLE in the implementer's environment: it is Linux without a Windows co
 
 ## Next step
 
-The owner approves or changes the specification, answers Q4 (code editor component) and Q5 (build route). Then: project skeleton (CMake, window, both WebView2 controllers, folder mapping, request filter) as `0.1.0-alpha.1`, with the tests R-01 to R-04 first.
+The owner approves or changes the specification and answers Q5 (build route) and Q3 (where project folders lie). Then: project skeleton (CMake, window, both WebView2 controllers, folder mapping, request filter) as `0.1.0-alpha.1`, with the tests R-01 to R-04 first.

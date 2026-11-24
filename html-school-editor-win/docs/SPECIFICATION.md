@@ -23,6 +23,7 @@ The new program loads the page from its real place on disk. A relative address i
 | D3 | A fixed project folder is the base of all relative addresses. |
 | D4 | The program lives in this repository, folder `html-school-editor-win/`. |
 | D5 | The single-file editor 1.0.0-beta.3 stays in class until this program is ready; only defects are corrected there. |
+| D6 | The code editor is the own source pane of the single-file editor (MIT, own code), in a user interface of HTML, CSS and JavaScript inside WebView2; no Scintilla (answer to Q4). Search and automatic indentation are added to it. |
 
 ## 3. Stage 1: scope
 
@@ -95,5 +96,5 @@ The new program loads the page from its real place on disk. A relative address i
 | Q1 | Does an unsigned `.exe` run on the school computers (AppLocker, SmartScreen, software restriction)? Is a code-signing certificate needed? **Owner's report of 2026-11-24 (not measured here):** a portable third-party `.exe` provided on the school server was started locally by pupils without administrator rights and without installation. **Checked on 2026-11-24 from the copy the owner provided:** that exe carries **no Authenticode signature** (empty security directory), asks for no elevation (manifest `asInvoker`) and is a 32-bit GUI program built in 2018. So an unsigned portable program started from the school server runs on the school computers; a code-signing certificate is not needed for that route. Still open: whether an exe downloaded from GitHub (marked as coming from the internet) is stopped by SmartScreen; distribution through the school server is the planned route. | owner, school IT |
 | Q2 | Are the school computers Windows 10 or 11, and is the WebView2 runtime present and not disabled by policy? | owner, school IT |
 | Q3 | Where do pupils keep their project folders: local profile, network drive, OneDrive? (Network paths and cloud placeholders need a test.) | owner |
-| Q4 | Code editor component: own minimal editor in the WebView2 user interface (reusing the source pane of the single-file editor, MIT, own code) or the native component Scintilla (third-party, permissive licence). See ARCHITECTURE.md. | owner, after the draft |
+| Q4 | ~~Code editor component~~ — answered by D6: the own source pane in WebView2. | owner, 2026-11-24 |
 | Q5 | Build and test route: Visual Studio 2022 on the owner's Windows computer, or a GitHub Actions workflow on a Windows runner (needs the owner's approval under RULES.md). | owner |

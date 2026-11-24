@@ -1,6 +1,6 @@
 # Architecture (draft)
 
-**State:** proposal of 2026-11-24. Nothing is built; names and boundaries may change with the owner's decisions on Q4 and Q5 of [SPECIFICATION.md](SPECIFICATION.md#7-open-questions).
+**State:** proposal of 2026-11-24, Q4 decided (D6). Nothing is built; names and boundaries may change with the owner's decision on Q5 of [SPECIFICATION.md](SPECIFICATION.md#7-open-questions).
 
 ## Overview
 
@@ -45,13 +45,13 @@ A filter on all requests of both controllers:
 
 ## User interface (WebView2 #1)
 
-Proposal for Q4: own HTML, CSS and JavaScript, compiled into the exe as resources, reusing the source pane of the single-file editor (own code, MIT): line numbers, syntax colouring, undo and redo. Reasons:
+Owner's decision D6 (answer to Q4): own HTML, CSS and JavaScript, compiled into the exe as resources, reusing the source pane of the single-file editor (own code, MIT): line numbers, syntax colouring, undo and redo. Reasons:
 
 * stage 2 (editing on the right) needs the tested JavaScript editing core of the single-file editor; it works against that source pane;
 * no third-party component; the look and the German texts can be carried over;
 * the same automated browser tests (Playwright over the Chrome DevTools Protocol, which WebView2 offers with `--remote-debugging-port` in test builds) can drive it.
 
-Alternative: the native code editor component Scintilla with its lexer library (third-party, permissive licence, proven). It would need a second editing model for stage 2.
+Considered and not chosen: the native code editor component Scintilla with its lexer library (third-party, permissive licence, proven; ready search, indentation and folding). It would need a native user interface and a second editing model for stage 2, and its accessibility on Windows is weaker than a text field's.
 
 ## C++ core
 
