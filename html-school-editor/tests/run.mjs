@@ -40,7 +40,7 @@ const meta = {
   artefact: 'dist/school-editor.html',
   bytes: artefact.length,
   sha256: crypto.createHash('sha256').update(artefact).digest('hex'),
-  sizeLimit: 200000,
+  sizeLimit: 250000,          // raised from 200000 by the owner on 2026-11-23
   node: process.version,
   os: os.type() + ' ' + os.release(),
 };

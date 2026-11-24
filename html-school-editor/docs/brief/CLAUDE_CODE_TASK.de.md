@@ -53,7 +53,7 @@ Verbindlich sind die Kriterien P-01 bis P-07 und S-01 bis S-09 in [ACCEPTANCE.md
 * In Version eins keine dauerhafte Dokument-Autospeicherung in Browserdatenbanken. Sitzungszustand und Wiederherstellung im Arbeitsspeicher sind erlaubt. Fehler, Abbruch und unvollständiges HTML dürfen vorhandene Arbeit nicht zerstören.
 * Lokale Bilder nur nach ausdrücklicher Dateiauswahl einbetten. Externe Bildadressen im importierten Quelltext erhalten, in der Vorschau passiv darstellen. Alt-Text und URL-Eingaben als Daten behandeln, nicht als HTML-Interpolation.
 
-Zielgröße: maximal **200.000 Byte für die vollständige ausgelieferte Datei**. Zuverlässigkeit und Sicherheit gehen vor. Eine notwendige Überschreitung begründen und messen; keine versteckten CDN-Dateien, ungezählten Begleitdateien oder bloßen gzip-Angaben. Keine Code-Golf-Optimierung oder Minifizierung des Schülerquelltextes.
+Zielgröße: maximal **250.000 Byte für die vollständige ausgelieferte Datei** (vom Eigentümer am 23.11.2026 von 200.000 Byte angehoben). Zuverlässigkeit und Sicherheit gehen vor. Eine notwendige Überschreitung begründen und messen; keine versteckten CDN-Dateien, ungezählten Begleitdateien oder bloßen gzip-Angaben. Keine Code-Golf-Optimierung oder Minifizierung des Schülerquelltextes.
 
 Neue Bibliotheken nur bei konkretem Bedarf: begründe die Lücke, pinne Version und Quelle, prüfe Lizenz und relevante Sicherheitsmerkmale und zähle die vollständige Offline-Nutzlast mit. Vorhandene vertrauenswürdige Entwicklungswerkzeuge bevorzugen; keine stillen Werkzeug-Upgrades.
 

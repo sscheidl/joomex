@@ -64,7 +64,7 @@ The editor is in beta and is tried in class. Every report helps, especially from
 
 Do not post names of pupils or schools, photos or other personal data; shorten or rewrite the example first. Pupils report to their teacher rather than on GitHub (GitHub accounts require an age of at least 13). During the class trial the feature set is frozen: defects are corrected, ideas for new functions are collected as issues with the label `enhancement` and decided after the trial.
 
-Pull requests are welcome. The rules in [AGENTS.md](AGENTS.md) and [RULES.md](../RULES.md) apply: every behaviour change comes with a test, and the delivered file stays one self-contained file below 200,000 bytes.
+Pull requests are welcome. The rules in [AGENTS.md](AGENTS.md) and [RULES.md](../RULES.md) apply: every behaviour change comes with a test, and the delivered file stays one self-contained file below 250,000 bytes.
 
 ## How this was made
 

@@ -52,7 +52,7 @@ The binding functional and test scope is [ACCEPTANCE.md](ACCEPTANCE.md). Importa
 * Default to in-memory session state, no persistent pupil-document autosave. Saving is a clear pupil action. File-open failures/cancellation and malformed input must not destroy current work.
 * Make local-image insertion explicit. Preserve external URLs in source when imported, but display an inert placeholder instead of fetching them. Link/image UI inputs must not turn text into executable HTML.
 
-Target 200,000 bytes for the **complete** delivered file, without sacrificing correctness. Measure real byte size. Explain any necessary overrun; do not hide dependencies in remote URLs, uncounted companion files or gzip-only numbers. Avoid premature code golf or minification of the pupil's source.
+Target 250,000 bytes (raised from 200,000 by the owner on 2026-11-23) for the **complete** delivered file, without sacrificing correctness. Measure real byte size. Explain any necessary overrun; do not hide dependencies in remote URLs, uncounted companion files or gzip-only numbers. Avoid premature code golf or minification of the pupil's source.
 
 Use no new dependency by reflex. If a narrowly scoped parser/sanitizer is truly needed, document the gap it addresses, version, source, licence, static review and complete offline payload. Prefer existing trusted development tools; do not silently upgrade the local toolchain.
 

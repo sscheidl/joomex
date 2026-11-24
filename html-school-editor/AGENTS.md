@@ -4,7 +4,7 @@ These rules are binding for every contributor and every agent working in this fo
 
 ## Product boundaries
 
-* The deliverable is one self-contained file, `dist/school-editor.html`, at most 200,000 bytes. No runtime dependency, no CDN, no second file. Report the measured size; never hide an overrun.
+* The deliverable is one self-contained file, `dist/school-editor.html`, at most 250,000 bytes (raised from 200,000 by the owner on 2026-11-23). No runtime dependency, no CDN, no second file. Report the measured size; never hide an overrun.
 * No persistent storage of pupil documents (no localStorage, IndexedDB, cookies, caches). No network access by the editor.
 * No `eval`, no function constructors, no string timers, no message bridge between windows.
 * The preview frame keeps `sandbox="allow-same-origin"` without any further permission. Never add script permission to a frame that shows an opened document.

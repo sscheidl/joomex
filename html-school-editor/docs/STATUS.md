@@ -16,7 +16,7 @@ A complete independent review of beta.2 (2026-11-23, Codex; report handed over t
 | **E2/E4** (high for checking work): "Im Browser öffnen" opened a same-named page next to the editor | renamed "Gespeicherte Seite ansehen"; a note first says which file of which folder opens | `browseDoc` | B3-06 |
 | **E8** names | "Linksbündig", "Zentriert", "Rechtsbündig", "Blocksatz", "Link einfügen", "Bild einfügen" | `src/app.html` | B3-07, B2-03 |
 
-B3-01 to B3-07 were written first and failed against the beta.2 build in Edge (0 of 7). Changed older expectations: the top bar text after a download or for a new page (T-10, T-15, T-16, F-11, A5-10, B2-01), the tab title in X-01, X-02, X-04 (the pupil's scripts still cannot change it), the note before the view in F-09, the message in A10-01. Two real tabs and the school drive are NOT MEASURED by the harness; the mock in B3-01 changes the file as a second tab would. Not changed: F7, F8, the rest of B4, pictures. The build is 196,056 bytes; about 3944 bytes are left below the limit.
+B3-01 to B3-07 were written first and failed against the beta.2 build in Edge (0 of 7). Changed older expectations: the top bar text after a download or for a new page (T-10, T-15, T-16, F-11, A5-10, B2-01), the tab title in X-01, X-02, X-04 (the pupil's scripts still cannot change it), the note before the view in F-09, the message in A10-01. Two real tabs and the school drive are NOT MEASURED by the harness; the mock in B3-01 changes the file as a second tab would. Not changed: F7, F8, the rest of B4, pictures. The build is 196,056 bytes; about 53,944 bytes are left below the limit of 250,000 bytes (raised from 200,000 by the owner the same day).
 
 ## 1.0.0-beta.2: changes after the first day with a class
 
@@ -282,7 +282,7 @@ Consequences to know: "Im Browser öffnen" after a save in a browser without fil
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **196,056 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| Size | **196,056 bytes** (limit 250,000 since 2026-11-23, owner's decision; until then 200,000) — complete: HTML, CSS, script, no other file |
 | SHA-256 | `c6c659062631b38b97e78696f82af0fc7958305f3a81ff6ac90459828906167a` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
