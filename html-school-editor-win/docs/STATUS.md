@@ -38,4 +38,6 @@ The implementer's environment is Linux without MSVC; the WebView2 SDK cannot be 
 
 ## Next step
 
+Stage 2 is planned in [STAGE2.md](STAGE2.md) (2026-11-24); its decision E1 (one WebView2 with the page as a same-origin frame) would change stage 1 before its first build.
+
 The owner fetches the WebView2 SDK (pins its hash), builds with Visual Studio 2022 and tries the steps at the end of [BUILD.md](BUILD.md). Build errors and observations come back to the implementer; then the acceptance tests on Windows (DevTools protocol against a test build).

@@ -9,6 +9,8 @@ A small Windows program in which pupils of about 12–13 years learn HTML: the c
 | [docs/SPECIFICATION.md](docs/SPECIFICATION.md) | Purpose, decisions, scope of stage 1, open questions |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | C++ core, two WebView2 views, how relative addresses work |
 | [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) | Acceptance criteria of stage 1 |
+| [docs/STAGE2.md](docs/STAGE2.md) | Plan for stage 2: editing on the page side, "Code aufräumen"; decisions E1 to E5 |
+| [docs/BUILD.md](docs/BUILD.md) | Building on Windows |
 
 It replaces the single-file editor in [`../html-school-editor/`](../html-school-editor/) for Windows; that one stays in use until this program is ready.
 
