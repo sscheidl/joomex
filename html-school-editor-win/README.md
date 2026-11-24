@@ -11,6 +11,7 @@ A small Windows program in which pupils of about 12–13 years learn HTML: the c
 | [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) | Acceptance criteria of stage 1 |
 | [docs/STAGE2.md](docs/STAGE2.md) | Plan for stage 2: editing on the page side, "Code aufräumen"; decisions E1 to E5 |
 | [docs/BUILD.md](docs/BUILD.md) | Building on Windows |
+| [docs/REVIEW_REQUEST.md](docs/REVIEW_REQUEST.md) | Review request for Codex: stage 1 code and the plan for stage 2 |
 
 It replaces the single-file editor in [`../html-school-editor/`](../html-school-editor/) for Windows; that one stays in use until this program is ready.
 
