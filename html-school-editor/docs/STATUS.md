@@ -1,6 +1,12 @@
 # Status
 
-**Version:** 1.0.0-beta.3 · **Date:** 2026-11-23 · **Location:** `html-school-editor/` in this repository, branch `fix/html-school-editor-1.0.0-beta.3`, stacked on `fix/html-school-editor-1.0.0-beta.2` (pull request 25)
+**Version:** 1.0.0-beta.3 · **Date:** 2026-11-24 · **Location:** `html-school-editor/` in this repository, branch `main`
+
+## 2026-11-24: beta.3 on main, release, size limit
+
+* 1.0.0-beta.3 (with beta.2) is merged into `main`. Its release page is [html-school-editor-v1.0.0-beta.3](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.3); the release of 1.0.0-beta.1 is withdrawn, its tag stays. Only beta.3 is offered for download.
+* The owner raised the size limit of the delivered file from 200,000 to **250,000 bytes** (AGENTS.md, P-06 of the acceptance contract, `tests/run.mjs`). The delivered file is unchanged by this: beta.3, 196,056 bytes, about 53,944 bytes below the new limit. The owner also asked for the code to be made smaller; that is not done yet.
+* Documentation only; no code and no artefact changed, so the version stays 1.0.0-beta.3.
 
 ## 1.0.0-beta.3: corrections after the complete review of beta.2
 
@@ -38,7 +44,7 @@ Changed tests: A7-08 began with "Mitte" on a centred paragraph and expected no c
 
 Not changed, on purpose: the picture dialog and the way picture addresses are read (owner's decision until the question of the method is answered); the save chain itself.
 
-## Verdict: beta for an accompanied classroom trial (owner's decision); no release
+## Verdict of 1.0.0-beta.1: beta for an accompanied classroom trial (owner's decision); no final release
 
 An independent review of alpha.11 with the corrections of alpha.8 to alpha.11 (2026-11-20, a second reviewer, Claude Fable, working without the implementer's context and with probes and expectations of its own; the owner had it carried out in place of the review asked of Codex) ended with **PASS for the accompanied trial in Edge, with two conditions, and HOLD for Firefox**. The corrections held for the reviewer's own inputs, no regression against alpha.7 was found and no earlier class of defect was open again. It found four defects, B1 to B4, all in the editing engines of the browsers and all present in alpha.7 as well ([below](#findings-of-the-independent-review-of-alpha11-and-their-corrections)). The owner asked for all four to be corrected before the trial and named the result 1.0.0-beta.1. **The corrections of B1 to B4 are not reviewed**; a reading review by GPT is planned. The reviewer's report was handed over to the owner only.
 
@@ -50,7 +56,7 @@ Two independent reviews both ended with **FAIL**: of alpha.1 ([reviews/REVIEW_0.
 
 Open before a release:
 
-1. **The corrections of 1.0.0-beta.1 (B1 to B4) are not reviewed.** F7 and F8 of the interim review are open (accepted by the owner as no obstacle to the trial).
+1. **The corrections of 1.0.0-beta.1 (B1 to B4) and of 1.0.0-beta.3 are not reviewed.** F7 and F8 of the interim review are open (accepted by the owner as no obstacle to the trial).
 2. **Chrome is NOT MEASURED.** Chrome is not installed on the test machine. Measurements are from Microsoft Edge and, since this version, from Firefox.
 3. **Native file dialogs are NOT MEASURED.** The browser's open/save pickers and writing back to a real file handle cannot be driven by the test harness. The code paths behind them are covered with a labelled mock handle (T-10, T-15), with the file input and the file chooser (T-15, RV-01) and with the real download fallback (T-10, T-16). A person has to try Open and Save once in Edge and once in Chrome.
 4. **No recorded visible-window session and no trial with pupils or teachers.** The owner tried alpha.2 and alpha.3 by hand on 2026-11-19; what was tried is not recorded.
@@ -282,11 +288,11 @@ Consequences to know: "Im Browser öffnen" after a save in a browser without fil
 | | |
 | --- | --- |
 | File | `dist/school-editor.html` |
-| Size | **196,056 bytes** (limit 200,000) — complete: HTML, CSS, script, no other file |
+| Size | **196,056 bytes** (limit 250,000 since 2026-11-24, before 200,000) — complete: HTML, CSS, script, no other file |
 | SHA-256 | `c6c659062631b38b97e78696f82af0fc7958305f3a81ff6ac90459828906167a` |
 | Build | `node tools/build.mjs`; `node tools/build.mjs --check` reproduces the file byte for byte |
 
-The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: 1.0.0-beta.2 191,795 bytes (`c771a26f…`), 1.0.0-beta.1 189,813 bytes (`af1d99a2…`), alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes, alpha.8 181,332 bytes, alpha.9 182,454 bytes, alpha.10 184,478 bytes, alpha.11 184,546 bytes. **About 10,187 bytes are left below the limit.**
+The size and hash are those of the runs recorded in `tests/results/acceptance-edge.json` and `acceptance-firefox.json`. If the sources change, rebuild and re-run; `--check` and the result files state the current values. Earlier versions: 1.0.0-beta.2 191,795 bytes (`c771a26f…`), 1.0.0-beta.1 189,813 bytes (`af1d99a2…`), alpha.1 132,525 bytes, alpha.2 143,858 bytes, alpha.3 160,302 bytes, alpha.4 176,008 bytes before and 182,038 bytes after the owner's requests of step 0, alpha.5 192,728 bytes, alpha.6 197,663 bytes. Since alpha.7 the build leaves out comment lines: the alpha.6 code alone gives 164,692 bytes that way; alpha.7 178,871 bytes, alpha.8 181,332 bytes, alpha.9 182,454 bytes, alpha.10 184,478 bytes, alpha.11 184,546 bytes. **About 53,944 bytes are left below the limit of 250,000 bytes.**
 
 ## Measurements
 
@@ -328,7 +334,7 @@ Full runs of 1.0.0-beta.3 (2026-11-23): Edge 158: 106 cases pass, 898 checks, 3 
 
 | Component | Version | Licence | In the delivered file |
 | --- | --- | --- | --- |
-| Own code | 0.1.0-alpha.9 | MIT ([LICENSE](../LICENSE)) | yes, everything |
+| Own code | 1.0.0-beta.3 | MIT ([LICENSE](../LICENSE)) | yes, everything |
 | Runtime libraries | — | — | none |
 | Build and test tools | Node.js standard library only | — | no |
 | Fonts, icons, images | — | — | none (system fonts, text labels) |
@@ -339,9 +345,9 @@ The reference editor that was studied is not a dependency. No part of it is cont
 
 | # | Point | Kind |
 | --- | --- | --- |
-| 1 | Review of the corrections of B1 to B4 in 1.0.0-beta.1 (a reading review by GPT is planned) | process |
+| 1 | Review of the corrections of B1 to B4 in 1.0.0-beta.1 (a reading review by GPT is planned) and of the corrections of 1.0.0-beta.3 | process |
 | 1a | F7 and F8 of the interim review of alpha.8 (white space left in tables) | defects, low |
-| 1b | Firefox only: a space deleted and typed again in front of a bold, italic, underlined, struck-through, raised or lowered word stands inside that element (rest of B4, see [SPECIFICATION.md](SPECIFICATION.md#2-known-limitations-of-version-100-beta1)); left as it is by the owner | defect, low |
+| 1b | Firefox only: a space deleted and typed again in front of a bold, italic, underlined, struck-through, raised or lowered word stands inside that element (rest of B4, see [SPECIFICATION.md](SPECIFICATION.md#2-known-limitations-of-version-100-beta3)); left as it is by the owner | defect, low |
 | 2 | Run the suite in Chrome | measurement |
 | 3 | Try native Open, Save (write-back with the permission question) and Save-as by hand in Edge and Chrome | measurement |
 | 4 | Visible-window session; input routes that were never tried: spell-check replacement in the page, dragging text inside the source field, speech and handwriting input, autofill | measurement |
@@ -372,4 +378,4 @@ Found by the implementer during the development of alpha.1; each has a regressio
 
 ## Next step
 
-The accompanied trial with one class from 2026-11-23, in Edge, after the hand test of the native file dialogs. The feature set is frozen during the trial. All steps of the owner's list are built. After the review: Chrome run, manual check of the native dialogs, a visible-window session with the new image and alignment functions, then a decision about a release. Nothing is merged and there is no release.
+The accompanied trial with the class continues with 1.0.0-beta.3 in Edge (second round on 2026-11-24). The feature set is frozen during the trial; defects are corrected. Then: making the code smaller (owner's decision of 2026-11-24), the question of the method for pictures, a review of the beta.3 corrections, a Chrome run and a decision about a final release. 1.0.0-beta.3 is merged into `main` and released as a pre-release; earlier betas are withdrawn.

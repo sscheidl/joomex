@@ -23,7 +23,7 @@ The independent review of alpha.1 rated the suite as not sufficient for full acc
 | P-03 | Full source left, editable page right, both visible | `src/app.html`, `src/js/app.js:150`, `:255` | T-02, T-03 | PASS |
 | P-04 | New, open, save/download, format, blocks, bold/italic, lists, links, images with alt, undo/redo, keyboard, umlauts | `src/js/app.js`, `src/js/commands.js` | T-01, T-04…T-08, T-10, T-13, F-01…F-11 | PASS. **Owner's decisions of 2026-11-19 that change the wording of the contract:** the description of an image (alt) is offered but optional; an image is written as a file name, not embedded. Added on the owner's request: alignment, width of images, changing existing images and links |
 | P-05 | Plain tags, valid nesting, no spans/fonts/inline CSS for basic text formatting; documented choice `<b>`/`<i>` | `src/js/serialize.js:245`, `src/js/commands.js:300`, `:485` | T-04, T-05, F-03 | PASS. Alignment is written as `style="text-align: …"`, the one style attribute the editor writes: HTML has no tag for it. Paragraph, headings, bold and italic stay plain tags (T-04) |
-| P-06 | At most 200,000 bytes, complete | `tools/build.mjs` | X-06 note, STATUS | 189,813 bytes |
+| P-06 | At most 250,000 bytes, complete (200,000 until 2026-11-24) | `tools/build.mjs` | X-06 note, STATUS | 196,056 bytes |
 | P-07 | No mail tools, minify, templates with remote content, tracking, persistence | — | X-06, T-17 | PASS |
 
 ## Safety and data model
