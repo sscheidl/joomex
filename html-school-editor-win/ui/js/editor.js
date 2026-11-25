@@ -15,6 +15,10 @@ export function createCodeEditor(els, onChange) {
   const history = createHistory(HISTORY_CHARS);
   const hlState = {};
   let text = '', lineStarts = [0], lineCount = 0, plain = false, charWidth = 0;
+  // The line breaks of the open file (breaks.js). The history stores raw texts (every break as it stands
+  // in the file), so each undo step brings back its own breaks.
+  let breaks = null;
+  const rawNow = () => (breaks ? breaks.raw : text);
 
   function syncScroll() {
     els.hlIn.style.transform = 'translate(' + -ta.scrollLeft + 'px,' + -ta.scrollTop + 'px)';
@@ -54,7 +58,8 @@ export function createCodeEditor(els, onChange) {
   function took(kind) {
     if (ta.value === text) { showPosition(); return; }
     text = ta.value;
-    history.record(text, kind, Date.now());
+    if (breaks) breaks.follow(text);
+    history.record(rawNow(), kind, Date.now());
     render();
     onChange(text);
   }
@@ -106,7 +111,8 @@ export function createCodeEditor(els, onChange) {
 
   function applyHistory(entry) {
     if (!entry) return;
-    setValue(entry.text, true);
+    if (breaks) breaks.restore(entry.text);
+    setValue(breaks ? breaks.text : entry.text, true);
     onChange(text);
   }
 
@@ -146,14 +152,18 @@ export function createCodeEditor(els, onChange) {
 
   const api = {
     get text() { return text; },
-    // A new document: new history, caret at the start.
-    load(newText) {
+    // The text with every line break as it stands in the file (breaks.js), for saving.
+    get raw() { return rawNow(); },
+    // A new document: new history, caret at the start. `lineBreaks`: from createBreaks for `newText`.
+    load(newText, lineBreaks) {
+      if (lineBreaks && lineBreaks.text !== newText) throw new Error('line breaks of another text');
+      breaks = lineBreaks || null;
       ta.readOnly = false;
       setValue(newText, false);
-      history.reset(newText);
+      history.reset(rawNow());
       onChange(text);
     },
-    clear() { ta.readOnly = true; setValue('', false); history.reset(''); },
+    clear() { breaks = null; ta.readOnly = true; setValue('', false); history.reset(''); },
     // Locked while another page is on its way: nothing typed now could be kept.
     setLocked(locked) { ta.readOnly = locked; },
     get locked() { return ta.readOnly; },

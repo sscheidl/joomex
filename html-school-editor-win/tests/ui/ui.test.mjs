@@ -430,7 +430,7 @@ test('line breaks: mixed LF, CRLF and CR are saved byte for byte as they were re
   await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64([...BOM, ...Buffer.from(RAW)]) });
   assert.equal(await ui.page.locator('#status.warn').count(), 0, 'no warning about mixed line endings any more');
   await ui.page.keyboard.press('Control+s');
-  assert.equal((await ui.last('save')).text, '﻿' + RAW, 'unchanged: the same bytes');
+  assert.equal((await ui.last('save')).text, '\ufeff' + RAW, 'unchanged: the same bytes');
   await ui.reply({ type: 'saved', path: 'index.html' });
   // typing in the line that ends with a lone CR
   await ui.page.click('#src');
@@ -438,14 +438,14 @@ test('line breaks: mixed LF, CRLF and CR are saved byte for byte as they were re
   await ui.page.keyboard.type('!');
   await ui.page.keyboard.press('Control+s');
   let expected = RAW.replace('zwei', 'zwei!');
-  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  assert.equal((await ui.last('save')).text, '\ufeff' + expected);
   await ui.reply({ type: 'saved', path: 'index.html' });
   // Enter in that line: the new break is a CR as well; the other lines keep theirs
   await ui.page.keyboard.press('ArrowLeft');
   await ui.page.keyboard.press('Enter');
   await ui.page.keyboard.press('Control+s');
   expected = RAW.replace('zwei', 'zwei\r!');
-  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  assert.equal((await ui.last('save')).text, '\ufeff' + expected);
   await ui.reply({ type: 'saved', path: 'index.html' });
   // deleting the last line and undoing it gives the saved bytes again
   await ui.page.keyboard.press('Control+End');
@@ -454,7 +454,50 @@ test('line breaks: mixed LF, CRLF and CR are saved byte for byte as they were re
   await ui.page.keyboard.press('Control+z');
   assert.equal(await ui.page.textContent('#docState'), 'gespeichert');
   await ui.page.keyboard.press('Control+s');
-  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  assert.equal((await ui.last('save')).text, '\ufeff' + expected);
+  assert.deepEqual(ui.errors, []);
+});
+
+// Review of alpha.4 (2026-11-25): each undo step and each save on its way needs its own line breaks.
+test('line breaks: undo to an unsaved step and a late save confirmation keep a lone CR', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const RAW = 'eins\r\nzwei\rdrei\nvier';
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(RAW)) });
+  const caretAfter = (word) => ui.page.evaluate((w) => { const s = document.getElementById('src'); s.focus(); const i = s.value.indexOf(w) + w.length; s.setSelectionRange(i, i); }, word);
+  // an unsaved step, a new step that deletes the lone CR, undo to the unsaved step
+  await ui.page.click('#src');
+  await caretAfter('eins');
+  await ui.page.keyboard.type('1');
+  await ui.page.waitForTimeout(1100);                 // the next keystroke starts a new undo step
+  await caretAfter('zwei');
+  await ui.page.keyboard.press('Delete');
+  assert.equal(await ui.text(), 'eins1\nzweidrei\nvier');
+  await ui.page.keyboard.press('Control+z');
+  assert.equal(await ui.text(), 'eins1\nzwei\ndrei\nvier');
+  await ui.page.keyboard.press('Control+s');
+  const sent = (await ui.last('save')).text;
+  assert.equal(sent, 'eins1\r\nzwei\rdrei\nvier', 'the undo step has its CR again');
+  // the save is on its way; the lone CR is deleted meanwhile; then the confirmation arrives
+  await caretAfter('zwei');
+  await ui.page.keyboard.press('Delete');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  assert.equal(await ui.page.textContent('#docState'), 'nicht gespeichert');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, 'eins1\r\nzweidrei\nvier', 'typed on: only the deleted break is missing');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // undo back to the first saved state, and Enter typed back by hand: both give the bytes of that save
+  await ui.page.keyboard.press('Control+z');
+  assert.equal(await ui.text(), 'eins1\nzwei\ndrei\nvier');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, sent);
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  await caretAfter('zwei');
+  await ui.page.keyboard.press('Delete');
+  await ui.page.keyboard.press('Enter');
+  assert.equal(await ui.page.textContent('#docState'), 'gespeichert', 'the same bytes as saved');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, sent);
   assert.deepEqual(ui.errors, []);
 });
 

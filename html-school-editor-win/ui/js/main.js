@@ -20,9 +20,9 @@ function send(msg) { if (host) host.postMessage(msg); }
 
 const state = {
   project: null,        // { name, files: [{ path, kind }] }
-  doc: null,            // { path, name, savedText, bom, eol, converted, base, breaks }; base: fingerprint of the file as
-                        // read or last saved; breaks: the kind of every line break as read (breaks.js)
-  sending: null,        // save in progress: { id, text, doc }; the core answers with the same id
+  doc: null,            // { path, name, savedRaw, bom, eol, converted, base, breaks }; savedRaw: the text as read or last
+                        // saved with every line break as in the file; base: its fingerprint; breaks: breaks.js
+  sending: null,        // save in progress: { id, raw, doc }; raw: the text as sent, with its own breaks
   afterSave: null,      // { what, action } to run once the save in progress has succeeded
   saveId: 0,
   opening: 0,           // op of the open or new page on its way (0: none); only its answer is taken
@@ -41,7 +41,8 @@ const editor = createCodeEditor(els, onTextChanged);
 
 const segmentsOf = (path) => path.split('/');
 const baseName = (path) => path.slice(path.lastIndexOf('/') + 1);
-const dirty = () => !!state.doc && editor.text !== state.doc.savedText;
+// Unsaved: the text or one of its line breaks differs from the file as read or last saved.
+const dirty = () => !!state.doc && editor.raw !== state.doc.savedRaw;
 
 function setStatus(text, warn) {
   els.status.textContent = text || '';
@@ -270,7 +271,6 @@ function projectFolders() {
 // ---------------------------------------------------------------- text, page view, notes
 
 function onTextChanged() {
-  if (state.doc) state.doc.breaks.follow(editor.text);
   clearTimeout(state.previewTimer);
   state.previewTimer = setTimeout(sendPreview, PREVIEW_DELAY);
   updateChrome();
@@ -345,11 +345,11 @@ async function openedFile(msg) {
   let breaks;
   try { breaks = createBreaks(decoded.text, breaksOfBytes(bytes), decoded.eol); }
   catch { breaks = createBreaks(decoded.text, decoded.text.split('\n').slice(1).map(() => decoded.eol), decoded.eol); }
-  state.doc = { path: msg.path, name: msg.name, savedText: converted ? '\u0000' : decoded.text, bom: decoded.bom, eol: decoded.eol, converted, base: msg.base || '', breaks };
+  state.doc = { path: msg.path, name: msg.name, savedRaw: converted ? '\u0000' : breaks.raw, bom: decoded.bom, eol: decoded.eol, converted, base: msg.base || '', breaks };
   state.picture = null;
   state.missing = [];
   state.problems = [];
-  editor.load(decoded.text);
+  editor.load(decoded.text, breaks);
   setStatus(converted ? 'Geöffnet und in UTF-8 umgewandelt: ' + msg.path + '. Speichere die Seite, damit sie in UTF-8 bleibt.' : 'Geöffnet: ' + msg.path, converted);
   sendPreview();
   updateChrome();
@@ -363,13 +363,13 @@ async function openedFile(msg) {
 // conflict) writes a new file and never replaces one.
 function startSave(type, createOnly) {
   if (!state.doc || state.sending !== null) return;
-  const text = editor.text, bytes = (state.doc.bom ? '﻿' : '') + state.doc.breaks.encode(text);
+  const raw = editor.raw, bytes = (state.doc.bom ? '\ufeff' : '') + raw;
   if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
     tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
     return;
   }
   const id = ++state.saveId;
-  state.sending = { id, text, doc: state.doc };
+  state.sending = { id, raw, doc: state.doc };
   send({ type, id, path: state.doc.path, text: bytes, base: state.doc.base, ...(createOnly ? { createOnly: true } : {}) });
   updateChrome();
 }
@@ -390,8 +390,8 @@ function saved(msg) {
   if (!s) return;
   if (s.doc !== state.doc) { state.afterSave = null; updateChrome(); return; }
   if (msg.path && msg.path !== state.doc.path) { state.doc.path = msg.path; state.doc.name = msg.name || baseName(msg.path); sendPreview(); }
-  state.doc.savedText = s.text;
-  state.doc.breaks.remember(s.text);
+  state.doc.savedRaw = s.raw;
+  state.doc.breaks.remember(s.raw);
   state.doc.converted = false;
   if (msg.base) state.doc.base = msg.base;
   setStatus(dirty() ? 'Gespeichert: ' + state.doc.path + '. Was du danach geschrieben hast, ist noch nicht gespeichert.' : 'Gespeichert: ' + state.doc.path);

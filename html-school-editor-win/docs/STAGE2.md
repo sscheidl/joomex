@@ -73,6 +73,10 @@ All of P0 to P4 runs in headless Chromium with the mock of the core (as the stag
 
 Order: P0 first, before the first build of stage 1, because it removes code that would otherwise be built, tested and thrown away. Then stage 1 is built and tried in class; P1 to P4 follow.
 
+### Line breaks and the byte promise (owner's decision of 2026-11-25)
+
+Stage 1 keeps every line break as read (`ui/js/breaks.js`; criteria F-07 to F-09). The page side edits the same document state as the code field: the text together with the kind of every break, through the same history of raw texts. Its commits must therefore go through the code field's change path (so breaks outside the change stay and new breaks follow the local kind), never by writing a new text from the page side alone. The byte comparisons F-07 to F-09 are repeated with changes made on the page side. The two WebView2 views of stage 1 are unchanged by this.
+
 ## 6. Decisions for the owner
 
 | # | Question | Proposal |

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { stageUi, ROOT } from '../../tools/stage-ui.mjs';
 
 const stage = stageUi(path.join(ROOT, 'tests', '.stage', 'unit-breaks'));
-const { breaksOfBytes, createBreaks } = await import(pathToFileURL(path.join(stage, 'js', 'breaks.js')).href);
+const { breaksOfBytes, breaksOfRaw, lfOf, createBreaks } = await import(pathToFileURL(path.join(stage, 'js', 'breaks.js')).href);
 
 const RAW = 'eins\r\nzwei\ndrei\rvier\r\n\r\nsechs\n';         // CRLF, LF, CR, CRLF, CRLF, LF
 const LF = RAW.replace(/\r\n?/g, '\n');
@@ -60,17 +60,46 @@ test('replacing a part that holds breaks reuses them in order', () => {
   assert.equal(b.encode('A\nB\nC\nd'), 'A\r\nB\rC\nd');
 });
 
-test('undo back to the text as read or as last saved gives its bytes again', () => {
+test('typing back the text as read or as last saved gives its bytes again', () => {
   const b = open(RAW);
-  const edited = LF.replace('drei\n', '');        // the CR break is gone
-  b.follow(edited);
-  b.follow(LF.replace('drei\n', 'drei\n'));         // typed back by hand: the same text as read
-  assert.equal(b.encode(LF), RAW, 'the text as read');
+  b.follow(LF.replace('drei\n', 'drei'));          // the CR break is gone
+  assert.equal(b.encode(LF), RAW, 'typed back by hand: the text as read');
   const saved = LF.replace('sechs', 'sieben');
-  b.remember(saved);
   const savedRaw = b.encode(saved);
-  b.follow(saved.replace('eins\n', ''));
-  b.follow(saved.replace('zwei\n', ''));
+  b.remember(savedRaw);
+  b.follow(saved.replace('drei\n', 'drei'));
   assert.equal(b.encode(saved), savedRaw, 'the text last saved');
   assert.equal(b.encode(LF), RAW, 'the text as read is still known');
+});
+
+test('raw texts: breaks and LF text of a raw text, restore of an undo step', () => {
+  assert.deepEqual(breaksOfRaw('a\r\nb\rc\nd\r'), ['\r\n', '\r', '\n', '\r']);
+  assert.equal(lfOf('a\r\nb\rc\nd\r'), 'a\nb\nc\nd\n');
+  const b = open(RAW);
+  b.restore('X\ry\r\nz');
+  assert.equal(b.text, 'X\ny\nz');
+  assert.equal(b.raw, 'X\ry\r\nz');
+  assert.equal(b.encode('X\ny\nz!'), 'X\ry\r\nz!', 'follows on from the restored state');
+});
+
+// Review of alpha.4 (2026-11-25): an unsaved intermediate state got LF for a lone CR after undo, and a
+// late save confirmation rebuilt the saved state from the text typed meanwhile.
+test('an undo step keeps its own breaks: deleting a lone CR and undoing to an unsaved state', () => {
+  const b = createBreaks('a\nb\nc\nd', ['\r\n', '\r', '\n'], '\n');
+  const step = 'A\nb\nc\nd';                       // unsaved intermediate state, as stored by the history
+  const stepRaw = b.encode(step);
+  assert.equal(stepRaw, 'A\r\nb\rc\nd');
+  b.follow('A\nbc\nd');                            // the lone CR deleted
+  b.restore(stepRaw);                              // undo: the history gives back the raw text of the step
+  assert.equal(b.raw, 'A\r\nb\rc\nd');
+  assert.equal(b.encode('A\nb\nc\nd!'), 'A\r\nb\rc\nd!');
+});
+
+test('a save keeps the breaks it sent, also when its confirmation comes after more typing', () => {
+  const b = createBreaks('a\nb\nc\nd', ['\r\n', '\r', '\n'], '\n');
+  const sentRaw = b.encode('A\nb\nc\nd');          // what the save sends
+  b.follow('A\nbc\nd');                            // typed on: the lone CR deleted
+  b.remember(sentRaw);                             // the late confirmation
+  assert.equal(b.raw, 'A\r\nbc\nd', 'the current state stays as typed');
+  assert.equal(b.encode('A\nb\nc\nd'), sentRaw, 'back to the saved text: the bytes on disk');
 });

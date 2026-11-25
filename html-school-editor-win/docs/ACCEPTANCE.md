@@ -33,6 +33,7 @@
 | F-01 | Open, change, save: the file on disk holds exactly the code, byte for byte; BOM and line endings of the opened file are kept. |
 | F-07 | **Byte comparison, no change.** A UTF-8 file with BOM and mixed `LF`, `CRLF` and lone `CR` line endings is opened and saved without a change: the file on disk is byte for byte identical to the original (owner's decision of 2026-11-25). |
 | F-08 | **Byte comparison, one change.** The same file, one line changed (text typed, and a line break typed into a line that ends with `CR`), saved: the file differs from the original only by the typed bytes; every other line break is byte for byte as read, and the typed break has the kind of the break that ends its line. Undo back to the saved text and saving again gives the saved bytes. |
+| F-09 | **Byte comparison, undo steps and a save on its way.** (a) A change, a pause (new undo step), a lone `CR` deleted, undo to the first, unsaved step, save: the `CR` is in the file. (b) A save on its way (answer held back in the test build), the lone `CR` deleted meanwhile: the file holds the bytes that were sent; Enter typed back at that place shows "gespeichert" and saving again leaves the file untouched. |
 | F-02 | Changed on disk by another program after opening: "Speichern" writes nothing and offers a new file or cancel. |
 | F-03 | A failed write (read-only file, full disk, lost network drive) keeps the old file intact and says so. |
 | F-04 | Closing with unsaved changes asks; "Abbrechen" keeps the program open with the text. |

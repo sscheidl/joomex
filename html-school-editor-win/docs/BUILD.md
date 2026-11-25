@@ -37,6 +37,12 @@ cmake --build build-test --config Release
 $env:HSE_DEBUG_PORT = 9222; .\build-test\Release\HtmlSchulEditor.exe
 ```
 
+In the test build, `HSE_TEST_SAVE_DELAY_MS` holds the answer to every ordinary save back by that many milliseconds, so a test can type while a save is on its way (criterion F-09):
+
+```powershell
+$env:HSE_TEST_SAVE_DELAY_MS = 2000
+```
+
 ## Tests without Windows
 
 The portable core and the user interface can be tested on any computer:

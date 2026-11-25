@@ -713,6 +713,11 @@ void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprin
     const std::wstring path = joinPath(root_, segs);
     std::thread([this, path, base, id, bytes = std::move(bytes)]() {
         Json answer = writeChecked(path, bytes, base);
+#ifdef HSE_TEST_HOOKS
+        // Test build only: holds the answer back, so the acceptance tests can type while a save is on its way.
+        wchar_t delay[16];
+        if (GetEnvironmentVariableW(L"HSE_TEST_SAVE_DELAY_MS", delay, 16)) Sleep(static_cast<DWORD>(_wtoi(delay)));
+#endif
         runLater([this, id, answer = std::move(answer)]() mutable {
             busy_ = false;
             post(answer.set("id", id));
