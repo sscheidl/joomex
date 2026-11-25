@@ -55,6 +55,58 @@ std::wstring lower(std::wstring s) {
     return s;
 }
 
+// ---------------------------------------------------------------- checked writing (worker threads)
+
+constexpr std::size_t kMaxCheckBytes = 64u * 1024 * 1024;
+
+Json savedAnswer(const Fingerprint& mine) {
+    return Json::object().set("type", "saved").set("base", fingerprintText(mine));
+}
+
+Json failedAnswer(const std::string& message) {
+    return Json::object().set("type", "saveFailed").set("message", message);
+}
+
+// After a failed write: did the new content arrive anyway (a network drive can report an error for a write
+// that happened)? Otherwise a message that says what is known about the file on disk.
+Json afterFailedWrite(const std::wstring& path, const WriteResult& w, const Fingerprint& mine, const std::optional<Fingerprint>& before) {
+    const ReadResult again = readFileBytes(path, kMaxCheckBytes);
+    const bool readable = again.error == ERROR_SUCCESS;
+    if (readable && fingerprintOf(again.bytes) == mine) return savedAnswer(mine);
+    std::string message = errorText(w.error);
+    if (before && !(readable && fingerprintOf(again.bytes) == *before) && again.error != ERROR_FILE_NOT_FOUND)
+        message += " Ob die Datei auf dem Laufwerk noch die alte Fassung enthält, kann der Editor gerade nicht prüfen.";
+    if (!w.keptOld.empty()) message += " Die alte Fassung liegt als „" + toUtf8(lastComponent(w.keptOld)) + "“ im selben Ordner.";
+    return failedAnswer(message);
+}
+
+// Writes `bytes` over the file the interface opened, but only if the file on disk is still the one it
+// opened or last saved (`base`). Without a base nothing is written. The check and the replacement are two
+// steps: a change by another program in the moment between them is not noticed (no file system the
+// school uses offers more without locking the file).
+Json writeChecked(const std::wstring& path, const std::string& bytes, const std::optional<Fingerprint>& base) {
+    const Fingerprint mine = fingerprintOf(bytes);
+    const ReadResult now = readFileBytes(path, kMaxCheckBytes);
+    if (now.error == ERROR_FILE_NOT_FOUND || now.error == ERROR_PATH_NOT_FOUND) return Json::object().set("type", "conflict").set("kind", "deleted");
+    if (now.error != ERROR_SUCCESS) return failedAnswer(errorText(now.error));
+    const Fingerprint onDisk = fingerprintOf(now.bytes);
+    if (onDisk == mine) return savedAnswer(mine);
+    if (!base || onDisk != *base) return Json::object().set("type", "conflict").set("kind", "changed");
+    const WriteResult w = replaceFileAtomic(path, bytes);
+    if (w.error == ERROR_SUCCESS) return savedAnswer(mine);
+    if (w.error == ERROR_FILE_NOT_FOUND && w.keptOld.empty() && !isFile(path)) return Json::object().set("type", "conflict").set("kind", "deleted");
+    return afterFailedWrite(path, w, mine, onDisk);
+}
+
+// Creates a file that must not exist yet.
+Json writeNew(const std::wstring& path, const std::string& bytes) {
+    const Fingerprint mine = fingerprintOf(bytes);
+    const WriteResult w = createFileAtomic(path, bytes);
+    if (w.error == ERROR_SUCCESS) return savedAnswer(mine);
+    if (w.error == ERROR_FILE_EXISTS) return failedAnswer("Eine Datei mit diesem Namen gibt es schon. Wähle einen neuen Namen.");
+    return afterFailedWrite(path, w, mine, std::nullopt);
+}
+
 bool sameSegments(const Segments& a, const Segments& b) {
     if (a.size() != b.size()) return false;
     for (std::size_t i = 0; i < a.size(); ++i)
@@ -503,7 +555,7 @@ void App::onUiMessage(const Json& m) {
             const std::wstring file = startFile_;
             startFile_.clear();
             setProject(parentOf(file), true, [this, file]() {
-                if (const auto segs = segmentsBelow(root_, file)) openFile(*segs);
+                if (const auto segs = segmentsBelow(root_, file)) openFile(*segs, 0);
             });
             return;
         }
@@ -532,31 +584,44 @@ void App::onUiMessage(const Json& m) {
         if (const auto segs = pathSegments(m.at("path").str())) showPreview(*segs, m.at("text").str());
     } else if (type == "openProject") {
         if (const auto folder = pickFolder(window_, root_)) setProject(*folder, true);
+    // Opening, a new page and pictures carry an operation number `op` that every answer repeats, so the
+    // interface takes only the answer to its latest request (see docs/ARCHITECTURE.md, "Messages").
     } else if (type == "openDialog") {
-        if (const auto file = pickPageFile(window_, root_)) {
-            if (const auto segs = root_.empty() ? std::nullopt : segmentsBelow(root_, *file)) {
-                openFile(*segs);
-            } else {
-                const std::wstring f = *file;
-                setProject(parentOf(f), true, [this, f]() {
-                    if (const auto s = segmentsBelow(root_, f)) openFile(*s);
-                });
-            }
+        const double op = m.at("op").num();
+        const auto file = pickPageFile(window_, root_);
+        if (!file) { postOpenFailed(op); return; }
+        if (const auto segs = root_.empty() ? std::nullopt : segmentsBelow(root_, *file)) {
+            openFile(*segs, op);
+        } else {
+            const std::wstring f = *file;
+            setProject(parentOf(f), true, [this, f, op]() {
+                if (const auto s = segmentsBelow(root_, f)) openFile(*s, op);
+                else postOpenFailed(op);
+            });
         }
     } else if (type == "openFile") {
-        if (const auto segs = pathSegments(m.at("path").str())) openFile(*segs);
+        const double op = m.at("op").num();
+        if (const auto segs = pathSegments(m.at("path").str())) openFile(*segs, op);
+        else postOpenFailed(op, "Die Seite kann nicht geöffnet werden", "Der Dateiname ist ungültig.");
     } else if (type == "newPage") {
-        if (const auto segs = pathSegments(m.at("path").str())) newPage(*segs, m.at("text").str());
+        const double op = m.at("op").num();
+        if (const auto segs = pathSegments(m.at("path").str())) newPage(*segs, m.at("text").str(), op);
+        else postOpenFailed(op, "Die Seite konnte nicht angelegt werden", "Der Dateiname ist ungültig.");
     } else if (type == "save") {
-        if (const auto segs = pathSegments(m.at("path").str())) save(*segs, m.at("text").str());
-        else post(Json::object().set("type", "saveFailed").set("message", "Der Dateiname ist ungültig."));
+        // Every answer to a save carries the id of its request, so the interface never takes the answer
+        // to an older save for the page open now. `base` is the fingerprint of the file as the open page
+        // was read or last saved.
+        const double id = m.at("id").num();
+        const auto base = parseFingerprint(m.at("base").str());
+        if (const auto segs = pathSegments(m.at("path").str())) save(*segs, m.at("text").str(), base, id);
+        else post(failedAnswer("Der Dateiname ist ungültig.").set("id", id));
     } else if (type == "saveAs") {
         const auto segs = pathSegments(m.at("path").str());
-        saveAs(segs ? *segs : Segments{}, m.at("text").str());
+        saveAs(segs ? *segs : Segments{}, m.at("text").str(), parseFingerprint(m.at("base").str()), m.at("createOnly").boolean(), m.at("id").num());
     } else if (type == "pickPicture") {
-        if (const auto segs = pathSegments(m.at("page").str())) pickPicture(*segs);
+        if (const auto segs = pathSegments(m.at("page").str())) pickPicture(*segs, m.at("op").num());
     } else if (type == "copyPicture") {
-        if (const auto segs = pathSegments(m.at("page").str())) copyPicture(m.at("token").str(), *segs);
+        if (const auto segs = pathSegments(m.at("page").str())) copyPicture(m.at("token").str(), *segs, m.at("op").num());
     } else if (type == "viewInBrowser") {
         if (const auto segs = pathSegments(m.at("path").str())) viewInBrowser(*segs);
     } else if (type == "closeOk") {
@@ -567,13 +632,17 @@ void App::onUiMessage(const Json& m) {
 
 // ================================================================ project and files
 
-std::wstring App::keyOf(const std::wstring& path) const { return lower(path); }
+void App::postOpenFailed(double op, const std::string& title, const std::string& message) {
+    Json m = Json::object().set("type", "openFailed").set("op", op);
+    if (!title.empty()) m.set("title", title).set("message", message);
+    post(m);
+}
 
 void App::setProject(const std::wstring& root, bool remember, std::function<void()> then) {
     std::wstring r = root;
     while (r.size() > 3 && (r.back() == L'\\' || r.back() == L'/')) r.pop_back();
     root_ = r;
-    known_.clear();
+    ++projectGen_;  // answers of work started for the previous folder are not used any more
     pictureTokens_.clear();
     gCache.clear();
     pvSegs_.clear();
@@ -611,115 +680,122 @@ void App::rescan(const std::string& message) {
     }).detach();
 }
 
-void App::openFile(const Segments& segs) {
-    if (root_.empty()) return;
+void App::openFile(const Segments& segs, double op) {
+    if (root_.empty()) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
+    const UINT64 gen = projectGen_;
     postStatus("Wird geöffnet …");
-    std::thread([this, path, segs]() {
+    std::thread([this, path, segs, gen, op]() {
         ReadResult r = readFileBytes(path, kMaxPageBytes);
-        runLater([this, path, segs, r = std::move(r)]() {
+        runLater([this, segs, gen, op, r = std::move(r)]() {
+            if (gen != projectGen_) { postOpenFailed(op); return; }  // another project folder was opened meanwhile
             if (r.error != ERROR_SUCCESS) {
                 postStatus("");
-                postError("Die Seite kann nicht geöffnet werden", errorText(r.error));
+                postOpenFailed(op, "Die Seite kann nicht geöffnet werden", errorText(r.error));
                 return;
             }
-            known_[keyOf(path)] = fingerprintOf(r.bytes);
-            post(Json::object().set("type", "opened").set("path", joinSegments(segs)).set("name", segs.back()).set("data", base64Encode(r.bytes)));
+            post(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
+                     .set("base", fingerprintText(fingerprintOf(r.bytes))).set("data", base64Encode(r.bytes)));
         });
     }).detach();
 }
 
-void App::save(const Segments& segs, std::string bytes) {
+void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprint> base, double id) {
     if (busy_) {
-        post(Json::object().set("type", "saveFailed").set("message", "Es wird gerade noch gespeichert."));
+        post(failedAnswer("Es wird gerade noch gespeichert.").set("id", id));
+        return;
+    }
+    if (bytes.size() > kMaxPageBytes) {
+        post(failedAnswer("Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen.").set("id", id));
         return;
     }
     busy_ = true;
     const std::wstring path = joinPath(root_, segs);
-    const auto knownIt = known_.find(keyOf(path));
-    const std::optional<Fingerprint> known = knownIt == known_.end() ? std::nullopt : std::optional<Fingerprint>(knownIt->second);
-    std::thread([this, path, segs, known, bytes = std::move(bytes)]() {
-        const Fingerprint mine = fingerprintOf(bytes);
-        const ReadResult now = readFileBytes(path, 64u * 1024 * 1024);
-        Json answer;
-        if (now.error == ERROR_FILE_NOT_FOUND || now.error == ERROR_PATH_NOT_FOUND) {
-            answer = Json::object().set("type", "conflict").set("path", joinSegments(segs)).set("kind", "deleted");
-        } else if (now.error != ERROR_SUCCESS) {
-            answer = Json::object().set("type", "saveFailed").set("message", errorText(now.error));
-        } else {
-            const Fingerprint onDisk = fingerprintOf(now.bytes);
-            // The check and the write are two steps; another program can still write in between.
-            if (known && onDisk != *known && onDisk != mine) {
-                answer = Json::object().set("type", "conflict").set("path", joinSegments(segs)).set("kind", "changed");
-            } else {
-                const DWORD e = onDisk == mine ? ERROR_SUCCESS : writeFileAtomic(path, bytes);
-                answer = e == ERROR_SUCCESS ? Json::object().set("type", "saved").set("path", joinSegments(segs))
-                                            : Json::object().set("type", "saveFailed").set("message", errorText(e));
-            }
-        }
-        runLater([this, path, mine, answer]() {
+    std::thread([this, path, base, id, bytes = std::move(bytes)]() {
+        Json answer = writeChecked(path, bytes, base);
+        runLater([this, id, answer = std::move(answer)]() mutable {
             busy_ = false;
-            if (answer.at("type").str() == "saved") known_[keyOf(path)] = mine;
-            post(answer);
+            post(answer.set("id", id));
         });
     }).detach();
 }
 
-void App::saveAs(const Segments& current, std::string bytes) {
+void App::saveAs(const Segments& current, std::string bytes, std::optional<Fingerprint> base, bool createOnly, double id) {
+    if (busy_) {
+        post(failedAnswer("Es wird gerade noch gespeichert.").set("id", id));
+        return;
+    }
+    if (bytes.size() > kMaxPageBytes) {
+        post(failedAnswer("Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen.").set("id", id));
+        return;
+    }
     std::wstring start = root_;
     std::wstring name = L"seite.html";
     if (!current.empty()) {
         start = parentOf(joinPath(root_, current));
         name = toWide(current.back());
     }
-    const auto file = pickSaveFile(window_, start, name);
+    // A new name only (the way out of a conflict): no overwrite question, an existing file is refused.
+    const auto file = pickSaveFile(window_, start, name, !createOnly);
     if (!file) {
-        post(Json::object().set("type", "saveCancelled"));
+        post(Json::object().set("type", "saveCancelled").set("id", id));
         return;
     }
     const auto segs = segmentsBelow(root_, *file);
     const auto checked = segs ? requestSegments(urlPathOf(*segs)) : std::nullopt;
     if (!checked || kindOf(checked->back()) != FileKind::Page) {
-        post(Json::object().set("type", "saveCancelled"));
+        post(Json::object().set("type", "saveCancelled").set("id", id));
         postError("Bitte im Projektordner speichern", segs ? "Der Name ist nicht möglich. Verwende Buchstaben, Ziffern, „-“ und „_“ und die Endung .html."
                                                            : "Speichere die Seite in deinem Projektordner, damit Bilder und Links stimmen.");
         return;
     }
-    const std::wstring path = *file;
-    std::thread([this, path, segs = *checked, bytes = std::move(bytes)]() {
-        const DWORD e = writeFileAtomic(path, bytes);
-        const Fingerprint fp = fingerprintOf(bytes);
-        runLater([this, path, segs, e, fp]() {
-            if (e != ERROR_SUCCESS) {
-                post(Json::object().set("type", "saveFailed").set("message", errorText(e)));
-                return;
-            }
-            known_[keyOf(path)] = fp;
-            post(Json::object().set("type", "saved").set("path", joinSegments(segs)).set("name", segs.back()));
-            rescan();
+    const std::wstring path = joinPath(root_, *checked);
+    // The open page under its own name: the same check as an ordinary save.
+    const bool samePage = !current.empty() && lower(path) == lower(joinPath(root_, current));
+    busy_ = true;
+    std::thread([this, path, id, base, createOnly, samePage, segs = *checked, bytes = std::move(bytes)]() {
+        Json answer;
+        if (createOnly || !isFile(path)) answer = writeNew(path, bytes);
+        else if (samePage) answer = writeChecked(path, bytes, base);
+        else {
+            // Another existing page: the pupil has just confirmed in the dialog that it is replaced.
+            const WriteResult w = replaceFileAtomic(path, bytes);
+            const Fingerprint mine = fingerprintOf(bytes);
+            answer = w.error == ERROR_SUCCESS ? savedAnswer(mine)
+                   : w.error == ERROR_FILE_NOT_FOUND && w.keptOld.empty() ? writeNew(path, bytes)  // removed meanwhile
+                   : afterFailedWrite(path, w, mine, std::nullopt);
+        }
+        if (answer.at("type").str() == "saved") answer.set("path", joinSegments(segs)).set("name", segs.back());
+        runLater([this, id, answer = std::move(answer)]() mutable {
+            busy_ = false;
+            const bool ok = answer.at("type").str() == "saved";
+            post(answer.set("id", id));
+            if (ok) rescan();
         });
     }).detach();
 }
 
-void App::newPage(const Segments& segs, std::string bytes) {
-    if (root_.empty() || kindOf(segs.back()) != FileKind::Page) return;
+void App::newPage(const Segments& segs, std::string bytes, double op) {
+    if (root_.empty() || kindOf(segs.back()) != FileKind::Page) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
-    std::thread([this, path, segs, bytes = std::move(bytes)]() {
+    const UINT64 gen = projectGen_;
+    std::thread([this, path, segs, gen, op, bytes = std::move(bytes)]() {
         DWORD e = createFolders(parentOf(path));
-        if (e == ERROR_SUCCESS) e = createNewFile(path, bytes);
-        runLater([this, path, segs, bytes, e]() {
+        if (e == ERROR_SUCCESS) e = createFileAtomic(path, bytes).error;
+        runLater([this, segs, gen, op, bytes, e]() {
+            if (gen != projectGen_) { postOpenFailed(op); return; }
             if (e != ERROR_SUCCESS) {
-                postError("Die Seite konnte nicht angelegt werden", errorText(e));
+                postOpenFailed(op, "Die Seite konnte nicht angelegt werden", errorText(e));
                 return;
             }
-            known_[keyOf(path)] = fingerprintOf(bytes);
-            post(Json::object().set("type", "opened").set("path", joinSegments(segs)).set("name", segs.back()).set("data", base64Encode(bytes)));
+            post(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
+                     .set("base", fingerprintText(fingerprintOf(bytes))).set("data", base64Encode(bytes)));
             rescan("Neue Seite angelegt: " + joinSegments(segs));
         });
     }).detach();
 }
 
-void App::pickPicture(const Segments& page) {
+void App::pickPicture(const Segments& page, double op) {
     if (root_.empty()) return;
     const std::wstring pictures = root_ + L"\\bilder";
     const auto file = pickPictureFile(window_, isFolder(pictures) ? pictures : root_);
@@ -727,21 +803,22 @@ void App::pickPicture(const Segments& page) {
     const std::string name = toUtf8(lastComponent(*file));
     if (kindOf(name) != FileKind::Picture) postStatus("„" + name + "“ ist vielleicht kein Bildformat, das Browser anzeigen. Gut sind .jpg, .png, .gif, .webp und .svg.", true);
     if (const auto segs = segmentsBelow(root_, *file)) {
-        post(Json::object().set("type", "picture").set("src", relativeAddress(page, *segs)));
+        post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, *segs)));
         return;
     }
     const std::string token = randomToken();
     pictureTokens_[token] = *file;
-    post(Json::object().set("type", "pictureOutside").set("name", name).set("token", token));
+    post(Json::object().set("type", "pictureOutside").set("op", op).set("name", name).set("token", token));
 }
 
-void App::copyPicture(const std::string& token, const Segments& page) {
+void App::copyPicture(const std::string& token, const Segments& page, double op) {
     const auto it = pictureTokens_.find(token);
     if (it == pictureTokens_.end() || root_.empty()) return;
     const std::wstring source = it->second;
     pictureTokens_.erase(it);
     const std::wstring folder = root_ + L"\\bilder";
-    std::thread([this, source, folder, page]() {
+    const UINT64 gen = projectGen_;
+    std::thread([this, source, folder, page, gen, op]() {
         DWORD e = createFolders(folder);
         std::string name;
         if (e == ERROR_SUCCESS) {
@@ -756,12 +833,13 @@ void App::copyPicture(const std::string& token, const Segments& page) {
             name = uniqueName(toUtf8(lastComponent(source)), existing);
             if (!CopyFileW(source.c_str(), (folder + L"\\" + toWide(name)).c_str(), TRUE)) e = GetLastError();
         }
-        runLater([this, page, name, e]() {
+        runLater([this, page, name, gen, op, e]() {
+            if (gen != projectGen_) return;
             if (e != ERROR_SUCCESS) {
                 postError("Das Bild konnte nicht kopiert werden", errorText(e));
                 return;
             }
-            post(Json::object().set("type", "picture").set("src", relativeAddress(page, {"bilder", name})));
+            post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, {"bilder", name})));
             rescan("Bild kopiert nach bilder/" + name);
         });
     }).detach();

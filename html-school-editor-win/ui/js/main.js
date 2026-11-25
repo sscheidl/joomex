@@ -19,9 +19,13 @@ function send(msg) { if (host) host.postMessage(msg); }
 
 const state = {
   project: null,        // { name, files: [{ path, kind }] }
-  doc: null,            // { path, name, savedText, bom, eol, converted }
-  sending: null,        // text of a save in progress
-  afterSave: null,      // action to run after the next successful save
+  doc: null,            // { path, name, savedText, bom, eol, converted, base }; base: fingerprint of the file as read or last saved
+  sending: null,        // save in progress: { id, text, doc }; the core answers with the same id
+  afterSave: null,      // { what, action } to run once the save in progress has succeeded
+  saveId: 0,
+  opening: 0,           // op of the open or new page on its way (0: none); only its answer is taken
+  picture: null,        // { op, doc } of the picture being chosen
+  opId: 0,
   problems: [],
   missing: [],
   notesOpen: false,
@@ -100,12 +104,33 @@ function askUnsaved(what) {
   ]);
 }
 
-// Runs `action` once the current page is saved or its changes are given up.
+// Runs `action` once the current page is saved or its changes are given up. While a save is still on its
+// way, the action waits for its answer and is then checked again: text typed during the save is not saved
+// yet, so the question comes again instead of the action dropping it.
 async function whenSettled(what, action) {
+  if (state.sending !== null) {
+    state.afterSave = { what, action };
+    setStatus('Einen Moment, die Seite wird noch gespeichert …');
+    return;
+  }
   if (!dirty()) { action(); return; }
   const choice = await askUnsaved(what);
-  if (choice === 'save') { state.afterSave = action; save(); }
+  if (choice === 'save') { state.afterSave = { what, action }; save(); }
   else if (choice === 'discard') action();
+}
+
+// Asks the core to open a page (`openFile`, `openDialog`, `newPage`). Only the answer to the latest
+// request is taken, and the code field is locked until it comes, so nothing typed meanwhile is replaced.
+function requestOpen(msg) {
+  const op = ++state.opId;
+  state.opening = op;
+  editor.setLocked(true);
+  send({ ...msg, op });
+}
+
+function openingDone() {
+  state.opening = 0;
+  editor.setLocked(!state.doc);
 }
 
 // ---------------------------------------------------------------- chrome
@@ -224,7 +249,7 @@ function renderFiles() {
     if (f.kind === 'page') {
       li.tabIndex = 0;
       li.setAttribute('role', 'button');
-      const open = () => { if (!state.doc || state.doc.path !== f.path) whenSettled('du eine andere Seite öffnest', () => send({ type: 'openFile', path: f.path })); };
+      const open = () => { if (!state.doc || state.doc.path !== f.path) whenSettled('du eine andere Seite öffnest', () => requestOpen({ type: 'openFile', path: f.path })); };
       li.addEventListener('click', open);
       li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     }
@@ -292,6 +317,9 @@ els.bNotes.addEventListener('click', () => { state.notesOpen = !state.notesOpen;
 // ---------------------------------------------------------------- opening
 
 async function openedFile(msg) {
+  // op 0: the page given when the program was started, before anything else is open
+  if (msg.op ? msg.op !== state.opening : state.opening !== 0 || state.doc) return;
+  openingDone();
   const bytes = bytesOf(msg.data);
   if (bytes.length > MAX_FILE_BYTES) { tell('Datei zu groß', '„' + msg.name + '“ ist größer als 5 MB. So große Seiten kann der Editor nicht öffnen.'); return; }
   let decoded = decodeFileBytes(bytes, false);
@@ -310,7 +338,8 @@ async function openedFile(msg) {
     return;
   }
   // a converted page counts as unsaved until it is written in UTF-8
-  state.doc = { path: msg.path, name: msg.name, savedText: converted ? '\u0000' : decoded.text, bom: decoded.bom, eol: decoded.eol, converted };
+  state.doc = { path: msg.path, name: msg.name, savedText: converted ? '\u0000' : decoded.text, bom: decoded.bom, eol: decoded.eol, converted, base: msg.base || '' };
+  state.picture = null;
   state.missing = [];
   state.problems = [];
   editor.load(decoded.text);
@@ -324,38 +353,55 @@ async function openedFile(msg) {
 
 // ---------------------------------------------------------------- saving
 
-function save() {
+// `base` lets the core write only over the file this page was read from; `createOnly` (Save As out of a
+// conflict) writes a new file and never replaces one.
+function startSave(type, createOnly) {
   if (!state.doc || state.sending !== null) return;
-  state.sending = editor.text;
-  send({ type: 'save', path: state.doc.path, text: encodeFileText(state.sending, state.doc.bom, state.doc.eol) });
+  const text = editor.text, bytes = encodeFileText(text, state.doc.bom, state.doc.eol);
+  if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
+    tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
+    return;
+  }
+  const id = ++state.saveId;
+  state.sending = { id, text, doc: state.doc };
+  send({ type, id, path: state.doc.path, text: bytes, base: state.doc.base, ...(createOnly ? { createOnly: true } : {}) });
   updateChrome();
 }
+const save = () => startSave('save');
+const saveAs = (createOnly) => startSave('saveAs', createOnly === true);
 
-function saveAs() {
-  if (!state.doc || state.sending !== null) return;
-  state.sending = editor.text;
-  send({ type: 'saveAs', path: state.doc.path, text: encodeFileText(state.sending, state.doc.bom, state.doc.eol) });
-  updateChrome();
+// The save in progress that `msg` answers, or null for an answer to an older save (for example of the page
+// of a project folder that was closed meanwhile). Such an answer must not touch the page open now.
+function answeredSave(msg) {
+  const s = state.sending;
+  if (!s || msg.id !== s.id) return null;
+  state.sending = null;
+  return s;
 }
 
 function saved(msg) {
-  const text = state.sending;
-  state.sending = null;
-  if (text === null || !state.doc) return;
+  const s = answeredSave(msg);
+  if (!s) return;
+  if (s.doc !== state.doc) { state.afterSave = null; updateChrome(); return; }
   if (msg.path && msg.path !== state.doc.path) { state.doc.path = msg.path; state.doc.name = msg.name || baseName(msg.path); sendPreview(); }
-  state.doc.savedText = text;
+  state.doc.savedText = s.text;
   state.doc.converted = false;
-  setStatus('Gespeichert: ' + state.doc.path);
+  if (msg.base) state.doc.base = msg.base;
+  setStatus(dirty() ? 'Gespeichert: ' + state.doc.path + '. Was du danach geschrieben hast, ist noch nicht gespeichert.' : 'Gespeichert: ' + state.doc.path);
   updateChrome();
   const after = state.afterSave;
   state.afterSave = null;
-  if (after) after();
+  if (!after) return;
+  if (after.what) whenSettled(after.what, after.action);
+  else after.action();
 }
 
 async function saveProblem(msg) {
-  state.sending = null;
+  const s = answeredSave(msg);
+  if (!s) return;
   state.afterSave = null;
   updateChrome();
+  if (s.doc !== state.doc) return;
   if (msg.type === 'saveCancelled') { setStatus('Nicht gespeichert.'); return; }
   if (msg.type === 'conflict') {
     const choice = await ask('Die Datei wurde woanders geändert', [
@@ -364,7 +410,7 @@ async function saveProblem(msg) {
         : '„' + state.doc.path + '“ wurde inzwischen von einem anderen Programm oder Fenster geändert.'),
       paragraph('Damit nichts verloren geht, hat der Editor nichts überschrieben. Du kannst deine Seite als neue Datei speichern.'),
     ], [{ label: 'Als neue Datei speichern …', value: 'saveAs', primary: true }, { label: 'Abbrechen', value: 'cancel' }]);
-    if (choice === 'saveAs') saveAs();
+    if (choice === 'saveAs') saveAs(true);
     return;
   }
   setStatus('Nicht gespeichert: ' + (msg.message || 'unbekannter Fehler'), true);
@@ -394,7 +440,7 @@ async function newPage() {
     if (state.project.files.some((f) => f.path.toLowerCase() === path.toLowerCase())) { err.textContent = 'Diese Datei gibt es schon.'; continue; }
     const title = name.replace(/\.html?$/i, '').replace(/[-_]+/g, ' ');
     const skeleton = '<!DOCTYPE html>\n<html lang="de">\n<head>\n  <meta charset="utf-8">\n  <title>' + title + '</title>\n</head>\n<body>\n  <h1>' + title + '</h1>\n  <p>Hier steht dein Text.</p>\n</body>\n</html>\n';
-    whenSettled('du eine neue Seite anlegst', () => send({ type: 'newPage', path, text: encodeFileText(skeleton, false, NEW_EOL) }));
+    whenSettled('du eine neue Seite anlegst', () => requestOpen({ type: 'newPage', path, text: encodeFileText(skeleton, false, NEW_EOL) }));
     return;
   }
 }
@@ -405,12 +451,16 @@ function insertPicture(src) {
   setStatus('Bild eingefügt. Schreibe bei alt="" in ein paar Wörtern, was auf dem Bild zu sehen ist.');
 }
 
+// The answer to the picture dialog belongs to the page it was opened for.
+const pictureFor = (msg) => !!state.picture && msg.op === state.picture.op && state.picture.doc === state.doc;
+
 async function pictureOutside(msg) {
+  if (!pictureFor(msg)) return;
   const choice = await ask('Bild außerhalb des Projektordners', [
     paragraph('„' + msg.name + '“ liegt nicht in deinem Projektordner. Dann fehlt es später, wenn du die Seite weitergibst oder hochlädst.'),
     paragraph('Der Editor kann das Bild in den Ordner „bilder“ deines Projekts kopieren.'),
   ], [{ label: 'In „bilder“ kopieren', value: 'copy', primary: true }, { label: 'Abbrechen', value: 'cancel' }]);
-  if (choice === 'copy') send({ type: 'copyPicture', token: msg.token, page: state.doc.path });
+  if (choice === 'copy' && pictureFor(msg)) send({ type: 'copyPicture', op: msg.op, token: msg.token, page: state.doc.path });
 }
 
 function viewInBrowser() {
@@ -419,7 +469,7 @@ function viewInBrowser() {
   if (!dirty()) { go(); return; }
   ask('Erst speichern?', 'Der Browser zeigt die gespeicherte Datei. Deine letzten Änderungen sind noch nicht gespeichert.', [
     { label: 'Speichern und ansehen', value: 'save', primary: true }, { label: 'Abbrechen', value: 'cancel' },
-  ]).then((c) => { if (c === 'save') { state.afterSave = go; save(); } });
+  ]).then((c) => { if (c === 'save') { state.afterSave = { action: go }; save(); } });
 }
 
 // ---------------------------------------------------------------- find
@@ -450,14 +500,19 @@ els.bFindClose.addEventListener('click', closeFind);
 const openProject = () => whenSettled('du einen anderen Projektordner öffnest', () => send({ type: 'openProject' }));
 els.bProject.addEventListener('click', openProject);
 els.bProject2.addEventListener('click', openProject);
-els.bOpen.addEventListener('click', () => whenSettled('du eine andere Seite öffnest', () => send({ type: 'openDialog' })));
+els.bOpen.addEventListener('click', () => whenSettled('du eine andere Seite öffnest', () => requestOpen({ type: 'openDialog' })));
 els.bNew.addEventListener('click', newPage);
 els.bSave.addEventListener('click', save);
 els.bSaveAs.addEventListener('click', saveAs);
 els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
 els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
 els.bFind.addEventListener('click', openFind);
-els.bPicture.addEventListener('click', () => { if (state.doc) send({ type: 'pickPicture', page: state.doc.path }); });
+els.bPicture.addEventListener('click', () => {
+  if (!state.doc || editor.locked) return;
+  const op = ++state.opId;
+  state.picture = { op, doc: state.doc };
+  send({ type: 'pickPicture', op, page: state.doc.path });
+});
 els.bBrowser.addEventListener('click', viewInBrowser);
 
 addEventListener('keydown', (e) => {
@@ -489,6 +544,7 @@ const handlers = {
     state.problems = [];
     state.sending = null;
     state.afterSave = null;
+    state.picture = null;
     editor.clear();
     renderFiles();
     renderNotes();
@@ -511,6 +567,12 @@ const handlers = {
     if (m.message) setStatus(m.message, true);
   },
   opened: openedFile,
+  openFailed(m) {
+    if (!m.op || m.op !== state.opening) return;
+    openingDone();
+    updateChrome();
+    if (m.title) { setStatus(''); tell(m.title, m.message || ''); }
+  },
   missing(m) {
     if (!state.doc || m.path !== state.doc.path) return;
     state.missing = m.items || [];
@@ -520,7 +582,7 @@ const handlers = {
   conflict: saveProblem,
   saveFailed: saveProblem,
   saveCancelled: saveProblem,
-  picture(m) { insertPicture(m.src); },
+  picture(m) { if (pictureFor(m)) insertPicture(m.src); },
   pictureOutside,
   link(m) {
     if (!state.doc) return;
@@ -528,14 +590,11 @@ const handlers = {
     if (!m.isPage) { setStatus('Der Link zeigt auf „' + m.path + '“. Im Editor öffnen sich nur Seiten.'); return; }
     ask('Andere Seite öffnen?', 'Der Link zeigt auf die Seite „' + m.path + '“. Möchtest du sie im Editor öffnen?', [
       { label: 'Öffnen', value: 'open', primary: true }, { label: 'Abbrechen', value: 'cancel' },
-    ]).then((c) => { if (c === 'open') whenSettled('du eine andere Seite öffnest', () => send({ type: 'openFile', path: m.path })); });
+    ]).then((c) => { if (c === 'open') whenSettled('du eine andere Seite öffnest', () => requestOpen({ type: 'openFile', path: m.path })); });
   },
   async closeRequest() {
     if (state.modal) return;
-    if (!dirty()) { send({ type: 'closeOk' }); return; }
-    const choice = await askUnsaved('du den Editor schließt');
-    if (choice === 'save') { state.afterSave = () => send({ type: 'closeOk' }); save(); }
-    else if (choice === 'discard') send({ type: 'closeOk' });
+    whenSettled('du den Editor schließt', () => send({ type: 'closeOk' }));
   },
   status(m) { setStatus(m.text, m.warn); },
   error(m) { tell(m.title || 'Das hat nicht geklappt', m.message || ''); },

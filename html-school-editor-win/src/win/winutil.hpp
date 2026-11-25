@@ -27,13 +27,25 @@ struct ReadResult {
 // Reads a whole file; files larger than `maxBytes` give ERROR_FILE_TOO_LARGE.
 ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes);
 
-// Writes `bytes` to `path` without a moment in which the old file is lost: a temporary file in the same
-// folder, flushed, then ReplaceFileW (or MoveFileExW for a new file). Returns ERROR_SUCCESS or the error;
-// on an error the old file is unchanged and the temporary file removed.
-DWORD writeFileAtomic(const std::wstring& path, std::string_view bytes);
+// Outcome of writing a file. Both writers first write a temporary file in the same folder and flush it, so
+// the file name never holds half a file.
+struct WriteResult {
+    DWORD error = ERROR_SUCCESS;
+    // ReplaceFileW can fail half way (see its documentation). The writer then puts a file back under the
+    // name, the new content first. If the old content could not go back, it stays in this file in the same
+    // folder and is reported here; it is never deleted after a failure.
+    std::wstring keptOld;
+};
 
-// Creates a new file that must not exist yet (ERROR_FILE_EXISTS otherwise).
-DWORD createNewFile(const std::wstring& path, std::string_view bytes);
+// Replaces the existing file `path` (ReplaceFileW with a backup name). If `path` does not exist, nothing
+// is created: ERROR_FILE_NOT_FOUND. Metadata policy: content first. ReplaceFileW carries attributes and
+// the ACL of the old file over where the file system allows it; if it cannot (some network shares), the
+// new content is written anyway and the file keeps what the folder gives it.
+WriteResult replaceFileAtomic(const std::wstring& path, std::string_view bytes);
+
+// Creates `path`, which must not exist yet (ERROR_FILE_EXISTS otherwise, also if another program creates
+// it meanwhile): the temporary file is renamed without replacing.
+WriteResult createFileAtomic(const std::wstring& path, std::string_view bytes);
 
 // Creates all missing folders of `folder`.
 DWORD createFolders(const std::wstring& folder);
@@ -59,7 +71,8 @@ std::optional<Segments> segmentsBelow(const std::wstring& root, const std::wstri
 std::optional<std::wstring> pickFolder(HWND owner, const std::wstring& start);
 std::optional<std::wstring> pickPageFile(HWND owner, const std::wstring& start);
 std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& start);
-std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name);
+// `askOverwrite` false: no overwrite question; the caller refuses an existing file itself.
+std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name, bool askOverwrite);
 
 // ---------------------------------------------------------------- settings (HKCU)
 

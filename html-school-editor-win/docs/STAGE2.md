@@ -1,6 +1,6 @@
 # Plan for stage 2: editing on the page side and "Code aufräumen"
 
-**State:** plan of 2026-11-24 for the owner's decision. Nothing of it is built. Stage 1 (0.1.0-alpha.1) is not yet built on Windows either.
+**State:** plan of 2026-11-24 for the owner's decision. Nothing of it is built. Stage 1 is built and run on Windows since 2026-11-24; the Codex review of 2026-11-25 advises against E1 (keep two views), see [STATUS.md](STATUS.md).
 
 ## 1. Goal
 

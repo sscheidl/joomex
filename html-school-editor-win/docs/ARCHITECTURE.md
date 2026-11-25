@@ -70,13 +70,22 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | `ready` | the interface has loaded | `init` (version); the last project folder is opened again if it can be reached |
 | `layout` {visible, x, y, w, h} | where the page view lies, in device pixels; hidden while a dialog is open | — |
 | `preview` {path, text} | the current, unsaved text, after a pause in typing | `missing` {path, items} after the page view has loaded |
-| `openProject`, `openDialog`, `openFile` {path} | choose a folder, open a page with the dialog, open a page of the list | `projectChanged`, `project` {name, files}, `opened` {path, name, data (base64)} |
-| `newPage` {path, text} | create a page that must not exist yet | `opened` |
-| `save` {path, text} | write the encoded text (BOM and line endings as opened) | `saved`, `conflict` {kind: changed \| deleted}, `saveFailed` {message} |
-| `saveAs` {path, text} | save dialog in the folder of the page; only inside the project | `saved` {path, name}, `saveCancelled` |
-| `pickPicture` {page}, `copyPicture` {token, page} | picture dialog; a picture outside the project is copied into `bilder/` after asking | `picture` {src}, `pictureOutside` {name, token} |
+| `openProject` | choose a folder | `projectChanged`, `project` {name, files} |
+| `openDialog` {op}, `openFile` {op, path} | open a page with the dialog (a page outside the project opens its folder as the project) or from the list | `opened` {op, path, name, base, data (base64)}, `openFailed` {op, title?, message?} (no title: cancelled or out of date) |
+| `newPage` {op, path, text} | create a page that must not exist yet | `opened` {op, …}, `openFailed` {op, title, message} |
+| `save` {id, path, text, base} | write the encoded text (BOM and line endings as opened) over the file the page was read from | `saved` {id, base}, `conflict` {id, kind: changed \| deleted}, `saveFailed` {id, message} |
+| `saveAs` {id, path, text, base, createOnly?} | save dialog in the folder of the page; only inside the project. `createOnly` (the way out of a conflict): no overwrite question, an existing file is refused | `saved` {id, base, path, name}, `saveFailed` {id, message}, `saveCancelled` {id} |
+| `pickPicture` {op, page}, `copyPicture` {op, token, page} | picture dialog; a picture outside the project is copied into `bilder/` after asking | `picture` {op, src}, `pictureOutside` {op, name, token} |
 | `viewInBrowser` {path} | open the saved file in the standard browser | — |
 | `closeOk` | the window may close (answer to `closeRequest`) | — |
+
+Rules that keep a pupil's work (`ui/js/main.js`, `src/win/app.cpp`):
+
+* **Answers belong to their request.** Every answer to `save` and `saveAs` carries the `id`, every answer to opening, a new page and pictures the `op` of its request. The interface takes only the answer to the save it waits for, for the page that was saved, and only the answer to its latest open request; a picture is inserted only into the page it was chosen for. The core counts project folders and answers work started for an older folder with `openFailed` (opening) or not at all (pictures).
+* **Nothing typed is replaced.** While a page is on its way the code field is locked. While a save is on its way, opening another page, another folder or closing the window waits for its answer and is then checked again: text typed during the save leads to the question about unsaved changes once more (`whenSettled`).
+* **The base belongs to the open page.** `base` is the fingerprint (size and FNV-1a 64) of the file as the open page was read or last saved; the interface keeps it with the page and sends it with every save. The core writes only if the file on disk still has this fingerprint (or already holds the new content); without a base it writes nothing. A deleted file is reported, never created again by a save.
+* **Writing.** A temporary file in the same folder, flushed, then `ReplaceFileW` with a backup name for an existing file, or a rename that does not replace for a new one (new page, Save As to a new name). After a failed `ReplaceFileW` the core looks at which file is where, puts the new content (or else the old) back under the name and keeps the old content under its backup name if neither works; it never deletes that backup after a failure. After any failure it reads the file again: if the new content is there the save counts as done, otherwise the message says what is known. Pages larger than 5 MB are not saved, since they could not be opened again.
+* **Limits.** The check and the replacement are two steps; a change by another program in the moment between them is not noticed. Metadata policy: content first; attributes and ACL of the old file are carried over where the file system allows it, otherwise the file keeps what the folder gives it. An ambiguous result on a network drive that disconnects during the replacement is reported as uncertain; it is not measured (no access to the school server).
 
 The core also sends `link` {path, isPage} when a link in the page view is clicked, `shortcut` {key} for Ctrl+S, Ctrl+F and F3 pressed in the page view, `status` and `error`.
 
@@ -88,7 +97,7 @@ The core also sends `link` {path, isPage} when a link in the page view is clicke
 | `webview` | creation of both controllers, settings, request filter, virtual hosts |
 | `bridge` | JSON messages between user interface and core (open, save, list, insert picture, state) |
 | `project` | project folder, file list, change notification (`ReadDirectoryChangesW`) and scan on activation, request paths, relative address from page to file, case check, file cache |
-| `files` | read and write bytes; atomic write (temporary file and `ReplaceFileW`); conflict check by a fingerprint of the content last read or written. Text decoding (UTF-8, BOM, line endings, Windows-1252 detection) is done by the user interface with the tested functions of the single-file editor |
+| `files` | read and write bytes; atomic write (temporary file, `ReplaceFileW` with a backup name, or a rename without replacing for new files); conflict check against the fingerprint the open page was read with. Text decoding (UTF-8, BOM, line endings, Windows-1252 detection) is done by the user interface with the tested functions of the single-file editor |
 | `dialogs` | system dialogs for folder, open and save (`IFileOpenDialog`, `IFileSaveDialog`) |
 | `settings` | last project folder per Windows user (registry under `HKCU`) |
 
@@ -103,4 +112,4 @@ Plain Win32 and COM with `Microsoft::WRL::ComPtr` from the Windows SDK; no frame
 
 ## Paths that need a test on school computers
 
-Project folders on the school's network drive, as a mapped drive letter and as a UNC path: reading speed with many pictures, the change notification, the atomic replace, and a server that disconnects while saving. OneDrive is not used by pupils (D8).
+Project folders on the school's network drive, as a mapped drive letter and as a UNC path: reading speed with many pictures, the change notification, the atomic replace, and a server that disconnects while saving. Pupils do not use cloud storage for their projects (D8).

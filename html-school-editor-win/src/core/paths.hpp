@@ -60,6 +60,10 @@ struct Fingerprint {
     bool operator==(const Fingerprint&) const = default;
 };
 Fingerprint fingerprintOf(std::string_view bytes);
+// The fingerprint as text ("<size>-<hash as 16 hex digits>"), so the interface can keep it with the open
+// document and send it back with a save; and back. Anything else gives nothing.
+std::string fingerprintText(const Fingerprint& f);
+std::optional<Fingerprint> parseFingerprint(std::string_view text);
 
 std::string base64Encode(std::string_view bytes);
 

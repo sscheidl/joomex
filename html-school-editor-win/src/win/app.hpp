@@ -44,14 +44,14 @@ private:
     void setProject(const std::wstring& root, bool remember, std::function<void()> then = {});
     void rescan(const std::string& message = {});
     std::optional<Segments> pathSegments(const std::string& path) const;
-    void openFile(const Segments& segs);
-    void save(const Segments& segs, std::string bytes);
-    void saveAs(const Segments& current, std::string bytes);
-    void newPage(const Segments& segs, std::string bytes);
-    void pickPicture(const Segments& page);
-    void copyPicture(const std::string& token, const Segments& page);
+    void openFile(const Segments& segs, double op);
+    void postOpenFailed(double op, const std::string& title = {}, const std::string& message = {});
+    void save(const Segments& segs, std::string bytes, std::optional<Fingerprint> base, double id);
+    void saveAs(const Segments& current, std::string bytes, std::optional<Fingerprint> base, bool createOnly, double id);
+    void newPage(const Segments& segs, std::string bytes, double op);
+    void pickPicture(const Segments& page, double op);
+    void copyPicture(const std::string& token, const Segments& page, double op);
     void viewInBrowser(const Segments& segs);
-    std::wstring keyOf(const std::wstring& path) const;
 
     // page view
     void showPreview(const Segments& segs, std::string text);
@@ -82,9 +82,9 @@ private:
     FolderWatcher watcher_;
     bool scanPending_ = false;
     ULONGLONG lastScan_ = 0;
-    std::map<std::wstring, Fingerprint> known_;          // content last read or written, by lower-case path
+    UINT64 projectGen_ = 0;                              // counts project folders; work of an older one is dropped
     std::map<std::string, std::wstring> pictureTokens_;  // pictures outside the project waiting for a copy
-    bool busy_ = false;                                  // a save or open runs on a worker thread
+    bool busy_ = false;                                  // a save runs on a worker thread
 
     // page view
     Segments pvSegs_;

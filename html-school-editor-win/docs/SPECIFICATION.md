@@ -25,7 +25,7 @@ The new program loads the page from its real place on disk. A relative address i
 | D5 | The single-file editor 1.0.0-beta.3 stays in class until this program is ready; only defects are corrected there. |
 | D6 | The code editor is the own source pane of the single-file editor (MIT, own code), in a user interface of HTML, CSS and JavaScript inside WebView2; no Scintilla (answer to Q4). Search and automatic indentation are added to it. |
 | D7 | Built locally on the owner's Windows computer with Visual Studio 2022 (CMake); no CI workflow for now (answer to Q5). |
-| D8 | Pupils' project folders lie on a network drive of the school server as a rule; OneDrive is not used by pupils (answer to Q3). |
+| D8 | Pupils' project folders lie on a network drive of the school server as a rule; pupils do not use cloud storage for their projects (answer to Q3). |
 
 ## 3. Stage 1: scope
 
@@ -98,6 +98,6 @@ The new program loads the page from its real place on disk. A relative address i
 | --- | --- | --- |
 | Q1 | Does an unsigned `.exe` run on the school computers (AppLocker, SmartScreen, software restriction)? Is a code-signing certificate needed? **Owner's report of 2026-11-24 (not measured here):** a portable third-party `.exe` provided on the school server was started locally by pupils without administrator rights and without installation. **Checked on 2026-11-24 from the copy the owner provided:** that exe carries **no Authenticode signature** (empty security directory), asks for no elevation (manifest `asInvoker`) and is a 32-bit GUI program built in 2018. So an unsigned portable program started from the school server runs on the school computers; a code-signing certificate is not needed for that route. Still open: whether an exe downloaded from GitHub (marked as coming from the internet) is stopped by SmartScreen; distribution through the school server is the planned route. | owner, school IT |
 | Q2 | Are the school computers Windows 10 or 11, and is the WebView2 runtime present and not disabled by policy? | owner, school IT |
-| Q3 | ~~Where do project folders lie?~~ — answered by D8: on a network drive; no OneDrive. | owner, 2026-11-24 |
+| Q3 | ~~Where do project folders lie?~~ — answered by D8: on a network drive; no cloud storage. | owner, 2026-11-24 |
 | Q4 | ~~Code editor component~~ — answered by D6: the own source pane in WebView2. | owner, 2026-11-24 |
 | Q5 | ~~Build and test route~~ — answered by D7: local build with Visual Studio 2022. | owner, 2026-11-24 |

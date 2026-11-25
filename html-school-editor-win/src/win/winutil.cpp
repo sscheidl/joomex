@@ -77,47 +77,88 @@ ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes) {
     return r;
 }
 
-DWORD writeFileAtomic(const std::wstring& path, std::string_view bytes) {
-    const std::wstring folder = parentOf(path);
-    std::random_device rd;
-    wchar_t suffix[32];
-    swprintf_s(suffix, L".~hse-%08x.tmp", rd());
-    const std::wstring temp = folder + L"\\" + lastComponent(path) + suffix;
-    {
+namespace {
+
+// A name next to `path` that does not exist yet: "<name>.~hse-<random>.<ext>".
+std::wstring sideName(const std::wstring& path, const wchar_t* ext) {
+    std::random_device rd;  // one per call: the writers run on several worker threads
+    for (;;) {
+        wchar_t suffix[40];
+        swprintf_s(suffix, L".~hse-%08x.%s", rd(), ext);
+        std::wstring candidate = parentOf(path) + L"\\" + lastComponent(path) + suffix;
+        if (GetFileAttributesW(candidate.c_str()) == INVALID_FILE_ATTRIBUTES) return candidate;
+    }
+}
+
+// Writes and flushes a new temporary file next to `path`. A name taken meanwhile is retried with another
+// name; an existing file is never opened for writing.
+DWORD writeTemp(const std::wstring& path, std::string_view bytes, std::wstring& temp) {
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        temp = sideName(path, L"tmp");
         Handle f(CreateFileW(temp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
-        if (!f.ok()) return GetLastError();
+        if (!f.ok()) {
+            const DWORD e = GetLastError();
+            if (e == ERROR_FILE_EXISTS || e == ERROR_ALREADY_EXISTS) continue;
+            temp.clear();
+            return e;
+        }
         const DWORD e = writeAll(f.h, bytes);
         if (e != ERROR_SUCCESS) {
             CloseHandle(f.h);
             f.h = INVALID_HANDLE_VALUE;
             DeleteFileW(temp.c_str());
-            return e;
+            temp.clear();
         }
-    }
-    BOOL done;
-    if (isFile(path)) {
-        done = ReplaceFileW(path.c_str(), temp.c_str(), nullptr, REPLACEFILE_IGNORE_MERGE_ERRORS | REPLACEFILE_IGNORE_ACL_ERRORS, nullptr, nullptr);
-    } else {
-        done = MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH);
-    }
-    if (!done) {
-        const DWORD e = GetLastError();
-        DeleteFileW(temp.c_str());
         return e;
     }
-    return ERROR_SUCCESS;
+    temp.clear();
+    return ERROR_FILE_EXISTS;
 }
 
-DWORD createNewFile(const std::wstring& path, std::string_view bytes) {
-    Handle f(CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
-    if (!f.ok()) return GetLastError();
-    const DWORD e = writeAll(f.h, bytes);
-    if (e != ERROR_SUCCESS) {
-        CloseHandle(f.h);
-        f.h = INVALID_HANDLE_VALUE;
-        DeleteFileW(path.c_str());
+bool exists(const std::wstring& path) { return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES; }
+
+}  // namespace
+
+WriteResult replaceFileAtomic(const std::wstring& path, std::string_view bytes) {
+    WriteResult r;
+    std::wstring temp;
+    if ((r.error = writeTemp(path, bytes, temp)) != ERROR_SUCCESS) return r;
+    const std::wstring backup = sideName(path, L"bak");
+    if (ReplaceFileW(path.c_str(), temp.c_str(), backup.c_str(), REPLACEFILE_IGNORE_MERGE_ERRORS | REPLACEFILE_IGNORE_ACL_ERRORS, nullptr, nullptr)) {
+        DeleteFileW(backup.c_str());
+        return r;
     }
-    return e;
+    r.error = GetLastError();
+    // ReplaceFileW may stop half way. Look at what is where instead of trusting the error code.
+    const bool pathThere = exists(path), backupThere = exists(backup);
+    if (!pathThere && backupThere) {
+        // The old file was moved to the backup name and the new one did not arrive: put the new content
+        // under the name, or else the old one.
+        if (exists(temp) && MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH)) {
+            DeleteFileW(backup.c_str());
+            r.error = ERROR_SUCCESS;
+            return r;
+        }
+        if (!MoveFileExW(backup.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH)) r.keptOld = backup;
+    } else if (pathThere && backupThere) {
+        r.keptOld = backup;  // unexpected: keep the old content where it is
+    }
+    // Without a backup there is nothing to put back: a missing file stays missing (no save becomes a
+    // create). The new content is still in the editor, so the temporary file can go.
+    if (exists(temp)) DeleteFileW(temp.c_str());
+    return r;
+}
+
+WriteResult createFileAtomic(const std::wstring& path, std::string_view bytes) {
+    WriteResult r;
+    std::wstring temp;
+    if ((r.error = writeTemp(path, bytes, temp)) != ERROR_SUCCESS) return r;
+    if (!MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH)) {
+        r.error = GetLastError();
+        if (r.error == ERROR_ALREADY_EXISTS) r.error = ERROR_FILE_EXISTS;
+        DeleteFileW(temp.c_str());
+    }
+    return r;
 }
 
 DWORD createFolders(const std::wstring& folder) {
@@ -285,13 +326,16 @@ std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& star
     return openDialog(owner, start, L"Bild einfügen", FOS_FILEMUSTEXIST, f, 2);
 }
 
-std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name) {
+std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name, bool askOverwrite) {
     ComPtr<IFileSaveDialog> d;
     if (FAILED(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&d)))) return std::nullopt;
     static const COMDLG_FILTERSPEC f[] = {{L"Webseite (*.html)", L"*.html;*.htm"}};
     FILEOPENDIALOGOPTIONS o = 0;
     d->GetOptions(&o);
-    d->SetOptions(o | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT);
+    o |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
+    if (askOverwrite) o |= FOS_OVERWRITEPROMPT;
+    else o &= ~FOS_OVERWRITEPROMPT;
+    d->SetOptions(o);
     d->SetTitle(L"Speichern unter");
     d->SetFileTypes(1, f);
     d->SetDefaultExtension(L"html");

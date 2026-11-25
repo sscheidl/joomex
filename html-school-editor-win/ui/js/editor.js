@@ -154,13 +154,17 @@ export function createCodeEditor(els, onChange) {
       onChange(text);
     },
     clear() { ta.readOnly = true; setValue('', false); history.reset(''); },
+    // Locked while another page is on its way: nothing typed now could be kept.
+    setLocked(locked) { ta.readOnly = locked; },
+    get locked() { return ta.readOnly; },
     focus() { ta.focus(); },
-    undo() { applyHistory(history.undo()); },
-    redo() { applyHistory(history.redo()); },
+    undo() { if (!ta.readOnly) applyHistory(history.undo()); },
+    redo() { if (!ta.readOnly) applyHistory(history.redo()); },
     canUndo: () => history.canUndo(),
     canRedo: () => history.canRedo(),
     // Inserts at the caret; `select` = [from, to] inside the inserted text is selected afterwards.
     insert(str, select) {
+      if (ta.readOnly) return;
       const a = ta.selectionStart;
       replaceRange(a, ta.selectionEnd, str, select ? a + select[0] : undefined, select ? a + select[1] : undefined);
     },

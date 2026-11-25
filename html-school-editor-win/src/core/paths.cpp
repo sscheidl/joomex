@@ -219,6 +219,32 @@ Fingerprint fingerprintOf(std::string_view bytes) {
     return {bytes.size(), h};
 }
 
+std::string fingerprintText(const Fingerprint& f) {
+    static const char* hex = "0123456789abcdef";
+    std::string out = std::to_string(f.size) + "-";
+    for (int shift = 60; shift >= 0; shift -= 4) out += hex[(f.hash >> shift) & 0xF];
+    return out;
+}
+
+std::optional<Fingerprint> parseFingerprint(std::string_view text) {
+    const auto dash = text.find('-');
+    if (dash == std::string_view::npos || dash == 0 || dash > 20 || text.size() - dash - 1 != 16) return std::nullopt;
+    Fingerprint f;
+    for (std::size_t i = 0; i < dash; ++i) {
+        if (text[i] < '0' || text[i] > '9') return std::nullopt;
+        const std::uint64_t d = static_cast<std::uint64_t>(text[i] - '0');
+        if (f.size > (UINT64_MAX - d) / 10) return std::nullopt;
+        f.size = f.size * 10 + d;
+    }
+    for (std::size_t i = dash + 1; i < text.size(); ++i) {
+        const char c = text[i];
+        const int v = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
+        if (v < 0) return std::nullopt;
+        f.hash = (f.hash << 4) | static_cast<std::uint64_t>(v);
+    }
+    return f;
+}
+
 std::string base64Encode(std::string_view bytes) {
     static const char* abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string out;

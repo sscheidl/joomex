@@ -88,6 +88,17 @@ static void testUniqueAndFingerprint() {
     CHECK(fingerprintOf("abc") == fingerprintOf("abc"));
     CHECK(!(fingerprintOf("abc") == fingerprintOf("abd")));
     CHECK_EQ(fingerprintOf("").size, 0u);
+    CHECK_EQ(fingerprintText(Fingerprint{3, 0x0123456789abcdefULL}), std::string("3-0123456789abcdef"));
+    CHECK_EQ(fingerprintText(Fingerprint{0, 0}), std::string("0-0000000000000000"));
+    CHECK(*parseFingerprint(fingerprintText(fingerprintOf("abc"))) == fingerprintOf("abc"));
+    CHECK(*parseFingerprint("18446744073709551615-ffffffffffffffff") == (Fingerprint{UINT64_MAX, UINT64_MAX}));
+    CHECK(!parseFingerprint(""));
+    CHECK(!parseFingerprint("3"));
+    CHECK(!parseFingerprint("-0123456789abcdef"));
+    CHECK(!parseFingerprint("3-0123456789abcde"));     // 15 hex digits
+    CHECK(!parseFingerprint("3-0123456789ABCDEF"));    // upper case is not what fingerprintText writes
+    CHECK(!parseFingerprint("x-0123456789abcdef"));
+    CHECK(!parseFingerprint("18446744073709551616-0000000000000000"));  // size overflows
     CHECK_EQ(base64Encode(""), std::string(""));
     CHECK_EQ(base64Encode("f"), std::string("Zg=="));
     CHECK_EQ(base64Encode("fo"), std::string("Zm8="));
