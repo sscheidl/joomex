@@ -20,12 +20,57 @@ std::string toUtf8(std::wstring_view wide);
 
 // ---------------------------------------------------------------- files
 
+// ---------------------------------------------------------------- the project boundary
+//
+// Paths inside the project folder are built from checked segments, but a junction or symbolic link inside
+// the folder can lead anywhere. So every read and write first asks the file system where a path really
+// leads (GetFinalPathNameByHandleW on an open handle, all links followed) and goes on only if that lies
+// inside the project folder as the file system resolves it. Reads check and read through the same handle,
+// so nothing can be swapped in between. For writes the folder that receives the file is checked right
+// before the write; replacing that folder by a link in the moment between is not caught.
+
+// Application error (bit 29): the path leads out of the project folder.
+constexpr DWORD ERROR_OUTSIDE_PROJECT = 0x20000001;
+
+// Where `path` (a file or a folder) really leads, all links followed; nothing if it cannot be opened.
+std::optional<std::wstring> resolvedPath(const std::wstring& path);
+
+// True if the resolved path `final` lies inside the resolved folder `rootFinal` (compared without case).
+bool within(const std::wstring& rootFinal, const std::wstring& final);
+
+// The folder that receives a new or replaced file `path`: ERROR_SUCCESS if it resolves inside
+// `rootFinal`, ERROR_OUTSIDE_PROJECT if not, or the error of opening it.
+DWORD checkParentWithin(const std::wstring& path, const std::wstring& rootFinal);
+
 struct ReadResult {
     DWORD error = ERROR_SUCCESS;  // ERROR_SUCCESS, or the Win32 error
     std::string bytes;
 };
-// Reads a whole file; files larger than `maxBytes` give ERROR_FILE_TOO_LARGE.
-ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes);
+
+// An open file whose resolved path was checked against the project folder.
+class CheckedFile {
+public:
+    // With an empty `rootFinal` no check is made (only for files outside any project, such as a picture
+    // to copy in).
+    DWORD open(const std::wstring& path, const std::wstring& rootFinal);
+    ~CheckedFile();
+    ULONGLONG size() const { return size_; }
+    FILETIME time() const { return time_; }
+    ReadResult readAll(std::size_t maxBytes);
+
+private:
+    HANDLE h_ = INVALID_HANDLE_VALUE;
+    ULONGLONG size_ = 0;
+    FILETIME time_{};
+};
+
+// Reads a whole file inside the project folder `rootFinal`; files larger than `maxBytes` give
+// ERROR_FILE_TOO_LARGE, a path that leads out of the folder ERROR_OUTSIDE_PROJECT.
+ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes, const std::wstring& rootFinal);
+
+// Creates the missing folders of `folder`, but only below an existing folder that resolves inside
+// `rootFinal`, and checks the result again.
+DWORD createFoldersWithin(const std::wstring& folder, const std::wstring& rootFinal);
 
 // Outcome of writing a file. Both writers first write a temporary file in the same folder and flush it, so
 // the file name never holds half a file.

@@ -69,8 +69,9 @@ Json failedAnswer(const std::string& message) {
 
 // After a failed write: did the new content arrive anyway (a network drive can report an error for a write
 // that happened)? Otherwise a message that says what is known about the file on disk.
-Json afterFailedWrite(const std::wstring& path, const WriteResult& w, const Fingerprint& mine, const std::optional<Fingerprint>& before) {
-    const ReadResult again = readFileBytes(path, kMaxCheckBytes);
+Json afterFailedWrite(const std::wstring& path, const WriteResult& w, const Fingerprint& mine, const std::optional<Fingerprint>& before,
+                      const std::wstring& rootFinal) {
+    const ReadResult again = readFileBytes(path, kMaxCheckBytes, rootFinal);
     const bool readable = again.error == ERROR_SUCCESS;
     if (readable && fingerprintOf(again.bytes) == mine) return savedAnswer(mine);
     std::string message = errorText(w.error);
@@ -84,27 +85,29 @@ Json afterFailedWrite(const std::wstring& path, const WriteResult& w, const Fing
 // opened or last saved (`base`). Without a base nothing is written. The check and the replacement are two
 // steps: a change by another program in the moment between them is not noticed (no file system the
 // school uses offers more without locking the file).
-Json writeChecked(const std::wstring& path, const std::string& bytes, const std::optional<Fingerprint>& base) {
+Json writeChecked(const std::wstring& path, const std::string& bytes, const std::optional<Fingerprint>& base, const std::wstring& rootFinal) {
     const Fingerprint mine = fingerprintOf(bytes);
-    const ReadResult now = readFileBytes(path, kMaxCheckBytes);
+    const ReadResult now = readFileBytes(path, kMaxCheckBytes, rootFinal);
     if (now.error == ERROR_FILE_NOT_FOUND || now.error == ERROR_PATH_NOT_FOUND) return Json::object().set("type", "conflict").set("kind", "deleted");
     if (now.error != ERROR_SUCCESS) return failedAnswer(errorText(now.error));
     const Fingerprint onDisk = fingerprintOf(now.bytes);
     if (onDisk == mine) return savedAnswer(mine);
     if (!base || onDisk != *base) return Json::object().set("type", "conflict").set("kind", "changed");
+    if (const DWORD e = checkParentWithin(path, rootFinal); e != ERROR_SUCCESS) return failedAnswer(errorText(e));
     const WriteResult w = replaceFileAtomic(path, bytes);
     if (w.error == ERROR_SUCCESS) return savedAnswer(mine);
     if (w.error == ERROR_FILE_NOT_FOUND && w.keptOld.empty() && !isFile(path)) return Json::object().set("type", "conflict").set("kind", "deleted");
-    return afterFailedWrite(path, w, mine, onDisk);
+    return afterFailedWrite(path, w, mine, onDisk, rootFinal);
 }
 
 // Creates a file that must not exist yet.
-Json writeNew(const std::wstring& path, const std::string& bytes) {
+Json writeNew(const std::wstring& path, const std::string& bytes, const std::wstring& rootFinal) {
     const Fingerprint mine = fingerprintOf(bytes);
+    if (const DWORD e = checkParentWithin(path, rootFinal); e != ERROR_SUCCESS) return failedAnswer(errorText(e));
     const WriteResult w = createFileAtomic(path, bytes);
     if (w.error == ERROR_SUCCESS) return savedAnswer(mine);
     if (w.error == ERROR_FILE_EXISTS) return failedAnswer("Eine Datei mit diesem Namen gibt es schon. Wähle einen neuen Namen.");
-    return afterFailedWrite(path, w, mine, std::nullopt);
+    return afterFailedWrite(path, w, mine, std::nullopt, rootFinal);
 }
 
 bool sameSegments(const Segments& a, const Segments& b) {
@@ -324,11 +327,16 @@ void App::layoutUi() {
 void App::createEnvironment() {
     auto options = Make<CoreWebView2EnvironmentOptions>();
     options->put_Language(L"de-DE");
+    // Both views only ever talk to the program (virtual hosts answered by WebResourceRequested). A second
+    // layer below the request filter: no host name is resolved at all, so nothing the filter might not see
+    // (resource hints, background services of the runtime) reaches the network.
+    std::wstring arguments = L"--host-resolver-rules=\"MAP * ~NOTFOUND\" --disable-background-networking";
 #ifdef HSE_TEST_HOOKS
     // Test builds only: the acceptance tests attach to the views through the DevTools protocol.
     wchar_t port[16] = L"";
-    if (GetEnvironmentVariableW(L"HSE_DEBUG_PORT", port, 16)) options->put_AdditionalBrowserArguments((std::wstring(L"--remote-debugging-port=") + port).c_str());
+    if (GetEnvironmentVariableW(L"HSE_DEBUG_PORT", port, 16)) arguments += std::wstring(L" --remote-debugging-port=") + port;
 #endif
+    options->put_AdditionalBrowserArguments(arguments.c_str());
     const std::wstring data = localDataFolder(L"WebView2");
     const HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, data.c_str(), options.Get(),
@@ -350,11 +358,14 @@ void App::createEnvironment() {
 
 namespace {
 
-void lockDown(ICoreWebView2* view, bool scripts) {
+// Settings and handlers that keep a view closed. Returns false if one of the protecting ones could not be
+// set; the caller then does not use the view (fail closed). Comfort settings are best effort.
+bool lockDown(ICoreWebView2* view, bool scripts) {
     ComPtr<ICoreWebView2Settings> s;
-    if (FAILED(view->get_Settings(&s))) return;
-    s->put_IsScriptEnabled(scripts);
-    s->put_IsWebMessageEnabled(scripts);
+    if (FAILED(view->get_Settings(&s)) || !s) return false;
+    if (FAILED(s->put_IsScriptEnabled(scripts)) || FAILED(s->put_IsWebMessageEnabled(scripts))) return false;
+    BOOL scriptsNow = !scripts;
+    if (FAILED(s->get_IsScriptEnabled(&scriptsNow)) || (scriptsNow != FALSE) != scripts) return false;
     s->put_AreDefaultScriptDialogsEnabled(FALSE);
     s->put_IsStatusBarEnabled(FALSE);
     s->put_IsZoomControlEnabled(FALSE);
@@ -362,10 +373,10 @@ void lockDown(ICoreWebView2* view, bool scripts) {
 #ifdef HSE_TEST_HOOKS
     s->put_AreDevToolsEnabled(TRUE);
 #else
-    s->put_AreDevToolsEnabled(FALSE);
+    if (FAILED(s->put_AreDevToolsEnabled(FALSE))) return false;
 #endif
     // the code field needs cut, copy and paste in its menu; the page view needs no menu
-    s->put_AreDefaultContextMenusEnabled(scripts);
+    if (FAILED(s->put_AreDefaultContextMenusEnabled(scripts))) return false;
     ComPtr<ICoreWebView2Settings3> s3;
     if (SUCCEEDED(s.As(&s3))) s3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
     ComPtr<ICoreWebView2Settings4> s4;
@@ -377,24 +388,45 @@ void lockDown(ICoreWebView2* view, bool scripts) {
     if (SUCCEEDED(s.As(&s5))) s5->put_IsPinchZoomEnabled(FALSE);
     ComPtr<ICoreWebView2Settings6> s6;
     if (SUCCEEDED(s.As(&s6))) s6->put_IsSwipeNavigationEnabled(FALSE);
+    ComPtr<ICoreWebView2Settings8> s8;
+    if (SUCCEEDED(s.As(&s8))) s8->put_IsReputationCheckingRequired(FALSE);  // no SmartScreen lookups
 
     EventRegistrationToken t;
-    view->add_NewWindowRequested(Callback<ICoreWebView2NewWindowRequestedEventHandler>([](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* a) -> HRESULT {
-        a->put_Handled(TRUE);  // never a new window
-        return S_OK;
-    }).Get(), &t);
-    view->add_PermissionRequested(Callback<ICoreWebView2PermissionRequestedEventHandler>([](ICoreWebView2*, ICoreWebView2PermissionRequestedEventArgs* a) -> HRESULT {
-        a->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-        return S_OK;
-    }).Get(), &t);
+    if (FAILED(view->add_NewWindowRequested(Callback<ICoreWebView2NewWindowRequestedEventHandler>([](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* a) -> HRESULT {
+            a->put_Handled(TRUE);  // never a new window
+            return S_OK;
+        }).Get(), &t)))
+        return false;
+    if (FAILED(view->add_PermissionRequested(Callback<ICoreWebView2PermissionRequestedEventHandler>([](ICoreWebView2*, ICoreWebView2PermissionRequestedEventArgs* a) -> HRESULT {
+            a->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+            return S_OK;
+        }).Get(), &t)))
+        return false;
     ComPtr<ICoreWebView2_4> v4;
-    if (SUCCEEDED(view->QueryInterface(IID_PPV_ARGS(&v4)))) {
-        v4->add_DownloadStarting(Callback<ICoreWebView2DownloadStartingEventHandler>([](ICoreWebView2*, ICoreWebView2DownloadStartingEventArgs* a) -> HRESULT {
+    if (FAILED(view->QueryInterface(IID_PPV_ARGS(&v4))) || !v4) return false;
+    if (FAILED(v4->add_DownloadStarting(Callback<ICoreWebView2DownloadStartingEventHandler>([](ICoreWebView2*, ICoreWebView2DownloadStartingEventArgs* a) -> HRESULT {
             a->put_Cancel(TRUE);
             return S_OK;
-        }).Get(), &t);
-    }
+        }).Get(), &t)))
+        return false;
+    return true;
 }
+
+// Every request of the view, from documents, frames and workers alike, goes to the handler. The older
+// filter without source kinds does not cover all of them, so a runtime without ICoreWebView2_22 fails.
+bool filterAllRequests(ICoreWebView2* view) {
+    ComPtr<ICoreWebView2_22> v22;
+    if (FAILED(view->QueryInterface(IID_PPV_ARGS(&v22))) || !v22) return false;
+    return SUCCEEDED(v22->AddWebResourceRequestedFilterWithRequestSourceKinds(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
+                                                                                COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL));
+}
+
+// Second layer for the page itself, after scripts switched off: no scripts, objects, frames, workers,
+// connections or forms; pictures, styles, fonts and media only from the project folder (and data:).
+constexpr const char* kPageCsp =
+    "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; "
+    "media-src 'self' data:; script-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; "
+    "connect-src 'none'; form-action 'none'; base-uri 'self'; manifest-src 'none'";
 
 }  // namespace
 
@@ -407,19 +439,25 @@ void App::createUi() {
                 return S_OK;
             }
             uiController_ = controller;
-            uiController_->get_CoreWebView2(&ui_);
-            lockDown(ui_.Get(), true);
             EventRegistrationToken t;
-            ui_->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-            ui_->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                [this](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* a) -> HRESULT { onUiRequest(a); return S_OK; }).Get(), &t);
-            ui_->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
-                [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
-                    LPWSTR uri = nullptr;
-                    a->get_Uri(&uri);
-                    if (take(uri) != kUiStart) a->put_Cancel(TRUE);  // e.g. a file dropped on the window
-                    return S_OK;
-                }).Get(), &t);
+            const bool locked = SUCCEEDED(uiController_->get_CoreWebView2(&ui_)) && ui_ && lockDown(ui_.Get(), true) && filterAllRequests(ui_.Get()) &&
+                SUCCEEDED(ui_->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                    [this](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* a) -> HRESULT { onUiRequest(a); return S_OK; }).Get(), &t)) &&
+                SUCCEEDED(ui_->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
+                        LPWSTR uri = nullptr;
+                        a->get_Uri(&uri);
+                        if (take(uri) != kUiStart) a->put_Cancel(TRUE);  // e.g. a file dropped on the window
+                        return S_OK;
+                    }).Get(), &t)) &&
+                SUCCEEDED(ui_->add_FrameNavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT { a->put_Cancel(TRUE); return S_OK; }).Get(), &t));
+            if (!locked) {
+                MessageBoxW(window_, L"Die Oberfläche konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt.",
+                            L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
+                DestroyWindow(window_);
+                return S_OK;
+            }
             ui_->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
                 [this](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* a) -> HRESULT {
                     LPWSTR json = nullptr;
@@ -446,34 +484,46 @@ void App::createPreview() {
                 return S_OK;
             }
             pvController_ = controller;
-            pvController_->get_CoreWebView2(&pv_);
             pvController_->put_IsVisible(FALSE);
-            lockDown(pv_.Get(), false);
             EventRegistrationToken t;
-            pv_->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-            pv_->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                [this](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* a) -> HRESULT { onPreviewRequest(a); return S_OK; }).Get(), &t);
-            pv_->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
-                [this](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
-                    LPWSTR raw = nullptr;
-                    a->get_Uri(&raw);
-                    const std::wstring uri = take(raw);
-                    if (pvExpectNavigation_ && uri == pvUrl_) {
-                        pvExpectNavigation_ = false;
-                        missing_.clear();
+            // Every protection must be in place, or the page view stays off (fail closed).
+            const bool locked = SUCCEEDED(pvController_->get_CoreWebView2(&pv_)) && pv_ && lockDown(pv_.Get(), false) && filterAllRequests(pv_.Get()) &&
+                SUCCEEDED(pv_->add_WebResourceRequested(Callback<ICoreWebView2WebResourceRequestedEventHandler>(
+                    [this](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* a) -> HRESULT { onPreviewRequest(a); return S_OK; }).Get(), &t)) &&
+                SUCCEEDED(pv_->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    [this](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
+                        LPWSTR raw = nullptr;
+                        a->get_Uri(&raw);
+                        const std::wstring uri = take(raw);
+                        if (pvExpectNavigation_ && uri == pvUrl_) {
+                            pvExpectNavigation_ = false;
+                            missing_.clear();
+                            return S_OK;
+                        }
+                        a->put_Cancel(TRUE);
+                        // Only a click of the pupil offers another page; a page that tries to go somewhere by
+                        // itself (meta refresh, a form) is just stopped.
+                        BOOL user = FALSE;
+                        if (FAILED(a->get_IsUserInitiated(&user)) || !user) return S_OK;
+                        const auto path = pathOfUrl(toUtf8(uri), kProjectOrigin);
+                        const auto segs = path ? requestSegments(*path) : std::nullopt;
+                        if (segs) {
+                            post(Json::object().set("type", "link").set("path", joinSegments(*segs)).set("isPage", kindOf(segs->back()) == FileKind::Page));
+                        } else if (uri.rfind(L"http", 0) == 0) {
+                            postStatus("Links ins Internet öffnet der Editor nicht. Im Browser funktionieren sie.");
+                        }
                         return S_OK;
-                    }
-                    a->put_Cancel(TRUE);
-                    // A link was clicked (or the page tried to go somewhere): offer project pages to the pupil.
-                    const auto path = pathOfUrl(toUtf8(uri), kProjectOrigin);
-                    const auto segs = path ? requestSegments(*path) : std::nullopt;
-                    if (segs) {
-                        post(Json::object().set("type", "link").set("path", joinSegments(*segs)).set("isPage", kindOf(segs->back()) == FileKind::Page));
-                    } else if (uri.rfind(L"http", 0) == 0) {
-                        postStatus("Links ins Internet öffnet der Editor nicht. Im Browser funktionieren sie.");
-                    }
-                    return S_OK;
-                }).Get(), &t);
+                    }).Get(), &t)) &&
+                // frames show nothing: no child document is loaded in the page view
+                SUCCEEDED(pv_->add_FrameNavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
+                    [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT { a->put_Cancel(TRUE); return S_OK; }).Get(), &t));
+            if (!locked) {
+                pvController_->Close();
+                pvController_.Reset();
+                pv_.Reset();
+                postError("Die Seitenansicht bleibt aus", "Sie konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt. Speichern und „Im Browser ansehen“ gehen trotzdem.");
+                return S_OK;
+            }
             pv_->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
                 [this](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT {
                     pvNavigating_ = false;
@@ -590,7 +640,7 @@ void App::onUiMessage(const Json& m) {
         const double op = m.at("op").num();
         const auto file = pickPageFile(window_, root_);
         if (!file) { postOpenFailed(op); return; }
-        if (const auto segs = root_.empty() ? std::nullopt : segmentsBelow(root_, *file)) {
+        if (const auto segs = projectSegments(*file)) {
             openFile(*segs, op);
         } else {
             const std::wstring f = *file;
@@ -632,6 +682,25 @@ void App::onUiMessage(const Json& m) {
 
 // ================================================================ project and files
 
+// The project folder as the file system resolves it; resolved again if it could not be reached before.
+// Empty while it cannot be reached: then every read and write in it fails (nothing is served unchecked).
+std::wstring App::boundary() {
+    if (rootFinal_.empty() && !root_.empty()) rootFinal_ = resolvedPath(root_).value_or(L"");
+    return rootFinal_;
+}
+
+// A file chosen in a system dialog lies in the project only if its place is below the project folder and
+// it also resolves inside it (a junction in the folder may lead elsewhere).
+std::optional<Segments> App::projectSegments(const std::wstring& file) {
+    if (root_.empty()) return std::nullopt;
+    auto segs = segmentsBelow(root_, file);
+    if (!segs) return std::nullopt;
+    const auto final = resolvedPath(file);
+    const std::wstring rootFinal = boundary();
+    if (!final || rootFinal.empty() || !within(rootFinal, *final)) return std::nullopt;
+    return segs;
+}
+
 void App::postOpenFailed(double op, const std::string& title, const std::string& message) {
     Json m = Json::object().set("type", "openFailed").set("op", op);
     if (!title.empty()) m.set("title", title).set("message", message);
@@ -642,6 +711,7 @@ void App::setProject(const std::wstring& root, bool remember, std::function<void
     std::wstring r = root;
     while (r.size() > 3 && (r.back() == L'\\' || r.back() == L'/')) r.pop_back();
     root_ = r;
+    rootFinal_ = resolvedPath(root_).value_or(L"");  // where the folder really is (junctions followed)
     ++projectGen_;  // answers of work started for the previous folder are not used any more
     pictureTokens_.clear();
     gCache.clear();
@@ -684,9 +754,10 @@ void App::openFile(const Segments& segs, double op) {
     if (root_.empty()) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
     const UINT64 gen = projectGen_;
+    const std::wstring rootFinal = boundary();
     postStatus("Wird geöffnet …");
-    std::thread([this, path, segs, gen, op]() {
-        ReadResult r = readFileBytes(path, kMaxPageBytes);
+    std::thread([this, path, segs, gen, op, rootFinal]() {
+        ReadResult r = readFileBytes(path, kMaxPageBytes, rootFinal);
         runLater([this, segs, gen, op, r = std::move(r)]() {
             if (gen != projectGen_) { postOpenFailed(op); return; }  // another project folder was opened meanwhile
             if (r.error != ERROR_SUCCESS) {
@@ -711,8 +782,9 @@ void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprin
     }
     busy_ = true;
     const std::wstring path = joinPath(root_, segs);
-    std::thread([this, path, base, id, bytes = std::move(bytes)]() {
-        Json answer = writeChecked(path, bytes, base);
+    const std::wstring rootFinal = boundary();
+    std::thread([this, path, base, id, rootFinal, bytes = std::move(bytes)]() {
+        Json answer = writeChecked(path, bytes, base, rootFinal);
 #ifdef HSE_TEST_HOOKS
         // Test build only: holds the answer back, so the acceptance tests can type while a save is on its way.
         wchar_t delay[16];
@@ -758,17 +830,26 @@ void App::saveAs(const Segments& current, std::string bytes, std::optional<Finge
     // The open page under its own name: the same check as an ordinary save.
     const bool samePage = !current.empty() && lower(path) == lower(joinPath(root_, current));
     busy_ = true;
-    std::thread([this, path, id, base, createOnly, samePage, segs = *checked, bytes = std::move(bytes)]() {
+    const std::wstring rootFinal = boundary();
+    std::thread([this, path, id, base, createOnly, samePage, rootFinal, segs = *checked, bytes = std::move(bytes)]() {
         Json answer;
-        if (createOnly || !isFile(path)) answer = writeNew(path, bytes);
-        else if (samePage) answer = writeChecked(path, bytes, base);
+        if (createOnly || !isFile(path)) answer = writeNew(path, bytes, rootFinal);
+        else if (samePage) answer = writeChecked(path, bytes, base, rootFinal);
+        else if (const DWORD e = checkParentWithin(path, rootFinal); e != ERROR_SUCCESS) answer = failedAnswer(errorText(e));
         else {
-            // Another existing page: the pupil has just confirmed in the dialog that it is replaced.
-            const WriteResult w = replaceFileAtomic(path, bytes);
-            const Fingerprint mine = fingerprintOf(bytes);
-            answer = w.error == ERROR_SUCCESS ? savedAnswer(mine)
-                   : w.error == ERROR_FILE_NOT_FOUND && w.keptOld.empty() ? writeNew(path, bytes)  // removed meanwhile
-                   : afterFailedWrite(path, w, mine, std::nullopt);
+            // Another existing page: the pupil has just confirmed in the dialog that it is replaced. A file
+            // that leads out of the project (a link) is not replaced.
+            CheckedFile target;
+            const DWORD t = target.open(path, rootFinal);
+            if (t == ERROR_OUTSIDE_PROJECT) {
+                answer = failedAnswer(errorText(t));
+            } else {
+                const WriteResult w = replaceFileAtomic(path, bytes);
+                const Fingerprint mine = fingerprintOf(bytes);
+                answer = w.error == ERROR_SUCCESS ? savedAnswer(mine)
+                       : w.error == ERROR_FILE_NOT_FOUND && w.keptOld.empty() ? writeNew(path, bytes, rootFinal)  // removed meanwhile
+                       : afterFailedWrite(path, w, mine, std::nullopt, rootFinal);
+            }
         }
         if (answer.at("type").str() == "saved") answer.set("path", joinSegments(segs)).set("name", segs.back());
         runLater([this, id, answer = std::move(answer)]() mutable {
@@ -784,8 +865,10 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
     if (root_.empty() || kindOf(segs.back()) != FileKind::Page) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
     const UINT64 gen = projectGen_;
-    std::thread([this, path, segs, gen, op, bytes = std::move(bytes)]() {
-        DWORD e = createFolders(parentOf(path));
+    const std::wstring rootFinal = boundary();
+    std::thread([this, path, segs, gen, op, rootFinal, bytes = std::move(bytes)]() {
+        DWORD e = createFoldersWithin(parentOf(path), rootFinal);
+        if (e == ERROR_SUCCESS) e = checkParentWithin(path, rootFinal);
         if (e == ERROR_SUCCESS) e = createFileAtomic(path, bytes).error;
         runLater([this, segs, gen, op, bytes, e]() {
             if (gen != projectGen_) { postOpenFailed(op); return; }
@@ -807,7 +890,7 @@ void App::pickPicture(const Segments& page, double op) {
     if (!file) return;
     const std::string name = toUtf8(lastComponent(*file));
     if (kindOf(name) != FileKind::Picture) postStatus("„" + name + "“ ist vielleicht kein Bildformat, das Browser anzeigen. Gut sind .jpg, .png, .gif, .webp und .svg.", true);
-    if (const auto segs = segmentsBelow(root_, *file)) {
+    if (const auto segs = projectSegments(*file)) {
         post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, *segs)));
         return;
     }
@@ -823,8 +906,9 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
     pictureTokens_.erase(it);
     const std::wstring folder = root_ + L"\\bilder";
     const UINT64 gen = projectGen_;
-    std::thread([this, source, folder, page, gen, op]() {
-        DWORD e = createFolders(folder);
+    const std::wstring rootFinal = boundary();
+    std::thread([this, source, folder, page, gen, op, rootFinal]() {
+        DWORD e = createFoldersWithin(folder, rootFinal);
         std::string name;
         if (e == ERROR_SUCCESS) {
             std::vector<std::string> existing;
@@ -852,6 +936,14 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
 
 void App::viewInBrowser(const Segments& segs) {
     const std::wstring path = joinPath(root_, segs);
+    {
+        CheckedFile f;
+        const DWORD e = root_.empty() ? ERROR_PATH_NOT_FOUND : f.open(path, boundary());
+        if (e != ERROR_SUCCESS) {
+            postError("Der Browser wurde nicht geöffnet", errorText(e));
+            return;
+        }
+    }
     const auto r = reinterpret_cast<INT_PTR>(ShellExecuteW(window_, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
     if (r <= 32) postError("Der Browser konnte nicht geöffnet werden", "Öffne die Datei im Explorer mit einem Doppelklick.");
 }
@@ -891,68 +983,100 @@ void App::reloadPreview() {
     }).Get());
 }
 
-void App::respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
-                  std::shared_ptr<const std::string> body) {
+bool App::respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
+                  std::shared_ptr<const std::string> body, const char* csp) {
     ComPtr<IStream> stream;
-    if (body) stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(body->data()), static_cast<UINT>(body->size())));
-    const std::wstring headers = L"Content-Type: " + toWide(contentType) + L"\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff";
+    if (body) {
+        stream.Attach(SHCreateMemStream(reinterpret_cast<const BYTE*>(body->data()), static_cast<UINT>(body->size())));
+        if (!stream) body.reset();
+    }
+    if (!body) status = status == 200 ? 500 : status;  // never "OK" without the content
+    std::wstring headers = L"Content-Type: " + toWide(contentType) + L"\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff";
+    if (csp) headers += L"\r\nContent-Security-Policy: " + toWide(csp);
     ComPtr<ICoreWebView2WebResourceResponse> response;
-    if (SUCCEEDED(env_->CreateWebResourceResponse(stream.Get(), status, toWide(reason).c_str(), headers.c_str(), &response))) args->put_Response(response.Get());
+    return SUCCEEDED(env_->CreateWebResourceResponse(stream.Get(), status, toWide(reason).c_str(), headers.c_str(), &response)) && response &&
+           SUCCEEDED(args->put_Response(response.Get()));
+}
+
+// A request of the page view could not be answered: the engine would then send it itself. The page view
+// is switched off (the host resolver of the environment lets nothing out meanwhile).
+void App::failPreview() {
+    runLater([this]() {
+        if (!pvController_) return;
+        for (auto& [id, pending] : pending_) pending.second->Complete();
+        pending_.clear();
+        pvController_->Close();
+        pvController_.Reset();
+        pv_.Reset();
+        postError("Die Seitenansicht wurde abgeschaltet", "Eine Anfrage der Seite konnte nicht sicher beantwortet werden. Starte den Editor neu.");
+    });
 }
 
 void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
     ComPtr<ICoreWebView2WebResourceRequest> request;
-    args->get_Request(&request);
-    LPWSTR raw = nullptr;
-    request->get_Uri(&raw);
-    const std::string uri = toUtf8(take(raw));
-    const auto path = pathOfUrl(uri, kProjectOrigin);
-    if (!path) {
-        respond(args, 403, "Forbidden", "text/plain", nullptr);  // nothing from the network
+    LPWSTR raw = nullptr, method = nullptr;
+    COREWEBVIEW2_WEB_RESOURCE_CONTEXT context = COREWEBVIEW2_WEB_RESOURCE_CONTEXT_OTHER;
+    if (FAILED(args->get_Request(&request)) || !request || FAILED(request->get_Uri(&raw)) || FAILED(request->get_Method(&method)) ||
+        FAILED(args->get_ResourceContext(&context))) {
+        if (!respond(args, 403, "Forbidden", "text/plain", nullptr)) failPreview();
         return;
     }
+    const std::string uri = toUtf8(take(raw));
+    const std::wstring verb = take(method);
+    const auto refuse = [&](int status, const char* reason) { if (!respond(args, status, reason, "text/plain", nullptr)) failPreview(); };
+    const auto path = pathOfUrl(uri, kProjectOrigin);
+    if (!path) { refuse(403, "Forbidden"); return; }  // nothing from the network
+    if (verb != L"GET") { refuse(405, "Method Not Allowed"); return; }  // no forms, no uploads
+    // What a page shows: the page itself, pictures, style sheets, fonts, media. No scripts, fetches,
+    // workers, frames or other documents, even though scripts are off anyway.
+    const bool document = context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_DOCUMENT;
+    const bool asset = context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_IMAGE || context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_STYLESHEET ||
+                       context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_FONT || context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_MEDIA ||
+                       context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_TEXT_TRACK;
+    if (!document && !asset) { refuse(403, "Forbidden"); return; }
     const auto segs = requestSegments(*path);
     if (!segs) {
-        respond(args, 404, "Not Found", "text/plain", nullptr);
+        refuse(404, "Not Found");
         if (*path != "/favicon.ico") reportMissing(*path, "notFound", {});
         return;
     }
-    if (sameSegments(*segs, pvSegs_) && pvText_) {
-        respond(args, 200, "OK", "text/html; charset=utf-8", pvText_);
+    if (document) {
+        // only the page being edited, with its unsaved text; any other document (a frame) is refused
+        if (!sameSegments(*segs, pvSegs_) || !pvText_) { refuse(403, "Forbidden"); return; }
+        if (!respond(args, 200, "OK", "text/html; charset=utf-8", pvText_, kPageCsp)) failPreview();
         return;
     }
-    if (root_.empty()) {
-        respond(args, 404, "Not Found", "text/plain", nullptr);
-        return;
-    }
+    if (root_.empty()) { refuse(404, "Not Found"); return; }
     // Read on a worker thread: the project folder is usually on a network drive.
     ComPtr<ICoreWebView2Deferral> deferral;
     args->GetDeferral(&deferral);
     const UINT64 id = nextRequest_++;
     pending_[id] = {ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral};
     const std::wstring root = root_;
+    const std::wstring rootFinal = boundary();
     const Segments want = *segs;
-    std::thread([this, id, root, want]() {
+    std::thread([this, id, root, rootFinal, want]() {
         const std::wstring file = joinPath(root, want);
         const std::wstring key = lower(file);
-        WIN32_FILE_ATTRIBUTE_DATA ad{};
         int status = 200;
         std::string reason = "notFound", detail;
         std::shared_ptr<const std::string> body;
-        if (!GetFileAttributesExW(file.c_str(), GetFileExInfoStandard, &ad) || (ad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-            const DWORD e = GetLastError();
+        // Opened and checked against the project boundary for every request, cached or not: the cache
+        // only spares reading the content again.
+        CheckedFile f;
+        const DWORD e = rootFinal.empty() ? ERROR_PATH_NOT_FOUND : f.open(file, rootFinal);
+        if (e != ERROR_SUCCESS) {
             status = 404;
-            if (e != ERROR_FILE_NOT_FOUND && e != ERROR_PATH_NOT_FOUND && !(ad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            if (e != ERROR_FILE_NOT_FOUND && e != ERROR_PATH_NOT_FOUND) {
                 reason = "error";
                 detail = errorText(e);
             }
         } else {
-            const ULONGLONG size = (static_cast<ULONGLONG>(ad.nFileSizeHigh) << 32) | ad.nFileSizeLow;
-            if (auto hit = gCache.find(key, size, ad.ftLastWriteTime)) {
+            if (auto hit = gCache.find(key, f.size(), f.time())) {
                 body = hit->bytes;
                 detail = hit->actual;
             } else {
-                ReadResult r = readFileBytes(file, kMaxServedBytes);
+                ReadResult r = f.readAll(kMaxServedBytes);
                 if (r.error != ERROR_SUCCESS) {
                     status = 404;
                     reason = "error";
@@ -960,7 +1084,7 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
                 } else {
                     body = std::make_shared<const std::string>(std::move(r.bytes));
                     detail = actualSpelling(root, want);
-                    gCache.put(key, {size, ad.ftLastWriteTime, body, detail});
+                    gCache.put(key, {f.size(), f.time(), body, detail});
                 }
             }
             if (status == 200 && !detail.empty()) reason = "case";
@@ -970,9 +1094,10 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
             if (it == pending_.end()) return;
             auto [args, deferral] = it->second;
             pending_.erase(it);
-            if (status == 200) respond(args.Get(), 200, "OK", contentTypeOf(want.back()), body);
-            else respond(args.Get(), 404, "Not Found", "text/plain", nullptr);
+            const bool answered = status == 200 ? respond(args.Get(), 200, "OK", contentTypeOf(want.back()), body)
+                                                : respond(args.Get(), 404, "Not Found", "text/plain", nullptr);
             deferral->Complete();
+            if (!answered) failPreview();
             if (status != 200 || reason == "case") reportMissing(joinSegments(want), reason.c_str(), detail);
         });
     }).detach();
@@ -1008,7 +1133,7 @@ void App::onUiRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
             const void* data = loaded ? LockResource(loaded) : nullptr;
             if (!data) break;
             auto body = std::make_shared<const std::string>(static_cast<const char*>(data), SizeofResource(instance_, found));
-            respond(args, 200, "OK", res.contentType, body);
+            respond(args, 200, "OK", res.contentType, body);  // a failure leaves the interface incomplete, nothing more
             return;
         }
     }

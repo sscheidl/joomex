@@ -17,8 +17,12 @@ void scanFolder(const std::wstring& folder, Segments& prefix, int depth, std::ve
         const std::wstring name = fd.cFileName;
         if (name == L"." || name == L".." || name.empty() || name[0] == L'.') continue;
         if (fd.dwFileAttributes & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM)) continue;
+        // Junctions, symbolic links and mount points (name surrogates) may lead out of the project folder:
+        // neither folders nor files of that kind are listed. Other reparse points (for example files
+        // deduplicated by a server) are ordinary content.
+        if ((fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) && IsReparseTagNameSurrogate(fd.dwReserved0)) continue;
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) subfolders.push_back(name);  // no junction loops
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) subfolders.push_back(name);  // no loops
             continue;
         }
         const std::string utf8 = toUtf8(name);

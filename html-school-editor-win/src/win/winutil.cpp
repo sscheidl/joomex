@@ -57,24 +57,117 @@ DWORD writeAll(HANDLE h, std::string_view bytes) {
 
 }  // namespace
 
-ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes) {
+// ---------------------------------------------------------------- the project boundary
+
+namespace {
+
+// The resolved path of an open handle: normalized long names, as a DOS path ("\\?\D:\…" or
+// "\\?\UNC\server\share\…"). Some network redirectors cannot normalize; then the path as opened.
+std::optional<std::wstring> finalPathOf(HANDLE h) {
+    for (const DWORD flags : {FILE_NAME_NORMALIZED | VOLUME_NAME_DOS, FILE_NAME_OPENED | VOLUME_NAME_DOS}) {
+        std::wstring buf(512, L'\0');
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            const DWORD n = GetFinalPathNameByHandleW(h, buf.data(), static_cast<DWORD>(buf.size()), flags);
+            if (n == 0) break;
+            if (n < buf.size()) {
+                buf.resize(n);
+                return buf;
+            }
+            buf.assign(n + 1, L'\0');
+        }
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
+std::optional<std::wstring> resolvedPath(const std::wstring& path) {
+    Handle f(CreateFileW(path.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS, nullptr));
+    if (!f.ok()) return std::nullopt;
+    return finalPathOf(f.h);
+}
+
+bool within(const std::wstring& rootFinal, const std::wstring& final) {
+    std::wstring r = rootFinal;
+    while (!r.empty() && r.back() == L'\\') r.pop_back();
+    if (r.empty() || final.size() <= r.size() + 1 || final[r.size()] != L'\\') return false;
+    return CompareStringOrdinal(final.c_str(), static_cast<int>(r.size()), r.c_str(), static_cast<int>(r.size()), TRUE) == CSTR_EQUAL;
+}
+
+DWORD checkParentWithin(const std::wstring& path, const std::wstring& rootFinal) {
+    if (rootFinal.empty()) return ERROR_PATH_NOT_FOUND;  // the project folder cannot be reached
+    const std::wstring parent = parentOf(path);
+    const auto final = resolvedPath(parent);
+    if (!final) {
+        const DWORD e = GetLastError();
+        return e == ERROR_SUCCESS ? ERROR_PATH_NOT_FOUND : e;
+    }
+    // the project folder itself receives files too
+    if (CompareStringOrdinal(final->c_str(), -1, rootFinal.c_str(), -1, TRUE) == CSTR_EQUAL) return ERROR_SUCCESS;
+    return within(rootFinal, *final) ? ERROR_SUCCESS : ERROR_OUTSIDE_PROJECT;
+}
+
+DWORD CheckedFile::open(const std::wstring& path, const std::wstring& rootFinal) {
+    h_ = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+    if (h_ == INVALID_HANDLE_VALUE) return GetLastError();
+    BY_HANDLE_FILE_INFORMATION info{};
+    if (!GetFileInformationByHandle(h_, &info)) return GetLastError();
+    if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) return ERROR_FILE_NOT_FOUND;
+    if (!rootFinal.empty()) {
+        const auto final = finalPathOf(h_);
+        if (!final || !within(rootFinal, *final)) return ERROR_OUTSIDE_PROJECT;
+    }
+    size_ = (static_cast<ULONGLONG>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
+    time_ = info.ftLastWriteTime;
+    return ERROR_SUCCESS;
+}
+
+CheckedFile::~CheckedFile() {
+    if (h_ != INVALID_HANDLE_VALUE) CloseHandle(h_);
+}
+
+ReadResult CheckedFile::readAll(std::size_t maxBytes) {
     ReadResult r;
-    Handle f(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr));
-    if (!f.ok()) { r.error = GetLastError(); return r; }
-    LARGE_INTEGER size{};
-    if (!GetFileSizeEx(f.h, &size)) { r.error = GetLastError(); return r; }
-    if (size.QuadPart < 0 || static_cast<unsigned long long>(size.QuadPart) > maxBytes) { r.error = ERROR_FILE_TOO_LARGE; return r; }
-    r.bytes.resize(static_cast<std::size_t>(size.QuadPart));
+    if (size_ > maxBytes) { r.error = ERROR_FILE_TOO_LARGE; return r; }
+    r.bytes.resize(static_cast<std::size_t>(size_));
     std::size_t at = 0;
     while (at < r.bytes.size()) {
         DWORD got = 0;
         const DWORD want = static_cast<DWORD>(std::min<std::size_t>(r.bytes.size() - at, 1u << 20));
-        if (!ReadFile(f.h, r.bytes.data() + at, want, &got, nullptr)) { r.error = GetLastError(); r.bytes.clear(); return r; }
+        if (!ReadFile(h_, r.bytes.data() + at, want, &got, nullptr)) { r.error = GetLastError(); r.bytes.clear(); return r; }
         if (got == 0) break;  // the file became shorter while reading
         at += got;
     }
     r.bytes.resize(at);
     return r;
+}
+
+ReadResult readFileBytes(const std::wstring& path, std::size_t maxBytes, const std::wstring& rootFinal) {
+    if (rootFinal.empty()) return {ERROR_PATH_NOT_FOUND, {}};  // the project folder cannot be reached
+    CheckedFile f;
+    if (const DWORD e = f.open(path, rootFinal); e != ERROR_SUCCESS) return {e, {}};
+    return f.readAll(maxBytes);
+}
+
+DWORD createFoldersWithin(const std::wstring& folder, const std::wstring& rootFinal) {
+    if (rootFinal.empty()) return ERROR_PATH_NOT_FOUND;  // the project folder cannot be reached
+    // the deepest folder that exists must lie inside the project folder (or be it)
+    std::wstring existing = folder;
+    while (!existing.empty() && !isFolder(existing)) {
+        const std::wstring up = parentOf(existing);
+        if (up == existing) break;
+        existing = up;
+    }
+    const auto final = resolvedPath(existing);
+    if (!final) return ERROR_PATH_NOT_FOUND;
+    const bool isRoot = CompareStringOrdinal(final->c_str(), -1, rootFinal.c_str(), -1, TRUE) == CSTR_EQUAL;
+    if (!isRoot && !within(rootFinal, *final)) return ERROR_OUTSIDE_PROJECT;
+    if (const DWORD e = createFolders(folder); e != ERROR_SUCCESS) return e;
+    const auto made = resolvedPath(folder);
+    if (!made) return ERROR_PATH_NOT_FOUND;
+    const bool madeRoot = CompareStringOrdinal(made->c_str(), -1, rootFinal.c_str(), -1, TRUE) == CSTR_EQUAL;
+    return madeRoot || within(rootFinal, *made) ? ERROR_SUCCESS : ERROR_OUTSIDE_PROJECT;
 }
 
 namespace {
@@ -223,6 +316,9 @@ std::string errorText(DWORD e) {
             return "Die Datei ist zu groß.";
         case ERROR_WRITE_PROTECT:
             return "Das Laufwerk ist schreibgeschützt.";
+        case ERROR_OUTSIDE_PROJECT:
+            return "Die Datei liegt nicht wirklich im Projektordner. Sie ist dort nur über eine Verknüpfung zu sehen, "
+                   "die auf einen anderen Ordner zeigt. Lege die Datei selbst in den Projektordner.";
         default: {
             char buf[64];
             sprintf_s(buf, "Windows meldet den Fehler %lu.", static_cast<unsigned long>(e));

@@ -44,6 +44,8 @@ private:
     void setProject(const std::wstring& root, bool remember, std::function<void()> then = {});
     void rescan(const std::string& message = {});
     std::optional<Segments> pathSegments(const std::string& path) const;
+    std::wstring boundary();
+    std::optional<Segments> projectSegments(const std::wstring& file);
     void openFile(const Segments& segs, double op);
     void postOpenFailed(double op, const std::string& title = {}, const std::string& message = {});
     void save(const Segments& segs, std::string bytes, std::optional<Fingerprint> base, double id);
@@ -57,7 +59,10 @@ private:
     void showPreview(const Segments& segs, std::string text);
     void reloadPreview();
     void onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args);
-    void respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType, std::shared_ptr<const std::string> body);
+    // false if no response could be set (the engine would then fetch the request itself)
+    bool respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
+                 std::shared_ptr<const std::string> body, const char* csp = nullptr);
+    void failPreview();
     void reportMissing(const std::string& address, const char* reason, const std::string& detail);
     void sendMissing();
     void onUiRequest(ICoreWebView2WebResourceRequestedEventArgs* args);
@@ -79,6 +84,7 @@ private:
 
     // project
     std::wstring root_;
+    std::wstring rootFinal_;                             // root_ as the file system resolves it (see winutil.hpp)
     FolderWatcher watcher_;
     bool scanPending_ = false;
     ULONGLONG lastScan_ = 0;

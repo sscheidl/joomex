@@ -15,6 +15,7 @@
 | R-07 | A style sheet `css/stil.css` and a picture named in it (`url(../bilder/x.png)`) are applied and shown. |
 | R-08 | File and folder names with spaces, umlauts and `#` work when written correctly encoded; the picture dialog writes them encoded. |
 | R-09 | "Bild einfügen" writes the address relative to the page and with the exact name on disk, for a page in the project root and for a page in a subfolder. |
+| R-10 | A junction or symbolic link inside the project folder that leads out of it: it is not listed, and nothing behind it is shown in the page view, opened, saved, created or opened in the browser; the note names the address and says why. A junction that leads to a folder inside the project works. Nothing outside the project folder changes. |
 
 ## Page view
 
@@ -22,8 +23,8 @@
 | --- | --- |
 | P-01 | The page view shows unsaved code at most 0.5 s after the last keystroke (target 0.3 s); the scroll position is kept. |
 | P-02 | Scripts of the page do not run (inline, external, event attributes, `javascript:` links). |
-| P-03 | No request leaves the computer: pictures, style sheets, fonts, frames and links to the internet are refused; a network trace shows none. |
-| P-04 | A click on a link to another project page offers to open it; a link to the internet does nothing in the page view. |
+| P-03 | No request leaves the computer: pictures, style sheets (`@import`, `url()`, fonts), media, frames, `srcdoc` and `data:` frames, objects, resource hints (`preconnect`, `dns-prefetch`, `prefetch`, `preload`), manifests, icons, `<base>`, meta refresh, forms and links to the internet are refused; a listener on the computer and a network trace show none. Frames in a page show nothing. |
+| P-04 | A click on a link to another project page offers to open it; a link to the internet does nothing in the page view and says so. A page that navigates by itself (meta refresh, form) offers nothing. |
 | P-05 | No new windows, downloads, permission prompts, developer tools or "Inspect" in the release build. |
 
 ## Files
