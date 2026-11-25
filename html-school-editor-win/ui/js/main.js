@@ -3,6 +3,7 @@
 // core places over #pvSlot.
 import { createCodeEditor } from './editor.js';
 import { addressProblems, PROBLEM_TEXT } from './checks.js';
+import { breaksOfBytes, createBreaks } from './breaks.js';
 import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './shared/util.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,7 +20,8 @@ function send(msg) { if (host) host.postMessage(msg); }
 
 const state = {
   project: null,        // { name, files: [{ path, kind }] }
-  doc: null,            // { path, name, savedText, bom, eol, converted, base }; base: fingerprint of the file as read or last saved
+  doc: null,            // { path, name, savedText, bom, eol, converted, base, breaks }; base: fingerprint of the file as
+                        // read or last saved; breaks: the kind of every line break as read (breaks.js)
   sending: null,        // save in progress: { id, text, doc }; the core answers with the same id
   afterSave: null,      // { what, action } to run once the save in progress has succeeded
   saveId: 0,
@@ -268,6 +270,7 @@ function projectFolders() {
 // ---------------------------------------------------------------- text, page view, notes
 
 function onTextChanged() {
+  if (state.doc) state.doc.breaks.follow(editor.text);
   clearTimeout(state.previewTimer);
   state.previewTimer = setTimeout(sendPreview, PREVIEW_DELAY);
   updateChrome();
@@ -338,13 +341,16 @@ async function openedFile(msg) {
     return;
   }
   // a converted page counts as unsaved until it is written in UTF-8
-  state.doc = { path: msg.path, name: msg.name, savedText: converted ? '\u0000' : decoded.text, bom: decoded.bom, eol: decoded.eol, converted, base: msg.base || '' };
+  // every line break is written back as it was read (LF, CRLF or CR), also in files that mix them
+  let breaks;
+  try { breaks = createBreaks(decoded.text, breaksOfBytes(bytes), decoded.eol); }
+  catch { breaks = createBreaks(decoded.text, decoded.text.split('\n').slice(1).map(() => decoded.eol), decoded.eol); }
+  state.doc = { path: msg.path, name: msg.name, savedText: converted ? '\u0000' : decoded.text, bom: decoded.bom, eol: decoded.eol, converted, base: msg.base || '', breaks };
   state.picture = null;
   state.missing = [];
   state.problems = [];
   editor.load(decoded.text);
   setStatus(converted ? 'Geöffnet und in UTF-8 umgewandelt: ' + msg.path + '. Speichere die Seite, damit sie in UTF-8 bleibt.' : 'Geöffnet: ' + msg.path, converted);
-  if (decoded.mixedEol) setStatus('Geöffnet: ' + msg.path + '. Die Zeilenenden waren gemischt; gespeichert wird einheitlich.', true);
   sendPreview();
   updateChrome();
   reportLayout();
@@ -357,7 +363,7 @@ async function openedFile(msg) {
 // conflict) writes a new file and never replaces one.
 function startSave(type, createOnly) {
   if (!state.doc || state.sending !== null) return;
-  const text = editor.text, bytes = encodeFileText(text, state.doc.bom, state.doc.eol);
+  const text = editor.text, bytes = (state.doc.bom ? '﻿' : '') + state.doc.breaks.encode(text);
   if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
     tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
     return;
@@ -385,6 +391,7 @@ function saved(msg) {
   if (s.doc !== state.doc) { state.afterSave = null; updateChrome(); return; }
   if (msg.path && msg.path !== state.doc.path) { state.doc.path = msg.path; state.doc.name = msg.name || baseName(msg.path); sendPreview(); }
   state.doc.savedText = s.text;
+  state.doc.breaks.remember(s.text);
   state.doc.converted = false;
   if (msg.base) state.doc.base = msg.base;
   setStatus(dirty() ? 'Gespeichert: ' + state.doc.path + '. Was du danach geschrieben hast, ist noch nicht gespeichert.' : 'Gespeichert: ' + state.doc.path);

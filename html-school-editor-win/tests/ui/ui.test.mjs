@@ -421,6 +421,43 @@ test('pictures: an answer for a page that is no longer open is not inserted', as
   assert.deepEqual(ui.errors, []);
 });
 
+// Owner's decision of 2026-11-25 (F-01): open and save without a change keeps the file byte for byte,
+// BOM and mixed LF, CRLF and CR included; a change keeps the breaks of the lines it does not touch.
+test('line breaks: mixed LF, CRLF and CR are saved byte for byte as they were read', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const RAW = '<!DOCTYPE html>\r\n<p>eins</p>\n<p>zwei</p>\r<p>drei</p>\r\n\r\n<p>vier</p>\n';
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64([...BOM, ...Buffer.from(RAW)]) });
+  assert.equal(await ui.page.locator('#status.warn').count(), 0, 'no warning about mixed line endings any more');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, '﻿' + RAW, 'unchanged: the same bytes');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // typing in the line that ends with a lone CR
+  await ui.page.click('#src');
+  await ui.page.evaluate(() => { const s = document.getElementById('src'); const i = s.value.indexOf('zwei') + 4; s.setSelectionRange(i, i); });
+  await ui.page.keyboard.type('!');
+  await ui.page.keyboard.press('Control+s');
+  let expected = RAW.replace('zwei', 'zwei!');
+  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // Enter in that line: the new break is a CR as well; the other lines keep theirs
+  await ui.page.keyboard.press('ArrowLeft');
+  await ui.page.keyboard.press('Enter');
+  await ui.page.keyboard.press('Control+s');
+  expected = RAW.replace('zwei', 'zwei\r!');
+  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // deleting the last line and undoing it gives the saved bytes again
+  await ui.page.keyboard.press('Control+End');
+  await ui.page.keyboard.press('Shift+ArrowUp');
+  await ui.page.keyboard.press('Delete');
+  await ui.page.keyboard.press('Control+z');
+  assert.equal(await ui.page.textContent('#docState'), 'gespeichert');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, '﻿' + expected);
+  assert.deepEqual(ui.errors, []);
+});
+
 test('a page in Windows-1252 is converted only after asking', async () => {
   const ui = await openUi(browser);
   await ui.deliver(PROJECT);

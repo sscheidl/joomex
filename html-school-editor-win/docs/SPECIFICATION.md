@@ -41,7 +41,7 @@ The new program loads the page from its real place on disk. A relative address i
 
 * Code editor with line numbers, syntax colouring for HTML and embedded CSS, undo and redo, find, and automatic indentation on Enter. No automatic closing of tags in stage 1: pupils write every tag themselves.
 * The code is the pupil's text. The program never rewrites it, except through the explicit button "Code aufräumen" (stage 2 at the earliest).
-* Encoding: UTF-8 is read and written. A byte order mark and the line endings of an opened file are kept. Another encoding is detected and reported; it is not converted silently.
+* Encoding: UTF-8 is read and written. A byte order mark and the line endings of an opened file are kept, break by break: a file with mixed `LF`, `CRLF` and `CR` is saved without a change byte for byte as read, and a change keeps the breaks of the lines it does not touch (owner's decision of 2026-11-25; criteria F-07 and F-08). Another encoding is detected and reported; it is not converted silently.
 
 ### 3.3 Page view
 

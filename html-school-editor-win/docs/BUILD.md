@@ -15,7 +15,7 @@ In PowerShell, in the folder `html-school-editor-win`:
 powershell -ExecutionPolicy Bypass -File tools\fetch-webview2.ps1
 ```
 
-The first time, the script downloads the package named in `dependencies.json` from nuget.org, prints its SHA-256 and stops, because the hash is not pinned yet. Check the package (it comes from nuget.org, publisher Microsoft; read `LICENSE.txt` in it), write the hash into `dependencies.json` (`archive_sha256`) and run the script again. From then on it refuses any package with another hash. The package is unpacked to `third_party/webview2/`, which is not committed.
+The script downloads the package named in `dependencies.json` from nuget.org (or uses it if it already lies in `third_party/`), checks it against the pinned SHA-256 (pinned by the owner on 2026-11-25 after checking the first download) and refuses any package with another hash. The package is unpacked to `third_party/webview2/`, which is not committed. A new SDK version needs a new check of the package (source nuget.org, publisher Microsoft, `LICENSE.txt` in it) and a new pinned hash.
 
 ## Build
 
