@@ -103,3 +103,43 @@ test('a save keeps the breaks it sent, also when its confirmation comes after mo
   assert.equal(b.raw, 'A\r\nbc\nd', 'the current state stays as typed');
   assert.equal(b.encode('A\nb\nc\nd'), sentRaw, 'back to the saved text: the bytes on disk');
 });
+
+// Review of alpha.5 (2026-11-25): in a<CR>b<LF>c with "b" deleted, the two breaks met and were read back
+// as one CRLF, so a line was lost after reopening or restoring that undo step.
+test('two breaks that meet stay two: a lone CR is never written right before an LF', () => {
+  const b = createBreaks('a\nb\nc', ['\r', '\n'], '\n');
+  const raw = b.encode('a\n\nc');
+  assert.equal(raw, 'a\r\r\nc', 'the line before keeps its bytes, the second break becomes CRLF');
+  assert.equal(lfOf(raw), 'a\n\nc', 'read back: the same three lines');
+  b.restore(raw);
+  assert.equal(b.text, 'a\n\nc', 'restoring the undo step keeps the empty line');
+  // Enter at the start of a line that follows a lone CR
+  const e = createBreaks('a\nc', ['\r'], '\n');
+  const raw2 = e.encode('a\n\nc');
+  assert.equal(lfOf(raw2), 'a\n\nc');
+  assert.equal(raw2, 'a\r\rc', 'the new break takes the kind of the line it is typed in');
+  // several lone CRs before an LF
+  const f = createBreaks('x\ny\nz\nw', ['\r', '\r', '\n'], '\n');
+  assert.equal(lfOf(f.encode('x\n\n\nw')), 'x\n\n\nw');
+});
+
+test('whatever is typed, the raw text reads back as the same lines (random edits)', () => {
+  let seed = 7;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  const pieces = ['', 'a', 'b', '\n', '\n\n', 'x\ny'];
+  for (let run = 0; run < 2000; run++) {
+    const kinds = ['\n', '\r\n', '\r'];
+    // a file as it can be on disk: random lines with random breaks, read back as a reader would
+    const file = Array.from({ length: 1 + rnd(6) }, () => 'ab'.slice(0, rnd(3)) + kinds[rnd(3)]).join('');
+    let text = lfOf(file);
+    const b = createBreaks(text, breaksOfRaw(file), kinds[rnd(3)]);
+    assert.equal(b.encode(text), file, `run ${run}: unchanged file`);
+    for (let step = 0; step < 25; step++) {
+      const at = rnd(text.length + 1), len = rnd(Math.min(4, text.length - at) + 1);
+      text = text.slice(0, at) + pieces[rnd(pieces.length)] + text.slice(at + len);
+      const raw = b.encode(text);
+      assert.equal(lfOf(raw), text, `run ${run}, step ${step}: ${JSON.stringify(raw)}`);
+      assert.equal(breaksOfRaw(raw).length, text.split('\n').length - 1);
+    }
+  }
+});

@@ -3,7 +3,8 @@
 // (LF, CRLF or a lone CR) is kept here, in order, and follows every change of the text:
 // * breaks in parts of the text that were not changed stay as they were;
 // * a break typed into a line gets the kind of the break that ends that line (the local convention);
-// * when the text is again exactly the text as read or as last saved, its breaks come back.
+// * when the text is again exactly the text as read or as last saved, its breaks come back;
+// * a lone CR is never written directly before an LF break, since the two would be read as one CRLF.
 // A state with its breaks is a "raw" text: the text with every break written as it stands in the file.
 // The undo history stores raw texts and every save takes the raw text it sends (editor.js, main.js), so
 // an undo step and a save each keep their own breaks.
@@ -31,6 +32,19 @@ const countLf = (s, from = 0, to = s.length) => {
   return n;
 };
 
+// A lone CR directly followed by an LF break (an empty line between them) would be read back as one CRLF,
+// and a line would be lost. That happens when an edit brings the two together (a<CR>b<LF>c with "b"
+// deleted). The second break is then written as CRLF: the line before it keeps its bytes, and the file
+// still holds two breaks. Changes `list` in place.
+function keepApart(text, list) {
+  if (!list.includes('\r')) return;
+  let k = 0, prev = -2;
+  for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1), k++) {
+    if (k > 0 && i === prev + 1 && list[k - 1] === '\r' && list[k] === '\n') list[k] = '\r\n';
+    prev = i;
+  }
+}
+
 function join(text, list) {
   let out = '', at = 0, k = 0;
   for (let i = text.indexOf('\n'); i >= 0; i = text.indexOf('\n', i + 1)) {
@@ -45,7 +59,8 @@ function join(text, list) {
 export function createBreaks(text, breaks, fallback) {
   if (countLf(text) !== breaks.length) throw new Error('breaks do not match the text');
   let current = text, list = breaks.slice(), raw = null, lastSaved = null;
-  const known = new Map([[text, breaks.slice()]]);  // the text as read, and the text last saved
+  keepApart(current, list);                          // breaks read from a file are apart already
+  const known = new Map([[text, list.slice()]]);     // the text as read, and the text last saved
 
   // Follows the text from `current` to `next`: the common start and end keep their breaks.
   function follow(next) {
@@ -68,6 +83,7 @@ export function createBreaks(text, breaks, fallback) {
     for (let i = 0; i < added; i++) middle.push(i < removed.length ? removed[i] : local);
     list = list.slice(0, before).concat(middle, list.slice(list.length - after));
     current = next;
+    keepApart(current, list);
   }
 
   return {

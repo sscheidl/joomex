@@ -501,6 +501,31 @@ test('line breaks: undo to an unsaved step and a late save confirmation keep a l
   assert.deepEqual(ui.errors, []);
 });
 
+// Review of alpha.5 (2026-11-25): a<CR>b<LF>c with "b" deleted was saved as a<CRLF>c, one line less.
+test('line breaks: two breaks that meet after a deletion are saved as two', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from('a\rb\nc')) });
+  await ui.page.click('#src');
+  await ui.page.evaluate(() => { const s = document.getElementById('src'); s.focus(); s.setSelectionRange(2, 3); });
+  await ui.page.keyboard.press('Delete');
+  assert.equal(await ui.text(), 'a\n\nc');
+  await ui.page.keyboard.press('Control+z');
+  await ui.page.keyboard.press('Control+y');
+  assert.equal(await ui.text(), 'a\n\nc', 'redo keeps the empty line');
+  await ui.page.keyboard.press('Control+s');
+  const sent = (await ui.last('save')).text;
+  assert.equal(sent, 'a\r\r\nc');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // opened again from these bytes: the same three lines, and unchanged
+  await ui.page.click('#files li[data-path="seiten/tiere.html"]');
+  await ui.opened({ type: 'opened', path: 'seiten/tiere.html', name: 'tiere.html', data: b64(Buffer.from(sent)) });
+  assert.equal(await ui.text(), 'a\n\nc');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal((await ui.last('save')).text, sent);
+  assert.deepEqual(ui.errors, []);
+});
+
 test('a page in Windows-1252 is converted only after asking', async () => {
   const ui = await openUi(browser);
   await ui.deliver(PROJECT);

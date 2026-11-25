@@ -1,6 +1,6 @@
 # Plan for stage 2: editing on the page side and "Code aufräumen"
 
-**State:** plan of 2026-11-24 for the owner's decision. Nothing of it is built. Stage 1 is built and run on Windows since 2026-11-24; the Codex review of 2026-11-25 advises against E1 (keep two views), see [STATUS.md](STATUS.md).
+**State:** plan of 2026-11-24, updated 2026-11-25. Nothing of it is built. Stage 1 is built and run on Windows. **E1 is decided: two WebView2 views stay** (owner, 2026-11-25, after the Codex review of stage 1); E2 to E5 are still open.
 
 ## 1. Goal
 
@@ -29,23 +29,17 @@ The single-file editor's modules, own code under MIT, with 106 tested cases behi
 
 Sharing means: the Windows program serves these files from `../html-school-editor/src/js/` (as `ui/resources.json` already does for four of them). D5 says the single-file editor gets defect corrections only; this plan changes nothing there except the one addition in section 4, which is new code that the single-file editor does not use.
 
-## 3. Architecture change: one WebView2 instead of two (decision E1)
+## 3. Two WebView2 views stay (decision E1, 2026-11-25)
 
-Stage 1 has two WebView2 views: the interface and, laid over it, the page view. For editing, the editing core (JavaScript) must reach the page's document. Across two views that is not possible without opening the page view to scripts.
+Stage 1 has two WebView2 views: the interface and, laid over it, the page view. They stay in stage 2.
 
-Proposal: **one WebView2**, the page side as a frame inside the interface, as in the single-file editor, but with both under the project's own address:
+The proposal of 2026-11-24 was one WebView2 with the page as a frame of the same origin as the interface, so the editing core could reach the page's document. The Codex review of stage 1 advised against it: a frame that keeps the interface's origin shares its storage, cookies, workers and origin-based capabilities as soon as active content gets through, and the sandbox adds no storage boundary for that origin; a reserved URL path routes requests but does not separate authorities. The owner decided on 2026-11-25 to keep two views.
 
-* The interface is served at `https://projekt.example/__hse__/index.html` (a reserved folder name; a project folder of that name is refused).
-* The page side is a frame with `sandbox="allow-same-origin"` (no scripts of the page, as in the single-file editor) whose document lives at the page's own address, for example `https://projekt.example/seiten/tiere.html`. Same origin as the interface, so the editing core can work in it; relative addresses resolve from the page's real place.
-* The C++ core keeps serving every request of the one view, refusing the network, reporting missing files and case differences.
+Direction for stage 2 from the review (to be designed in P1, not decided in detail):
 
-What it changes in stage 1 (before the first build, so nothing built is lost):
-
-* Simpler native code: no second view, no layout messages, no hiding of the page view while a dialog is open (an HTML dialog can lie over the frame).
-* Shortcuts work everywhere without forwarding.
-* "So zeigt es der Browser" stays true: in the mode "Ansehen" the frame loads the page itself (scripts off), exactly as now.
-
-Risk: the interface and the page share an origin. Page scripts never run (sandbox without `allow-scripts`, plus a `script-src 'none'` header on every page response), so a page cannot reach the interface. The independent review must check exactly this.
+* The raw page stays in the isolated page view, on its own origin and controller, exactly as in stage 1 ("Ansehen").
+* For editing, the trusted interface gets DOM access only to a separately served, filtered projection of the page (only admitted local assets of the right type, no uncontrolled base addresses or navigation, the policy enforced from the first parse). Active or unsupported content stays in the pupil's source with a visible placeholder in the projection.
+* The interface authorises privileged messages only from its own top-level document; `window.name` and named browsing contexts are never used for authorisation.
 
 ## 4. Two modes of the page side (decision E2)
 
@@ -62,26 +56,26 @@ Proposal for the switch: a button "Seite bearbeiten" above the page side, **off 
 
 | # | Package | Contents | Tests |
 | --- | --- | --- | --- |
-| P0 | One view (E1) | C++: interface under `/__hse__/`, one controller, response headers with `script-src 'none'` for pages; interface: frame instead of layout messages | stage 1 tests adapted; review point "same origin" |
-| P1 | Projection | shell document, address resolution from the shell, project style sheets; mode switch (E2) | ported cases of the single-file editor for projection and safety (X-01 … X-08, A3, A5 projection cases) |
+| P0 | Stage 1 corrections | the open findings of the Codex review of stage 1 (file boundary, protection of the page view, threads and lifetime, stale requests) and a small native acceptance baseline (DevTools against the test build) | native acceptance tests; review of every change to the trust boundary or the save lifecycle where it is made |
+| P1 | Projection | filtered projection served apart from the raw page, its trust boundary (reviewed before merging), address resolution, admitted project style sheets; mode switch (E2) | ported cases of the single-file editor for projection and safety (X-01 … X-08, A3, A5 projection cases) |
 | P2 | Editing and synchronisation | carry over the synchronisation of `app.js`: commit of the page side, undo across both sides, caret mapping, locked pages (unclosed tags) | ported cases T-01 … T-17, R-01, R-02, A7 … A11 (Chromium only) |
 | P3 | Toolbar | the commands of the single-file editor; link dialog; picture dialog through the C++ file dialog with relative address (stage 1 function); table, alignment, colour | ported cases F-01 … F-16, B2-05 |
 | P4 | "Code aufräumen" | `format` plus the layout check in a hidden frame built like the page side, now with project style sheets | ported format cases, new case with an external project style sheet |
-| P5 | Review | independent review of P0 to P4, with the focus on the shared origin and on lost text | — |
+| P5 | Review | independent review of P0 to P4 after integration, with the focus on the trust boundary of the projection and on lost text | — |
 
 All of P0 to P4 runs in headless Chromium with the mock of the core (as the stage 1 interface tests do), because the editing happens inside one browser page. Only file access, dialogs and the request handler need Windows; those are covered by the acceptance tests against a test build.
 
-Order: P0 first, before the first build of stage 1, because it removes code that would otherwise be built, tested and thrown away. Then stage 1 is built and tried in class; P1 to P4 follow.
+Order: P0 first (stage 1 is corrected and has its native acceptance baseline before stage 2 starts), then P1 with a review of its trust boundary, then P2 (synchronisation and undo), P3 (toolbar) and P4 (formatting checks).
 
 ### Line breaks and the byte promise (owner's decision of 2026-11-25)
 
-Stage 1 keeps every line break as read (`ui/js/breaks.js`; criteria F-07 to F-09). The page side edits the same document state as the code field: the text together with the kind of every break, through the same history of raw texts. Its commits must therefore go through the code field's change path (so breaks outside the change stay and new breaks follow the local kind), never by writing a new text from the page side alone. The byte comparisons F-07 to F-09 are repeated with changes made on the page side. The two WebView2 views of stage 1 are unchanged by this.
+Stage 1 keeps every line break as read (`ui/js/breaks.js`; criteria F-07 to F-10). The page side edits the same document state as the code field: the text together with the kind of every break, through the same history of raw texts. Its commits must therefore go through the code field's change path (so breaks outside the change stay and new breaks follow the local kind), never by writing a new text from the page side alone. The byte comparisons F-07 to F-10 are repeated with changes made on the page side, including the case of two breaks that meet after a deletion (F-10). The two WebView2 views of stage 1 are unchanged by this.
 
 ## 6. Decisions for the owner
 
 | # | Question | Proposal |
 | --- | --- | --- |
-| E1 | One WebView2 with the page as a same-origin frame, already for stage 1? | yes, before the first build |
+| E1 | One WebView2 with the page as a same-origin frame, or two views? | **decided 2026-11-25: two views stay** (section 3) |
 | E2 | Page side editable always, or by a switch "Seite bearbeiten" that is off when a page opens? | switch, off |
 | E3 | Toolbar on the page side: the full set of the single-file editor (paragraph, headings 1–3, bold, italic, underline, superscript, subscript, marker, colour, lists, table, alignment, link, picture)? | the full set, unchanged, so the class knows it |
 | E4 | Title field above the page side, as in the single-file editor? | yes |
