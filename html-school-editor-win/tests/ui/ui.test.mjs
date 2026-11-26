@@ -865,3 +865,40 @@ test('Save As moves the base of the visual projection to the saved path', async 
   assert.equal(await image.getAttribute('src'), 'https://projekt.example/seiten/icon.png');
   assert.deepEqual(ui.errors, []);
 });
+
+test('a page-side edit still open counts before saving and closing (title field, composition)', async () => {
+  const source = '<!doctype html>\r\n<title>Alt</title>\r\n<p>Hallo</p>\r\n';
+  const open = async () => {
+    const ui = await openUi(browser);
+    await ui.deliver(PROJECT);
+    await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+    await ui.page.frameLocator('#visualFrame').locator('p').waitFor();
+    return ui;
+  };
+  // a title typed but not confirmed, then the window is to close (also a logoff): the question comes
+  let ui = await open();
+  await ui.page.fill('#pageTitle', 'Neu');
+  assert.equal(await ui.page.textContent('#docState'), 'gespeichert', 'not taken over yet');
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/);
+  assert.equal(await ui.count('closeOk'), 0, 'the title is not lost');
+  assert.match(await ui.text(), /<title>Neu<\/title>/);
+  await ui.answer('#dlg button[value="cancel"]');
+  // a title typed but not confirmed, then Ctrl+S: the save holds it
+  ui = await open();
+  await ui.page.fill('#pageTitle', 'Gespeichert');
+  await ui.page.locator('#pageTitle').press('Control+s');
+  assert.equal((await ui.last('save')).text, source.replace('Alt', 'Gespeichert'));
+  // a composition not finished, then the window is to close
+  ui = await open();
+  await ui.page.frameLocator('#visualFrame').locator('p').click();
+  await ui.page.keyboard.press('End');
+  const cdp = await ui.page.context().newCDPSession(ui.page);
+  await cdp.send('Input.imeSetComposition', { text: 'ê', selectionStart: 1, selectionEnd: 1 });
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/);
+  assert.match(await ui.text(), /<p>Halloê<\/p>/, 'the composed character is in the code');
+  assert.deepEqual(ui.errors, []);
+});

@@ -3,7 +3,7 @@
 **State (2026-11-26).**
 
 * **Stage 1 is on `main`.** It was merged as 0.1.0-alpha.14 through PR #26 and PR #27 (`c8b09fa`), after the independent re-review of alpha.14 found it READY TO MERGE. The editor is NOT READY for pupils' files; section 7 lists what is missing.
-* **A local stage 2 pilot exists.** It is on `feature/html-school-editor-win-stage2-pilot` (`2f43a27`) and is still based on alpha.12. Before any further stage 2 work it is brought onto `main` (P0).
+* **The stage 2 pilot is brought onto `main` (P0).** Codex's pilot (`2f43a27`, built on alpha.12) is merged onto `main` as 0.1.0-alpha.15 on `feature/html-school-editor-win-stage2-p0`, with the alpha.13 and alpha.14 handover and one correction (a page-side edit still open is applied before saving and closing). The independent review of that P0 work is still to come, and so is the P1 review of the trust boundary.
 * **Decisions.** E1 to E6 are decided (section 8).
 
 ## 1. Goal

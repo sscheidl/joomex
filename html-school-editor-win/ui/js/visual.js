@@ -256,8 +256,16 @@ export function createVisualEditor(els, editor, actions) {
     });
   }
 
+  // Applies a page-side edit that is still open: a title typed but not yet confirmed, or a composition
+  // (IME or dead key) not yet finished. Called before every decision about saving or closing.
+  function flush() {
+    if (document.activeElement === els.pageTitle && els.pageTitle.value.replace(/\s+/g, ' ').trim() !== title) editTitle();
+    if (composing) { composing = false; commit('vis-type', true); }
+  }
+
   return {
     get editing() { return editing; },
+    flush,
     disable() { failed = true; render(); },
     refresh() { render(); },
     schedule() { clearTimeout(timer); timer = setTimeout(render, 200); },

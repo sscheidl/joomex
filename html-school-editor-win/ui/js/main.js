@@ -158,6 +158,7 @@ function askUnsaved(what) {
 // way, the action waits for its answer and is then checked again: text typed during the save is not saved
 // yet, so the question comes again instead of the action dropping it.
 async function whenSettled(what, action) {
+  visual.flush();  // a page-side edit still open counts before anything is decided
   if (state.sending !== null) {
     state.afterSave = { what, action };
     setStatus('Einen Moment, die Seite wird noch gespeichert …');
@@ -444,6 +445,7 @@ async function openedFile(msg) {
 // conflict) writes a new file and never replaces one.
 function startSave(type, createOnly) {
   if (!state.doc || state.sending !== null || (type === 'saveAs' && state.picking)) return;
+  visual.flush();
   const raw = editor.raw, bytes = (state.doc.bom ? '\ufeff' : '') + raw;
   if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
     tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
@@ -517,6 +519,7 @@ async function saveProblem(msg) {
 // new file on this computer. The save on its way and the saved state of the page stay as they are.
 function rescue() {
   if (!state.doc || state.rescuing) return;
+  visual.flush();
   const bytes = (state.doc.bom ? '\ufeff' : '') + editor.raw;
   state.rescuing = true;
   send({ type: 'rescue', id: ++state.rescueId, path: state.doc.path, text: bytes });
@@ -589,6 +592,7 @@ async function pictureOutside(msg) {
 
 function viewInBrowser() {
   if (!state.doc) return;
+  visual.flush();
   const go = () => send({ type: 'viewInBrowser', path: state.doc.path });
   if (!dirty()) { go(); return; }
   ask('Erst speichern?', 'Der Browser zeigt die gespeicherte Datei. Deine letzten Änderungen sind noch nicht gespeichert.', [
@@ -655,6 +659,7 @@ addEventListener('keydown', handleShortcut);
 // answered once the question is done, so the question about unsaved text is never skipped.
 function requestClose() {
   if (questionOpen) { state.closePending = true; return; }
+  visual.flush();
   whenSettled('du den Editor schließt', () => send({ type: 'closeOk' }));
 }
 
