@@ -1,0 +1,15 @@
+{
+  "comment": "Files of the user interface, served by the program under https://app.example/. Key: path in the program; value: source file relative to this folder (html-school-editor-win/). CMake generates the resource script from this list; the tests stage the same files.",
+  "files": {
+    "/index.html": "ui/index.html",
+    "/style.css": "ui/style.css",
+    "/js/main.js": "ui/js/main.js",
+    "/js/editor.js": "ui/js/editor.js",
+    "/js/checks.js": "ui/js/checks.js",
+    "/js/breaks.js": "ui/js/breaks.js",
+    "/js/shared/util.js": "../html-school-editor/src/js/util.js",
+    "/js/shared/tokenizer.js": "../html-school-editor/src/js/tokenizer.js",
+    "/js/shared/highlight.js": "../html-school-editor/src/js/highlight.js",
+    "/js/shared/history.js": "../html-school-editor/src/js/history.js"
+  }
+}

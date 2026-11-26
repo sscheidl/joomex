@@ -17,6 +17,7 @@ These rules are binding for every contributor and every agent working in this fo
 * Change sources under `src/`, then run `node tools/build.mjs`. Never edit `dist/` by hand. `node tools/build.mjs --check` must pass before a commit.
 * Every behaviour change needs a test with a concrete expectation. Run the unit tests and the affected browser cases while working, the complete suite at milestones.
 * A new version number for every changed artefact that leaves the repository.
+* `src/js/util.js`, `tokenizer.js`, `highlight.js` and `history.js` are also used by [`../html-school-editor-win/`](../html-school-editor-win/) (see its `ui/resources.json`). A change there must pass the tests of both folders.
 * New libraries only for a demonstrated need; pin version and source, check the licence, count the bytes.
 
 ## Evidence and reporting
