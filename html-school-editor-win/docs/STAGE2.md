@@ -1,88 +1,71 @@
-# Plan for stage 2: editing on the page side and "Code aufräumen"
+# Plan for stage 2 editing and code formatting
 
-**State:** plan of 2026-11-24, updated 2026-11-25. Nothing of it is built. Stage 1 is built and run on Windows. **E1 is decided: two WebView2 views stay** (owner, 2026-11-25, after the Codex review of stage 1); E2 to E5 are still open.
+**Status.** Draft for review, updated 2026-11-26. E1 is decided. The Windows editor keeps two WebView2 views. E2 to E5 are proposals. Stage 2 implementation follows the independent review of the stage 1 candidate and a local native acceptance run.
 
 ## 1. Goal
 
-As in the single-file editor 1.0.0-beta.3, pupils can also write on the page side: type text, set headings, bold, lists, links, pictures, tables, alignment and colour, and the code on the left follows, changing only what was edited. "Code aufräumen" indents the code, only if the page looks exactly the same afterwards.
+Pupils can edit text and use formatting tools on the page side. Each visual edit changes only the corresponding part of the HTML source. Local images and CSS resolve relative to the page in its project. “Code aufräumen” is an explicit action with a separate visual-equivalence check.
 
-What the Windows program does better than the single-file editor, because the page loads from its real place in the project folder:
+## 2. Shared code
 
-* Pictures and style sheets of the page appear on the page side as in the browser, from subfolders and with `../` (single-file editor: only from the editor's own folder).
-* "Code aufräumen" can also check pages with an external style sheet of the project (single-file editor: refused).
-* One engine only (Chromium in WebView2): the Firefox defects of the single-file editor (B2, B3, B4, the downloads) do not apply.
+The Windows editor already shares `util`, `tokenizer`, `highlight` and `history` with the single-file editor. The draft proposes sharing the modules below by reference through `ui/resources.json`.
 
-## 2. What can be reused
+| Module | Purpose and proposed use |
+| --- | --- |
+| `tree` | Locate source ranges. |
+| `project` | Compare parser output with the source tree, build the filtered projection and map selections. The Windows editor supplies the local asset policy and page base. |
+| `serialize` | Write targeted changes back to the source. |
+| `commands`, `images` | Reuse the relevant toolbar commands and image handling. Windows file selection and copying go through the existing host. |
+| `format` | Reuse the formatting logic and adapt its validation to the Windows projection. |
+| `app.js` | Use the existing synchronisation behaviour as a reference for the Windows integration. Windows keeps its own file access, dialogs and document lifecycle. |
 
-The single-file editor's modules, own code under MIT, with 106 tested cases behind them:
+Select focused cases from the [single-file editor acceptance results](../../html-school-editor/docs/ACCEPTANCE_RESULTS.md), including RV-01 for late events, RV-02 for formatting and RV-03 for preserving attributes. Changes to shared modules run through both test suites.
 
-| Module | Task | Reuse |
+## 3. Two WebView2 views
+
+The second WebView2 loads the raw page at its project address in **Ansehen**, using the stage 1 request policy. Its separate origin and controller keep the raw pupil document out of the application interface. The first WebView2 contains the interface and the native file bridge.
+
+For **Bearbeiten**, the proposed design hides the second view and displays a fixed, app-owned sandboxed frame in the same right-hand area. The interface uses DOM access only for the filtered projection it creates from supported HTML elements and attributes. The frame has no native file bridge. Privileged messages are authorised only from the trusted top-level UI document. Active or unsupported parts stay in the original source, with a note or placeholder where useful in the projection.
+
+The asset policy applies from the first parse, including any auxiliary parse. Only admitted project assets of the expected type may load, with a base set by the app for the current page. Project and document changes revoke the previous context. The first native prototype uses local images. Allowing project CSS also requires checking imports, fonts and nested URLs against the same project boundary while preserving each stylesheet's own base.
+
+## 4. Editing and saving
+
+The proposed “Seite bearbeiten” switch starts in **Ansehen** when a page opens. **Bearbeiten** uses a projection of the current source, including unsaved text. A visual edit applies only when its source range can be mapped to the current project, open document and text revision. If the source changes first or the range becomes ambiguous, preserve the current source and rebuild the projection from it. Affected portions can be read-only when their mapping is uncertain.
+
+Both panes use one document history. A valid pending edit in the page pane is applied before switching to **Ansehen**, saving, opening another page or closing. The existing checks for unsaved changes then use the resulting document state. Cancelling preserves the document, its text and its history. A late save confirmation still records the bytes sent by that save.
+
+Visual changes use the same document update path as source edits, including each stored line ending. Repeat the byte comparisons F-07 to F-10 through the page pane, including delayed save acknowledgement, undo to an unsaved step and two line endings that meet after a deletion.
+
+## 5. Work packages and acceptance
+
+| Package | Scope | Acceptance |
 | --- | --- | --- |
-| `util`, `tokenizer`, `highlight`, `history` | text, tokens, colours, undo | already shared in stage 1 |
-| `tree` | position tree with source offsets | share unchanged |
-| `project` | compares the browser's parser with the position tree, safe projection into the page side, position mapping | share; the projection needs one new way to resolve addresses (section 4) |
-| `serialize` | page side → code, minimal rewrite | share unchanged |
-| `commands` | all editing commands of the toolbar | share unchanged |
-| `format` | "Code aufräumen" | share unchanged |
-| `images` | picture checks | share unchanged |
-| `app.js` (1,404 lines) | synchronisation, file access through the browser, dialogs, top bar | **not shared**: it is tied to the browser's file access. Its synchronisation part (about a third) is carried over into a new module of the Windows program, with the cases that test it |
+| P0 Stage 1 baseline | Record an independently reviewed candidate with native checks for the project boundary, raw preview isolation, paths with special characters and the open, save and close lifecycle. Prepare mock cases and fixtures while the review runs. | [Stage 1 criteria](ACCEPTANCE.md) and a recorded Windows build. Verify startup and SMB behaviour on the school setup before use with pupils' files. |
+| P1 Native prototype | Switch between the two modes in the existing right side, render a filtered page and load a local image. Review the projection's trust boundary before integration. | Visible Windows check of focus, Tab, Ctrl+S, dialogs, scaling and project-scoped asset requests. |
+| P2 Text and undo | Edit a paragraph and a heading. Connect source ranges, caret mapping and one shared undo and redo history. | Only the intended source changes. Stale edits leave the current document and history intact. |
+| P3 CSS and toolbar | Add admitted project stylesheets and dependencies, then the basic formatting, list, link and picture tools. Add tables, alignment, colour and the title field after the basic controls, subject to E3 and E4. | Relative addresses from a subpage work. The existing checked picture picker and copy flow are used. Late dialog results are tied to the initiating document. |
+| P4 Code formatting | Compare the source and candidate rendering using the protected projection. Establish equivalence for the current revision and stable, admitted dependencies before applying the candidate. | A bounded wait for resources. Keep the source unchanged if dependencies fail, comparison is inconclusive, or a newer edit arrives. Verify external project CSS separately. |
+| P5 Independent review | Review the integrated projection boundary and all paths that can lose or misapply a pupil's text. | Record mock and native results separately. School computer and SMB checks are required before classroom use. |
 
-Sharing means: the Windows program serves these files from `../html-school-editor/src/js/` (as `ui/resources.json` already does for four of them). D5 says the single-file editor gets defect corrections only; this plan changes nothing there except the one addition in section 4, which is new code that the single-file editor does not use.
+### Initial regression cases
 
-## 3. Two WebView2 views stay (decision E1, 2026-11-25)
+- In `<p id='a'>Hallo Welt</p><!-- bleibt -->` replace only “Welt” with “Klasse” in the page pane. The quotes and comment are retained. Undo restores the exact source.
+- Type in the page pane, then save or close immediately. The valid edit is included. If typing continues during the save, the later text remains in the editor and close asks again.
+- Switch documents during a picture selection or another pending operation. The old result changes neither the current text nor its history or saved state.
+- Open, edit, save and reopen `Übungen/Grüße #1/100% Süß.html`. Check relative images and CSS, the URL produced by the picture dialog, and a quick second open. The visible names remain readable. Repeat in both modes when the relevant asset types are supported.
+- Include local assets from neighbouring folders inside the project. Verify under Windows that both modes block access outside the project and external web requests and prevent active pupil content.
 
-Stage 1 has two WebView2 views: the interface and, laid over it, the page view. They stay in stage 2.
+Source mapping, targeted edits and history can be tested in Chromium with the mock host. WebView2 focus, layout, real asset requests, file dialogs and native save timing require a Windows test build.
 
-The proposal of 2026-11-24 was one WebView2 with the page as a frame of the same origin as the interface, so the editing core could reach the page's document. The Codex review of stage 1 advised against it: a frame that keeps the interface's origin shares its storage, cookies, workers and origin-based capabilities as soon as active content gets through, and the sandbox adds no storage boundary for that origin; a reserved URL path routes requests but does not separate authorities. The owner decided on 2026-11-25 to keep two views.
+## 6. Decisions
 
-Direction for stage 2 from the review (to be designed in P1, not decided in detail):
+| Item | State |
+| --- | --- |
+| E1 Number of WebView2 views | Decided on 2026-11-25. Keep two views. |
+| E2 Default mode | Proposed. Start in “Ansehen” and offer “Seite bearbeiten”. |
+| E3 Toolbar | Proposed. Use the familiar single-file editor command set, delivered in the P3 sequence. |
+| E4 Title field | Proposed. Add the existing title field pattern after the basic controls. |
+| E5 Shared modules | Proposed. Share by reference and test both products when shared code changes. |
 
-* The raw page stays in the isolated page view, on its own origin and controller, exactly as in stage 1 ("Ansehen").
-* For editing, the trusted interface gets DOM access only to a separately served, filtered projection of the page (only admitted local assets of the right type, no uncontrolled base addresses or navigation, the policy enforced from the first parse). Active or unsupported content stays in the pupil's source with a visible placeholder in the projection.
-* The interface authorises privileged messages only from its own top-level document; `window.name` and named browsing contexts are never used for authorisation.
-
-## 4. Two modes of the page side (decision E2)
-
-| Mode | What the frame shows | Edit |
-| --- | --- | --- |
-| **Ansehen** (stage 1) | the page as the browser shows it: the C++ core serves the current text at the page's address | no |
-| **Bearbeiten** (stage 2) | the single-file editor's safe projection of the page, built in a fixed shell document that the core serves at the page's address (so its base address is the page's place) | yes |
-
-In "Bearbeiten" the projection works as in the single-file editor; the only new piece is the way addresses resolve: instead of reading files from the editor's folder, a picture or style sheet keeps the address as written and the browser resolves it from the shell's address. Project style sheets (`<link rel="stylesheet">` inside the project) are applied in the projection; the single-file editor leaves them out.
-
-Proposal for the switch: a button "Seite bearbeiten" above the page side, **off when a page is opened**, so that pupils write code first; the teacher decides when the class uses it. Alternative: always editable, as in the single-file editor.
-
-## 5. Work packages
-
-| # | Package | Contents | Tests |
-| --- | --- | --- | --- |
-| P0 | Stage 1 corrections | the open findings of the Codex review of stage 1 (file boundary, protection of the page view, threads and lifetime, stale requests) and a small native acceptance baseline (DevTools against the test build) | native acceptance tests; review of every change to the trust boundary or the save lifecycle where it is made |
-| P1 | Projection | filtered projection served apart from the raw page, its trust boundary (reviewed before merging), address resolution, admitted project style sheets; mode switch (E2) | ported cases of the single-file editor for projection and safety (X-01 … X-08, A3, A5 projection cases) |
-| P2 | Editing and synchronisation | carry over the synchronisation of `app.js`: commit of the page side, undo across both sides, caret mapping, locked pages (unclosed tags) | ported cases T-01 … T-17, R-01, R-02, A7 … A11 (Chromium only) |
-| P3 | Toolbar | the commands of the single-file editor; link dialog; picture dialog through the C++ file dialog with relative address (stage 1 function); table, alignment, colour | ported cases F-01 … F-16, B2-05 |
-| P4 | "Code aufräumen" | `format` plus the layout check in a hidden frame built like the page side, now with project style sheets | ported format cases, new case with an external project style sheet |
-| P5 | Review | independent review of P0 to P4 after integration, with the focus on the trust boundary of the projection and on lost text | — |
-
-All of P0 to P4 runs in headless Chromium with the mock of the core (as the stage 1 interface tests do), because the editing happens inside one browser page. Only file access, dialogs and the request handler need Windows; those are covered by the acceptance tests against a test build.
-
-Order: P0 first (stage 1 is corrected and has its native acceptance baseline before stage 2 starts), then P1 with a review of its trust boundary, then P2 (synchronisation and undo), P3 (toolbar) and P4 (formatting checks).
-
-### Line breaks and the byte promise (owner's decision of 2026-11-25)
-
-Stage 1 keeps every line break as read (`ui/js/breaks.js`; criteria F-07 to F-10). The page side edits the same document state as the code field: the text together with the kind of every break, through the same history of raw texts. Its commits must therefore go through the code field's change path (so breaks outside the change stay and new breaks follow the local kind), never by writing a new text from the page side alone. The byte comparisons F-07 to F-10 are repeated with changes made on the page side, including the case of two breaks that meet after a deletion (F-10). The two WebView2 views of stage 1 are unchanged by this.
-
-## 6. Decisions for the owner
-
-| # | Question | Proposal |
-| --- | --- | --- |
-| E1 | One WebView2 with the page as a same-origin frame, or two views? | **decided 2026-11-25: two views stay** (section 3) |
-| E2 | Page side editable always, or by a switch "Seite bearbeiten" that is off when a page opens? | switch, off |
-| E3 | Toolbar on the page side: the full set of the single-file editor (paragraph, headings 1–3, bold, italic, underline, superscript, subscript, marker, colour, lists, table, alignment, link, picture)? | the full set, unchanged, so the class knows it |
-| E4 | Title field above the page side, as in the single-file editor? | yes |
-| E5 | Share the modules of the single-file editor by reference (one copy, tests of both folders) or copy them (two copies that drift apart)? | by reference |
-
-## 7. What this plan does not solve
-
-* The defects of Chromium's own editing engine that the single-file editor works around (B1) stay worked around, by the same code; others may appear only in real lessons.
-* F7 and F8 (white space left in tables) of the single-file editor remain open in the shared code.
-* A recovery after a crash (autosave) is not part of stage 2.
+The existing Chromium editing workarounds remain relevant. The single-file editor's table whitespace cases F7 and F8 remain open. Crash recovery and autosave are outside this stage.
