@@ -2,6 +2,7 @@
 // with web messages (see docs/ARCHITECTURE.md, "Messages"). The page view is a second WebView2 that the
 // core places over #pvSlot.
 import { createCodeEditor } from './editor.js';
+import { createVisualEditor } from './visual.js';
 import { addressProblems, PROBLEM_TEXT } from './checks.js';
 import { breaksOfBytes, createBreaks } from './breaks.js';
 import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './shared/util.js';
@@ -10,7 +11,8 @@ const $ = (id) => document.getElementById(id);
 const els = {};
 for (const id of ['version', 'versionBottom', 'bProject', 'bProject2', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bUndo', 'bRedo', 'bFind', 'bPicture', 'bBrowser',
   'docName', 'docState', 'bRescue', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
-  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons']) els[id] = $(id);
+  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
+  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'visualAlign', 'visualColor']) els[id] = $(id);
 
 const PREVIEW_DELAY = 300;
 const RESCUE_AFTER = 3000;  // a save on its way this long offers a rescue copy
@@ -43,6 +45,10 @@ const state = {
 };
 
 const editor = createCodeEditor(els, onTextChanged);
+const visual = createVisualEditor(els, editor, {
+  document: () => state.doc, message: setStatus, layout: () => queueMicrotask(() => scheduleLayout()),
+  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut,
+});
 
 // ---------------------------------------------------------------- small helpers
 
@@ -123,6 +129,22 @@ function paragraph(text, cls) {
 
 const tell = (title, text) => ask(title, text, [{ label: 'OK', value: 'ok', primary: true }]);
 
+async function askVisualFields(title, fields) {
+  const wrapper = document.createElement('div');
+  const inputs = fields.map(({ label, value }) => {
+    const field = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 2048;
+    input.value = value;
+    field.append(label, input);
+    wrapper.append(field);
+    return input;
+  });
+  const result = await ask(title, wrapper, [{ label: 'Einfügen', value: 'insert', primary: true }, { label: 'Abbrechen', value: 'cancel' }], () => inputs[0].select());
+  return result === 'insert' ? inputs.map((input) => input.value) : null;
+}
+
 // Asks what to do with unsaved changes. Returns 'save', 'discard' or 'cancel'.
 function askUnsaved(what) {
   return ask('Deine Seite ist nicht gespeichert', 'Möchtest du „' + state.doc.name + '“ speichern, bevor ' + what + '?', [
@@ -154,6 +176,7 @@ function requestOpen(msg) {
   const op = ++state.opId;
   state.opening = op;
   editor.setLocked(true);
+  visual.refresh();
   send({ ...msg, op });
 }
 
@@ -169,6 +192,7 @@ function startPicking() {
 function openingDone() {
   state.opening = 0;
   editor.setLocked(!state.doc);
+  visual.refresh();
 }
 
 // ---------------------------------------------------------------- chrome
@@ -219,7 +243,7 @@ function updateChrome() {
 
 let lastLayout = '';
 function reportLayout() {
-  const visible = !!state.doc && state.modal === 0;
+  const visible = !!state.doc && !visual.editing && state.modal === 0;
   const r = els.pvSlot.getBoundingClientRect(), k = window.devicePixelRatio || 1;
   const msg = { type: 'layout', visible, x: Math.round(r.left * k), y: Math.round(r.top * k), w: Math.max(0, Math.round(r.width * k)), h: Math.max(0, Math.round(r.height * k)) };
   const key = JSON.stringify(msg);
@@ -328,6 +352,7 @@ function projectFolders() {
 function onTextChanged() {
   clearTimeout(state.previewTimer);
   state.previewTimer = setTimeout(sendPreview, PREVIEW_DELAY);
+  visual.schedule();
   updateChrome();
 }
 
@@ -407,6 +432,7 @@ async function openedFile(msg) {
   editor.load(decoded.text, breaks);
   setStatus(converted ? 'Geöffnet und in UTF-8 umgewandelt: ' + msg.path + '. Speichere die Seite, damit sie in UTF-8 bleibt.' : 'Geöffnet: ' + msg.path, converted);
   sendPreview();
+  visual.refresh();
   updateChrome();
   reportLayout();
   editor.focus();
@@ -447,7 +473,12 @@ function saved(msg) {
   const s = answeredSave(msg);
   if (!s) return;
   if (s.doc !== state.doc) { state.afterSave = null; updateChrome(); return; }
-  if (msg.path && msg.path !== state.doc.path) { state.doc.path = msg.path; state.doc.name = msg.name || baseName(msg.path); sendPreview(); }
+  if (msg.path && msg.path !== state.doc.path) {
+    state.doc.path = msg.path;
+    state.doc.name = msg.name || baseName(msg.path);
+    sendPreview();
+    visual.refresh();
+  }
   state.doc.savedRaw = s.raw;
   state.doc.breaks.remember(s.raw);
   state.doc.converted = false;
@@ -600,22 +631,25 @@ els.bSaveAs.addEventListener('click', saveAs);
 els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
 els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
 els.bFind.addEventListener('click', openFind);
-els.bPicture.addEventListener('click', () => {
+function askPicture(insert = insertPicture) {
   if (!state.doc || editor.locked || !startPicking()) return;
   const op = ++state.opId;
-  state.picture = { op, doc: state.doc };
+  state.picture = { op, doc: state.doc, insert };
   send({ type: 'pickPicture', op, page: state.doc.path });
-});
+}
+els.bPicture.addEventListener('click', () => askPicture());
 els.bBrowser.addEventListener('click', viewInBrowser);
 els.bRescue.addEventListener('click', rescue);
 
-addEventListener('keydown', (e) => {
-  if (state.modal) return;
+function handleShortcut(e) {
+  if (state.modal || e.isComposing) return false;
   const ctrl = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (ctrl && !e.altKey && key === 's') { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
   else if (ctrl && !e.altKey && key === 'f') { e.preventDefault(); openFind(); }
   else if (e.key === 'F3') { e.preventDefault(); if (els.findBar.hidden) openFind(); else findStep(e.shiftKey ? -1 : 1); }
-});
+  return e.defaultPrevented;
+}
+addEventListener('keydown', handleShortcut);
 
 // The window is to close (close button, logoff, shutdown). While a question is open the request is kept and
 // answered once the question is done, so the question about unsaved text is never skipped.
@@ -647,6 +681,7 @@ const handlers = {
     state.afterSave = null;
     state.picture = null;
     editor.clear();
+    visual.refresh();
     renderFiles();
     renderNotes();
     reportLayout();
@@ -662,6 +697,7 @@ const handlers = {
     state.project = null;
     state.doc = null;
     editor.clear();
+    visual.refresh();
     renderFiles();
     renderNotes();
     reportLayout();
@@ -690,13 +726,17 @@ const handlers = {
     renderNotes();
   },
   dialogDone() { state.picking = false; updateChrome(); },
+  editViewFailed() {
+    visual.disable();
+    setStatus('Die Bearbeitungsansicht ist ausgefallen. Dein Text bleibt im HTML-Code erhalten.', true);
+  },
   rescued,
   rescueFailed: rescued,
   saved,
   conflict: saveProblem,
   saveFailed: saveProblem,
   saveCancelled: saveProblem,
-  picture(m) { if (pictureFor(m)) insertPicture(m.src); },
+  picture(m) { if (pictureFor(m)) state.picture.insert(m.src); },
   pictureOutside,
   link(m) {
     if (!state.doc) return;

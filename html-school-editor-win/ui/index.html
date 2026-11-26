@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src https://app.example/edit-frame.html; base-uri 'none'; form-action 'none'">
 <title>HTML-Schuleditor</title>
 <link rel="stylesheet" href="style.css">
 <script type="module" src="js/main.js"></script>
@@ -53,12 +53,36 @@
   </section>
   <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
   <section id="pvPane" aria-label="Deine Seite">
-    <div class="paneHead"><h2>Deine Seite</h2><span class="hint">So zeigt sie der Browser.</span></div>
+    <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="visualHint"></span></div>
+    <div id="visualTools" hidden>
+      <label for="pageTitle">Seitentitel</label><input id="pageTitle" maxlength="250" type="text" autocomplete="off">
+      <div id="visualCommands" role="group" aria-label="Seite gestalten">
+        <button type="button" data-edit="p">Absatz</button>
+        <button type="button" data-edit="h1" title="Überschrift 1">H1</button>
+        <button type="button" data-edit="h2" title="Überschrift 2">H2</button>
+        <button type="button" data-edit="h3" title="Überschrift 3">H3</button>
+        <button type="button" data-edit="bold">Fett</button>
+        <button type="button" data-edit="italic">Kursiv</button>
+        <button type="button" data-edit="underline">Unterstrichen</button>
+        <button type="button" data-edit="sup">Hoch</button>
+        <button type="button" data-edit="sub">Tief</button>
+        <button type="button" data-edit="mark">Hervorheben</button>
+        <button type="button" data-edit="ul">Liste</button>
+        <button type="button" data-edit="ol">Nummerierte Liste</button>
+        <button type="button" data-edit="link">Link</button>
+        <button type="button" data-edit="unlink">Link entfernen</button>
+        <button type="button" data-edit="image">Bild</button>
+        <button type="button" data-edit="table">Tabelle</button>
+        <select id="visualAlign" aria-label="Ausrichtung"><option value="">Ausrichtung</option><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option><option value="justify">Blocksatz</option></select>
+        <select id="visualColor" aria-label="Textfarbe"><option value="">Textfarbe</option><option value="red">Rot</option><option value="orange">Orange</option><option value="green">Grün</option><option value="blue">Blau</option><option value="navy">Dunkelblau</option><option value="purple">Violett</option><option value="brown">Braun</option><option value="gray">Grau</option></select>
+      </div>
+    </div>
     <div id="notes" hidden>
       <button id="bNotes" type="button" class="notesHead" aria-expanded="false"></button>
       <ul id="noteList" hidden></ul>
     </div>
     <div id="pvSlot">
+      <iframe id="visualFrame" title="Deine Seite bearbeiten" src="edit-frame.html" sandbox="allow-same-origin" hidden></iframe>
       <div id="welcome">
         <p><strong>Öffne zuerst deinen Projektordner.</strong></p>
         <p>Das ist der Ordner, in dem deine Seiten und Bilder liegen.</p>
