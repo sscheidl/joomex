@@ -1,103 +1,66 @@
-# Review request: HTML School Editor for Windows — stage 1 code (0.1.0-alpha.1) and the plan for stage 2
+# Review request: HTML School Editor for Windows 0.1.0-alpha.10 and alpha.11, and the open cases
 
-Implementer: Claude Code. Reviewer: Codex. Requested by the owner of this repository on 2026-11-24.
+Implementer of alpha.10 and alpha.11: Claude Code. Reviewer: Codex. Requested by the owner of this repository on 2026-11-26. (The first request, for alpha.1, is in the history: `git show 36c0905:html-school-editor-win/docs/REVIEW_REQUEST.md`.)
 
 ## What this is
 
-A design and code review **before the first build**. The program replaces the single-file editor (`../html-school-editor/`) on Windows: a native C++20/Win32 program with the WebView2 engine, so that pictures and links resolve from the page's real place in the pupil's project folder. The reasons and the owner's decisions D1 to D8 are in [SPECIFICATION.md](SPECIFICATION.md).
+[PR #26](https://github.com/sscheidl/joomex/pull/26) brings the Windows editor onto `main` and is on **HOLD**. The owner decided on 2026-11-26: B4 and the late page choice are fixed before the merge, and B3 is fixed before the editor is used with pupils' files. alpha.10 and alpha.11 contain those fixes. Claude wrote them, so nobody has reviewed them independently yet, and several acceptance cases have never been measured.
 
-**Nothing of the Windows part has ever been built with MSVC or run.** The owner will build it locally (D7). This review is meant to find design and code defects while they are still cheap, and to judge the plan for stage 2, one of whose decisions (E1) would change stage 1 before its first build.
-
-Three parts, independent of each other. If a part cannot be carried out, record it as `NOT REVIEWED` with the reason and complete the others.
+Three parts, independent of each other. If a part cannot be carried out, record it as `NOT REVIEWED` or `NOT MEASURED` with the reason and complete the others.
 
 ## State of the repository
 
-* Branch `feature/html-school-editor-win-spec`, five commits on top of `main` (`0ca2fe6`); this request is the sixth. Not merged, no pull request, no release, no CI workflow.
-* Folder `html-school-editor-win/`. Outside it: one row in the root `README.md`, one sentence in `../html-school-editor/AGENTS.md` (the shared modules).
+* Branch `fix/html-school-editor-win-0.1.0-alpha.10` (PR #26). Thirteen commits on top of `main` lead to alpha.10 (`b9cf7d3`), then come alpha.11 (`aa35c05`) and this request. alpha.9 (`6cc716d`) was the subject of Claude's review of 2026-11-26 (findings B1 to B8).
+* Folder `html-school-editor-win/`. Hashes of the builds Claude measured are in [STATUS.md](STATUS.md#evidence-on-windows). The builds are not reproducible (B7), so compare behaviour, not hashes.
 
 ```bash
 git fetch --prune origin
-git worktree add <new folder> -b review/html-school-editor-win-0.1.0-alpha.1 origin/feature/html-school-editor-win-spec
+git worktree add <new folder> -b review/html-school-editor-win-0.1.0-alpha.11 origin/fix/html-school-editor-win-0.1.0-alpha.10
 git log --format='%ae %ce' origin/main..HEAD | sort -u  # must list noreply addresses only
+git diff 6cc716d..HEAD -- html-school-editor-win          # the code under review
 ```
 
-| Part | Files | Lines |
-| --- | --- | --- |
-| Portable core | `src/core/json.*`, `src/core/paths.*` | 580 |
-| Win32 host | `src/win/app.*`, `winutil.*`, `project.*`, `main.cpp`, `app.manifest`, `app.rc.in` | 1,400 |
-| User interface | `ui/index.html`, `ui/style.css`, `ui/js/main.js`, `editor.js`, `checks.js`; shared modules of the single-file editor listed in `ui/resources.json` | 850 own |
-| Build | `CMakeLists.txt`, `tools/fetch-webview2.ps1`, `tools/stage-ui.mjs`, `dependencies.json` | |
-| Tests | `tests/core/core_tests.cpp`, `tests/ui/checks.test.mjs`, `tests/ui/ui.test.mjs` | |
-| Documents | `docs/SPECIFICATION.md`, `ARCHITECTURE.md`, `ACCEPTANCE.md`, `STATUS.md`, `BUILD.md`, `STAGE2.md` | |
+## Part 1: reading review of alpha.10 and alpha.11
 
-## Part 1: code of stage 1
+What changed: [STATUS.md, "Corrections"](STATUS.md#corrections), the alpha.10 and alpha.11 sections. The rules are in [ARCHITECTURE.md, "Messages"](ARCHITECTURE.md). In this order of weight:
 
-### 1a. If you can build on Windows
+**Lost work.**
 
-If Visual Studio 2022 with C++ is available: follow [BUILD.md](BUILD.md). The SHA-256 of the WebView2 SDK is not pinned (`dependencies.json`); the fetch script prints it and stops. **Do not pin it yourself** — record the hash you saw in the report; the owner pins it. To build anyway, unpack the package by hand into `third_party/webview2/` (not committed). Then report every compiler error and warning, and try the steps at the end of BUILD.md, with a project folder on a network share if you have one. Build errors are expected: the code was only type-checked (1c).
+* **Late page choice** (`openOp_`, `src/win/app.cpp`, the `openDialog` branch of `onUiMessage`): only `openDialog` checks the latest open request before it switches the project folder. Can another late answer still switch the folder or empty the editor? Check `setProject` with a `then`, the start page (`op` 0), `LastProject` at start-up, `newPage`, and a picture answer after a page change (`state.picture`).
+* **Rescue copy** (`App::rescue`, `rescue`/`rescued` in `ui/js/main.js`): the bytes must be exactly those a save would write at that moment. Check the name collision loop, the 5 MB limit, `createFileAtomic` on the local disk, the folder fallback to `%TEMP%` (`localDataFolder`), and that the save on its way and `savedRaw` stay untouched. Rescue copies are never deleted. Judge that for shared school accounts (SPECIFICATION.md 6).
+* **Dialog queue** in `ask()` (`ui/js/main.js`): a question that comes while another one is open waits for that one to close. Can a question be lost, or an answer reach the wrong dialog? `closeRequest` returns early while `state.modal` is set. Can closing then stop asking?
+* **Logoff** (`WM_QUERYENDSESSION`, `unsaved`): `WM_ENDSESSION` is not handled, and the block reason is removed only when `unsaved` becomes false. Is there a case where Windows ends the program with unsaved text without asking?
 
-### 1b. Reading review, in this order of weight
+**Threads and lifetime.**
 
-**Lost work (highest).**
+* **One dialog per window** (`claimDialog`, `endDialog`, `AtExit` in `onUiMessage`): the claim is taken in the `WebMessageReceived` callback and released after the handler returns. Can `dialogBusy_` stay set, for example when `runLater` fails, the window closes, or a dialog request throws? Is `dialogDone` sent exactly once for every accepted request, and never for a refused one?
+* **`ProjectBoundary`** (`src/win/winutil.hpp`): the resolved folder is cached per project folder, an empty result is tried again, and the mutex is held while it resolves. Can this stall the page view workers or shutdown (`FileWorkers::join` with `CancelSynchronousIo`)?
+* **`rescueWorkers_`**: one thread, writes drain at shutdown. Can a rescue copy that hangs block closing?
+* Is any file or network call left on the window thread apart from the system dialogs (finding B1)?
 
-* Conflict check before saving: `App::save` (`src/win/app.cpp:632`) compares a fingerprint (size and FNV-1a 64, `src/core/paths.cpp`) of the file now on disk with the one last read or written; on a difference it answers `conflict` and writes nothing. Check-then-write is two steps. Is the fingerprint kept right in every order (open → save, save as, new page, a save while another is busy, a page reopened)?
-* Atomic write: `writeFileAtomic` (`src/win/winutil.cpp:80`): temporary file in the same folder, flush, `ReplaceFileW` (existing file) or `MoveFileExW` (new). On an SMB share: attributes, ACLs, a server that drops while replacing, a read-only file, the temporary name colliding, the folder watcher seeing the temporary file.
-* The interface side: `ui/js/main.js` (`save`, `saved`, `saveProblem`, `whenSettled`, `closeRequest`): unsaved text must never be dropped without the pupil's answer; a save answer that arrives for a page that is no longer open.
+**Interface.** The lock of the dialog buttons (`state.picking`, `startPicking`). Is any path to a system dialog left unguarded, for example the conflict dialog's "Als neue Datei speichern …" or `Ctrl+Shift+S`? And is the German of the new texts clear to a 12-year-old?
 
-**Protective design.** The page view must never run the page's scripts and never reach the network.
+**Open findings of the alpha.9 review, still unchanged:** B6 (the root `README.md` still names alpha.1), B7 (exe hashes not reproducible), B8 (a `target=_blank` link does nothing, with no hint). Please confirm or close them.
 
-* Settings and handlers: `lockDown` (`app.cpp:301`), page view `createPreview` (`:386`): scripts off, web messages off, no new windows, downloads cancelled, permissions denied, DevTools off unless `HSE_TEST_HOOKS`.
-* Requests of the page view: `onPreviewRequest` (`:820`) answers only `https://projekt.example/…`; everything else gets 403. Navigation: `NavigationStarting` (`:404`) allows only the navigation the program starts itself (`pvExpectNavigation_`). Can a page navigate the view, open something, or load from the network by any route (meta refresh, `<base>`, forms, `srcdoc`, `<object>`, CSS `@import` of another host, a service worker, prefetch hints, a `data:` or `blob:` document)?
-* Paths: `requestSegments` (`src/core/paths.cpp:77`) refuses `..`, encoded slashes and backslashes, `:`, device names, trailing dots and spaces; `segmentsBelow` (`winutil.cpp:216`) for dialog results. **Known and not handled:** a junction or symbolic link inside the project folder is followed when a file is served (the project list skips such folders, `src/win/project.cpp:21`, the request handler does not). Short 8.3 names and alternate spellings of the same file.
-* The user interface view: only its own resources from the exe (`onUiRequest`, `:914`), navigation pinned to its start page (`:364`). Its messages are parsed by the own JSON parser (`src/core/json.cpp`) and every path from them goes through `requestSegments` (`pathSegments`, `onUiMessage` `:497`). Is any value of a message used unchecked?
+## Part 2: the open cases (native, Windows)
 
-**Threads and lifetime.** File work runs on detached `std::thread`s that capture `this` and return by `PostMessageW` (`runLater`). Pending page-view requests keep their deferral in `pending_` and are completed on the window thread. Check: a request answered after a new page was loaded or the project changed; a worker finishing after the window was destroyed; `FolderWatcher::stop` (`project.cpp`); the file cache under its mutex (`app.cpp:81`); `busy_` for saves.
+Build as in [BUILD.md](BUILD.md), with the release build and the test build (`HSE_TEST_HOOKS=ON`). Use disposable folders only, never pupils' files. Report each case as `MEASURED` (with date, Windows and WebView2 versions, and the exe hash) or `NOT MEASURED` with the reason.
 
-**WebView2 use.** Two controllers in one window; the page view is a child window laid over the interface view at a rectangle the interface reports in device pixels (`type == "layout"`, `app.cpp:519`). Is that z-order and DPI handling sound (monitor change, zoom, a dialog of the interface over the page view — the interface hides the page view while a dialog is open)? `ExecuteScript` on a view with scripts off (scroll position before and after a reload, `reloadPreview` `:795`). A custom host answered only by `WebResourceRequested` without a folder mapping. `AcceleratorKeyPressed` forwarding (`:444`).
-
-**Code quality.** Errors that are swallowed; German messages that would confuse a 12-year-old; anything that writes outside `%LOCALAPPDATA%`, `HKCU` and the pupil's files.
-
-### 1c. What the implementer measured
-
-On 2026-11-24, Linux, not Windows:
-
-```bash
-cmake -S . -B build && cmake --build build && ctest --test-dir build   # core_tests: 84 checks, 0 failed (also with gcc and address/UB sanitizers)
-node --test --test-concurrency=1 tests/ui/                             # 15 of 15 pass (headless Chromium, MOCK of the core)
-# Windows sources: x86_64-w64-mingw32-g++ -std=c++20 -fsyntax-only -Wall -Wextra, against public WebView2 headers
-# (a copy in another public repository), with compile-check shims for wrl/implements.h and WebView2EnvironmentOptions.h,
-# which MinGW lacks: no errors, no warnings in the own files. A syntax and type check only.
-```
-
-The interface tests replace the C++ core by a labelled mock; they say nothing about the core, the page view or files. The acceptance criteria of [ACCEPTANCE.md](ACCEPTANCE.md) are all NOT MEASURED.
-
-## Part 2: the plan for stage 2 ([STAGE2.md](STAGE2.md))
-
-Stage 2 adds editing on the page side and "Code aufräumen" by reusing the single-file editor's modules. Please judge:
-
-1. **E1: one WebView2 instead of two.** The interface would be served at `https://projekt.example/__hse__/`, the page side a frame with `sandbox="allow-same-origin"` at the page's own address — same origin as the interface, so the editing core can reach it. The only barrier between a pupil's page and the interface is then that page scripts never run (frame sandbox without `allow-scripts`, and a `script-src 'none'` header on every page response). Is that barrier enough? What else would a page have to be prevented from (navigation of the parent, `<base target>`, forms, plugins, `window.name`, storage shared with the interface)? Would you change stage 1 to one view before its first build?
-2. **E2: two modes** — "Ansehen" (the real page) and "Bearbeiten" (the single-file editor's safe projection in a shell document served at the page's address). Is the projection with addresses resolved by the browser from the shell's address safe, given that the single-file editor's projection was reviewed for local files only?
-3. **E5: sharing modules by reference** between the two folders (one copy, tests of both). The single-file editor is in class and gets defect corrections only (D5). Is the coupling acceptable, and how should a change be tested?
-4. The order of work packages P0 to P5 and whether the single-file editor's 106 cases can really be ported to headless Chromium with a mock core.
+1. **Repeat Claude's measurements independently:** X-07, F-12, F-13, F-14 and F-15 ([ACCEPTANCE.md](ACCEPTANCE.md)). Claude drove the dialogs with window messages (`WM_SETTEXT` to the file name field, `IDOK`, `IDCANCEL`) and the interface through DevTools (`HSE_DEBUG_PORT`). Use your own harness. For F-14, also check that the case fails without the `op != openOp_` check, so you know the harness catches the fault.
+2. **X-06 with confirmed choices:** confirm a valid choice in each of the four system dialogs: project folder, page, picture (inside `bilder/` and outside the project, then "In „bilder“ kopieren"), and Save As (new name, existing name, outside the project). Check the returned path, the operation and the page state.
+3. **Network share** (a local SMB share such as `\\localhost\<share>` is enough, as a mapped drive and as a UNC path): R-08, F-01, F-02, F-03 (the share disconnects while saving), F-06 (the watcher), F-13 without the test hook, and **F-15 with a share that really stops answering** (Claude's test only held the answer back after the write). Record ACL and attribute behaviour after `ReplaceFileW`.
+4. **A real logoff** (F-12), in a VM or with a second account: unsaved text, then log off. The program must block, ask, and keep the text. Then once with the page saved.
+5. **Release build:** P-05 (no developer tools, no "Inspect", no new windows or downloads) and X-03 (what the program writes, including the rescue folder).
+6. **Owner only** (do not try): X-01 (school server, no administrator rights), X-04 (a class), the school computer and its share.
 
 ## Part 3: documents
 
-Do SPECIFICATION, ARCHITECTURE, ACCEPTANCE and STATUS describe what the code does, and does STATUS claim nothing that was not measured?
-
-## Where the implementer is least sure
-
-* The page view over the interface view (two controllers, z-order, DPI): never seen on a screen.
-* `ReplaceFileW` and `ReadDirectoryChangesW` on the school's file server: unknown server; the watcher falls back to a scan on window activation.
-* Junctions inside the project folder (see above).
-* The reload of the page view after every pause in typing (flicker, scroll position with late pictures).
-* `HSE_TEST_HOOKS` must never reach pupils; it is a CMake option, default off.
-
-## What kind of review this is
-
-Own code, offline. The program shows pupils' own HTML files; its design goal is that they are only displayed (no scripts, no network). No third-party system is involved. The WebView2 SDK is a build dependency named in `dependencies.json`.
+Do SPECIFICATION, ARCHITECTURE, ACCEPTANCE and STATUS describe what alpha.11 does, and does STATUS claim anything that was not measured?
 
 ## Delivery
 
-1. A report in English with findings per part, each with severity, `file:line` and the requirement concerned (SPECIFICATION section or acceptance criterion); what was not reviewed.
-2. A verdict for stage 1: `READY TO BUILD`, `CHANGE BEFORE BUILD` or `REDESIGN`; and a recommendation on E1.
-3. Do not change the product on this branch. If anything is pushed: the repository publication check with no findings, and the ancestry check above.
+1. A report in English with findings per part. Give each finding a severity, `file:line`, the requirement concerned (SPECIFICATION section or acceptance criterion) and the smallest retest. List what was not reviewed or not measured.
+2. Two verdicts:
+   * PR #26: `READY TO MERGE`, `CHANGE BEFORE MERGE` or `REDESIGN`.
+   * Use with pupils' files: what is still missing.
+3. Do not change the product on this branch. Put the report and measurement notes on your review branch. If anything is pushed: the publication check of [RULES.md](../../RULES.md) with no findings, and the ancestry check above. Merging and releases are the owner's decision.
