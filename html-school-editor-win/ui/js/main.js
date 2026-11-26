@@ -9,10 +9,11 @@ import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './s
 const $ = (id) => document.getElementById(id);
 const els = {};
 for (const id of ['version', 'versionBottom', 'bProject', 'bProject2', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bUndo', 'bRedo', 'bFind', 'bPicture', 'bBrowser',
-  'docName', 'docState', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
+  'docName', 'docState', 'bRescue', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
   'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons']) els[id] = $(id);
 
 const PREVIEW_DELAY = 300;
+const RESCUE_AFTER = 3000;  // a save on its way this long offers a rescue copy
 const NEW_EOL = '\r\n';
 
 const host = window.chrome && window.chrome.webview;
@@ -22,12 +23,16 @@ const state = {
   project: null,        // { name, files: [{ path, kind }] }
   doc: null,            // { path, name, savedRaw, bom, eol, converted, base, breaks }; savedRaw: the text as read or last
                         // saved with every line break as in the file; base: its fingerprint; breaks: breaks.js
-  sending: null,        // save in progress: { id, raw, doc }; raw: the text as sent, with its own breaks
+  sending: null,        // save in progress: { id, raw, doc, long }; raw: the text as sent, with its own breaks;
+                        // long: on its way for RESCUE_AFTER or more
   afterSave: null,      // { what, action } to run once the save in progress has succeeded
   saveId: 0,
   opening: 0,           // op of the open or new page on its way (0: none); only its answer is taken
   picture: null,        // { op, doc } of the picture being chosen
   opId: 0,
+  picking: false,       // a system file dialog was asked for and has not closed yet (one at a time)
+  rescueId: 0,
+  rescuing: false,      // a rescue copy is on its way
   problems: [],
   missing: [],
   notesOpen: false,
@@ -59,8 +64,12 @@ function bytesOf(base64) {
 
 // Shows a modal question. `body`: text or a node; `buttons`: [{ label, value, primary }]. The value of the
 // pressed button is returned; Esc gives 'cancel'. While a dialog is open the page view is hidden, because
-// the native page view would otherwise cover it.
+// the native page view would otherwise cover it. A question that comes while another one is open (the
+// answer to a rescue copy and the answer to the save that hangs) waits until that one is closed.
 function ask(title, body, buttons, onOpen) {
+  if (els.dlg.open) {
+    return new Promise((resolve) => els.dlg.addEventListener('close', () => setTimeout(() => resolve(ask(title, body, buttons, onOpen)), 0), { once: true }));
+  }
   return new Promise((resolve) => {
     const d = els.dlg;
     els.dlgTitle.textContent = title;
@@ -125,10 +134,20 @@ async function whenSettled(what, action) {
 // Asks the core to open a page (`openFile`, `openDialog`, `newPage`). Only the answer to the latest
 // request is taken, and the code field is locked until it comes, so nothing typed meanwhile is replaced.
 function requestOpen(msg) {
+  if (msg.type === 'openDialog' && !startPicking()) return;
   const op = ++state.opId;
   state.opening = op;
   editor.setLocked(true);
   send({ ...msg, op });
+}
+
+// Only one system file dialog at a time: while one is asked for or open, the other dialog actions are
+// locked; the core's `dialogDone` (after confirming or cancelling) frees them again.
+function startPicking() {
+  if (state.picking) return false;
+  state.picking = true;
+  updateChrome();
+  return true;
 }
 
 function openingDone() {
@@ -157,11 +176,14 @@ function updateChrome() {
   document.title = (doc ? (d ? '● ' : '') + doc.name + ' – ' : '') + 'HTML-Schuleditor';
   els.bNew.disabled = !state.project;
   els.bSave.disabled = !doc || state.sending !== null;
-  els.bSaveAs.disabled = !doc || state.sending !== null;
+  els.bSaveAs.disabled = !doc || state.sending !== null || state.picking;
+  els.bProject.disabled = els.bProject2.disabled = els.bOpen.disabled = state.picking;
+  els.bRescue.hidden = !(doc && state.sending && state.sending.long && state.sending.doc === doc);
+  els.bRescue.disabled = state.rescuing;
   els.bUndo.disabled = !doc || !editor.canUndo();
   els.bRedo.disabled = !doc || !editor.canRedo();
   els.bFind.disabled = !doc;
-  els.bPicture.disabled = !doc;
+  els.bPicture.disabled = !doc || state.picking;
   els.bBrowser.disabled = !doc;
   els.welcome.hidden = !!doc;
   els.welcome.querySelector('strong').textContent = state.project ? 'Wähle links eine Seite oder lege eine neue an.' : 'Öffne zuerst deinen Projektordner.';
@@ -372,14 +394,17 @@ async function openedFile(msg) {
 // `base` lets the core write only over the file this page was read from; `createOnly` (Save As out of a
 // conflict) writes a new file and never replaces one.
 function startSave(type, createOnly) {
-  if (!state.doc || state.sending !== null) return;
+  if (!state.doc || state.sending !== null || (type === 'saveAs' && state.picking)) return;
   const raw = editor.raw, bytes = (state.doc.bom ? '\ufeff' : '') + raw;
   if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
     tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
     return;
   }
+  if (type === 'saveAs') startPicking();
   const id = ++state.saveId;
-  state.sending = { id, raw, doc: state.doc };
+  state.sending = { id, raw, doc: state.doc, long: false };
+  // A save that takes long (a network drive that does not answer) offers a rescue copy on this computer.
+  setTimeout(() => { if (state.sending && state.sending.id === id) { state.sending.long = true; updateChrome(); } }, RESCUE_AFTER);
   send({ type, id, path: state.doc.path, text: bytes, base: state.doc.base, ...(createOnly ? { createOnly: true } : {}) });
   updateChrome();
 }
@@ -432,6 +457,34 @@ async function saveProblem(msg) {
   }
   setStatus('Nicht gespeichert: ' + (msg.message || 'unbekannter Fehler'), true);
   tell('Speichern hat nicht geklappt', (msg.message || 'Die Datei konnte nicht geschrieben werden.') + ' Deine Seite ist noch hier im Editor. Versuche es noch einmal oder speichere unter einem neuen Namen.');
+}
+
+// A rescue copy while a save hangs: the text in the editor now, with its BOM and every line break, goes to a
+// new file on this computer. The save on its way and the saved state of the page stay as they are.
+function rescue() {
+  if (!state.doc || state.rescuing) return;
+  const bytes = (state.doc.bom ? '\ufeff' : '') + editor.raw;
+  state.rescuing = true;
+  send({ type: 'rescue', id: ++state.rescueId, path: state.doc.path, text: bytes });
+  setStatus('Rettungskopie wird gespeichert …');
+  updateChrome();
+}
+
+function rescued(msg) {
+  if (msg.id !== state.rescueId) return;
+  state.rescuing = false;
+  updateChrome();
+  if (msg.type === 'rescued') {
+    setStatus('Rettungskopie: ' + msg.path);
+    const where = paragraph(msg.path, 'path');
+    tell('Rettungskopie gespeichert', [
+      paragraph('Dein Text liegt jetzt zusätzlich auf diesem Computer:'), where,
+      paragraph(state.sending ? 'Die Seite selbst ist noch nicht gespeichert. Der Editor versucht es weiter.' : 'Die Seite selbst ist davon nicht betroffen.'),
+    ]);
+  } else {
+    setStatus('Rettungskopie nicht gespeichert: ' + (msg.message || ''), true);
+    tell('Rettungskopie hat nicht geklappt', (msg.message || 'Die Datei konnte nicht geschrieben werden.') + ' Deine Seite ist noch hier im Editor.');
+  }
 }
 
 // ---------------------------------------------------------------- new page, pictures, browser
@@ -514,7 +567,7 @@ els.bFindClose.addEventListener('click', closeFind);
 
 // ---------------------------------------------------------------- buttons and keys
 
-const openProject = () => whenSettled('du einen anderen Projektordner öffnest', () => send({ type: 'openProject' }));
+const openProject = () => whenSettled('du einen anderen Projektordner öffnest', () => { if (startPicking()) send({ type: 'openProject' }); });
 els.bProject.addEventListener('click', openProject);
 els.bProject2.addEventListener('click', openProject);
 els.bOpen.addEventListener('click', () => whenSettled('du eine andere Seite öffnest', () => requestOpen({ type: 'openDialog' })));
@@ -525,12 +578,13 @@ els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
 els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
 els.bFind.addEventListener('click', openFind);
 els.bPicture.addEventListener('click', () => {
-  if (!state.doc || editor.locked) return;
+  if (!state.doc || editor.locked || !startPicking()) return;
   const op = ++state.opId;
   state.picture = { op, doc: state.doc };
   send({ type: 'pickPicture', op, page: state.doc.path });
 });
 els.bBrowser.addEventListener('click', viewInBrowser);
+els.bRescue.addEventListener('click', rescue);
 
 addEventListener('keydown', (e) => {
   if (state.modal) return;
@@ -595,6 +649,9 @@ const handlers = {
     state.missing = m.items || [];
     renderNotes();
   },
+  dialogDone() { state.picking = false; updateChrome(); },
+  rescued,
+  rescueFailed: rescued,
   saved,
   conflict: saveProblem,
   saveFailed: saveProblem,

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(HtmlSchoolEditorWin VERSION 0.1.0 LANGUAGES CXX)
 
 # The full version with its pre-release label; every exe that leaves the repository has its own.
-set(HSE_VERSION "0.1.0-alpha.10")
+set(HSE_VERSION "0.1.0-alpha.11")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

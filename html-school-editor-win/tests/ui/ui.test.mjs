@@ -415,6 +415,7 @@ test('saving: the base of the open page goes with every save; out of a conflict 
   await ui.answer('dialog button.primary');
   assert.equal((await ui.last('saveAs')).createOnly, true, 'the way out of a conflict never replaces a file');
   await ui.reply({ type: 'saveCancelled' });
+  await ui.deliver({ type: 'dialogDone' });  // the core after every save dialog
   await ui.page.click('#bSaveAs');
   assert.equal((await ui.last('saveAs')).createOnly, undefined, 'an ordinary save as may replace after the question of the dialog');
   await ui.reply({ type: 'saveCancelled' });
@@ -608,4 +609,67 @@ test('a new project folder closes the open page; shortcuts from the page view re
   await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').pop().visible === false);
   await ui.deliver({ type: 'missing', path: 'index.html', items: [{ address: 'x.png', reason: 'error', message: 'Die Verbindung zum Netzlaufwerk ist unterbrochen.' }] });
   assert.equal(await ui.page.isHidden('#notes'), true, 'no page, no notes');
+});
+
+test('one file dialog at a time: further dialog actions wait until the dialog is confirmed or cancelled', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  await ui.page.dblclick('#bOpen');
+  assert.equal(await ui.count('openDialog'), 1, 'a double click asks for one dialog');
+  for (const id of ['#bOpen', '#bProject', '#bSaveAs', '#bPicture']) assert.equal(await ui.page.isDisabled(id), true, id + ' locked while the dialog is open');
+  await ui.page.keyboard.press('Control+Shift+s');
+  assert.equal(await ui.count('saveAs'), 0, 'no save as while the dialog is open');
+  await ui.deliver({ type: 'openFailed', op: (await ui.last('openDialog')).op });  // cancelled
+  assert.equal(await ui.page.isDisabled('#bOpen'), true, 'still locked until the core says the dialog closed');
+  await ui.deliver({ type: 'dialogDone' });
+  assert.equal(await ui.page.isEnabled('#bOpen'), true, 'free again after cancelling');
+  await ui.page.click('#bPicture');
+  await ui.page.click('#bProject', { force: true });
+  assert.equal(await ui.count('pickPicture'), 1);
+  assert.equal(await ui.count('openProject'), 0, 'no folder dialog while the picture dialog is open');
+  await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' });  // confirmed
+  assert.equal(await ui.page.isDisabled('#bPicture'), true);
+  await ui.deliver({ type: 'dialogDone' });
+  await ui.page.click('#bPicture');
+  assert.equal(await ui.count('pickPicture'), 2, 'free again after confirming');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('rescue copy: while a save hangs, the text with BOM and line breaks goes to a local file; the saved state is kept', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const mixed = '<p>a</p>\r\n<p>b</p>\n<p>c</p>\r<p>d</p>\r\n';
+  await ui.opened({ type: 'opened', path: 'seiten/tiere.html', name: 'tiere.html', data: b64([...BOM, ...Buffer.from(mixed)]) });
+  await ui.page.click('#src');
+  await ui.page.keyboard.press('Control+End');
+  await ui.page.keyboard.type('x');
+  await ui.page.keyboard.press('Control+s');
+  assert.equal(await ui.page.isHidden('#bRescue'), true, 'not offered for a save that has just started');
+  await ui.page.keyboard.type('y');
+  await ui.page.waitForSelector('#bRescue', { state: 'visible', timeout: 5000 });
+  await ui.page.click('#bRescue');
+  const r = await ui.last('rescue');
+  assert.equal(r.path, 'seiten/tiere.html');
+  assert.equal(r.text, '\ufeff' + mixed + 'xy', 'BOM, every line break and the text typed during the save');
+  assert.equal(await ui.page.isDisabled('#bRescue'), true, 'one rescue copy at a time');
+  assert.equal(await ui.page.textContent('#docState'), 'wird gespeichert …');
+  const where = String.raw`L:\Profil\HtmlSchoolEditor\Rettungskopien\tiere_2026-11-26_10-00-00.html`;  // as the core reports it
+  await ui.deliver({ type: 'rescued', id: r.id, path: where });
+  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
+  assert.match(await ui.page.textContent('#dlgBody'), /Rettungskopien\\tiere_2026-11-26_10-00-00\.html.*noch nicht gespeichert/s);
+  assert.match(await ui.page.textContent('#status'), /Rettungskopie: L:\\Profil\\HtmlSchoolEditor/);
+  assert.equal(await ui.page.textContent('#docState'), 'wird gespeichert …', 'the original is still on its way');
+  // the save fails while the rescue dialog is open: its question waits instead of being lost
+  await ui.reply({ type: 'saveFailed', message: 'Das Netzlaufwerk antwortet nicht.' });
+  await ui.answer('#dlg button[value="ok"]');
+  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
+  assert.match(await ui.page.textContent('#dlgTitle'), /Speichern hat nicht geklappt/);
+  await ui.answer('#dlg button[value="ok"]');
+  assert.equal(await ui.page.textContent('#docState'), 'nicht gespeichert', 'the original stays unsaved');
+  assert.equal(await ui.page.isHidden('#bRescue'), true, 'no save on its way, no rescue offer');
+  await ui.page.keyboard.press('Control+s');
+  const s = await ui.last('save');
+  assert.equal(s.text, '\ufeff' + mixed + 'xy', 'the next save writes the same bytes');
+  assert.deepEqual(ui.errors, []);
 });

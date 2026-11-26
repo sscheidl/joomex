@@ -56,6 +56,9 @@ private:
     void pickPicture(const Segments& page, double op);
     void copyPicture(const std::string& token, const Segments& page, double op);
     void viewInBrowser(const Segments& segs);
+    void rescue(const Segments& page, std::string bytes, double id);
+    bool claimDialog(const Json& m);
+    void endDialog();
 
     // page view
     void showPreview(const Segments& segs, std::string text);
@@ -84,6 +87,9 @@ private:
     bool runningWindowTask_ = false;
     FileWorkers fileWorkers_{2, 32};
     FileWorkers previewWorkers_{4, 96};
+    // Rescue copies go to the local disk on their own thread, so a hanging network drive that holds every
+    // file worker cannot stop them.
+    FileWorkers rescueWorkers_{1, 4};
 
     ComPtr<ICoreWebView2Environment> env_;
     ComPtr<ICoreWebView2Controller> uiController_;
@@ -107,6 +113,8 @@ private:
     UINT64 scanGen_ = 0;
     std::map<std::string, std::wstring> pictureTokens_;  // pictures outside the project waiting for a copy
     bool busy_ = false;                                  // a save runs on a worker thread
+    bool dialogBusy_ = false;                            // a file dialog was asked for and has not closed yet
+    double openOp_ = 0;                                  // the latest request to open a page (openDialog, openFile, newPage)
 
     // page view
     Segments pvSegs_;

@@ -193,6 +193,12 @@ std::wstring rootOf(const std::shared_ptr<ProjectBoundary>& bound) { return boun
 // A file chosen in a system dialog lies in the project only if its place is below the project folder and
 // it also resolves inside it (a junction in the folder may lead elsewhere). Worker threads only.
 std::optional<Segments> projectSegmentsOf(const std::shared_ptr<ProjectBoundary>& bound, const std::wstring& file) {
+#ifdef HSE_TEST_HOOKS
+    // Test build only: a chosen file on a slow network drive, so a late answer can be tested.
+    wchar_t delay[16]{};
+    const DWORD n = GetEnvironmentVariableW(L"HSE_TEST_PICK_DELAY_MS", delay, 16);
+    if (n && n < 16) Sleep(static_cast<DWORD>(std::clamp(_wtoi(delay), 0, 15000)));
+#endif
     if (!bound) return std::nullopt;
     auto segs = segmentsBelow(bound->root(), file);
     if (!segs) return std::nullopt;
@@ -201,6 +207,16 @@ std::optional<Segments> projectSegmentsOf(const std::shared_ptr<ProjectBoundary>
     if (!final || rootFinal.empty() || !within(rootFinal, *final)) return std::nullopt;
     return segs;
 }
+
+// The requests that open a system file dialog. One window shows one at a time (App::claimDialog).
+bool opensDialog(const std::string& type) {
+    return type == "openProject" || type == "openDialog" || type == "saveAs" || type == "pickPicture";
+}
+
+struct AtExit {
+    std::function<void()> run;
+    ~AtExit() { if (run) run(); }
+};
 
 }  // namespace
 
@@ -382,6 +398,7 @@ void App::shutdown() {
     watcher_.requestStop();
     previewWorkers_.stop();
     fileWorkers_.stop();
+    rescueWorkers_.stop();
     finishPreviewRequests();
     if (pvController_) pvController_->Close();
     if (uiController_) uiController_->Close();
@@ -541,7 +558,7 @@ void App::createUi() {
                     LPWSTR json = nullptr;
                     if (FAILED(a->get_WebMessageAsJson(&json))) return S_OK;
                     auto m = Json::parse(toUtf8(take(json)));
-                    if (m && m->isObject()) runLater([this, message = std::move(*m)] { onUiMessage(message); });
+                    if (m && m->isObject() && claimDialog(*m)) runLater([this, message = std::move(*m)] { onUiMessage(message); });
                     return S_OK;
                 }).Get(), &t);
             layoutUi();
@@ -679,8 +696,32 @@ std::optional<Segments> App::pathSegments(const std::string& path) const {
     return checked;
 }
 
+// One file dialog per window. The request is claimed when it arrives, before it waits in the window queue:
+// a second dialog request (a double click, or a click queued while the first dialog is open) is refused
+// at once instead of opening a second dialog after the first. The claim ends when the dialog has closed,
+// confirmed or cancelled (endDialog).
+bool App::claimDialog(const Json& m) {
+    const std::string& type = m.at("type").str();
+    if (!opensDialog(type)) return true;
+    if (!dialogBusy_) {
+        dialogBusy_ = true;
+        return true;
+    }
+    if (type == "openDialog") postOpenFailed(m.at("op").num());
+    else if (type == "saveAs") post(Json::object().set("type", "saveCancelled").set("id", m.at("id").num()));
+    return false;
+}
+
+void App::endDialog() {
+    dialogBusy_ = false;
+    post(Json::object().set("type", "dialogDone"));
+}
+
 void App::onUiMessage(const Json& m) {
     const std::string& type = m.at("type").str();
+    // A dialog request ends its claim when this handler returns, whichever way it returns.
+    AtExit dialogDone{opensDialog(type) ? std::function<void()>([this] { endDialog(); }) : std::function<void()>()};
+    if (type == "openDialog" || type == "openFile" || type == "newPage") openOp_ = m.at("op").num();
     if (type == "ready") {
         if (uiReady_) return;
         uiReady_ = true;
@@ -732,7 +773,9 @@ void App::onUiMessage(const Json& m) {
         if (!fileWorkers_.submit([this, f, bound, gen, op]() {
             auto segs = projectSegmentsOf(bound, f);
             runLater([this, f, gen, op, segs = std::move(segs)]() {
-                if (gen != projectGen_) { postOpenFailed(op); return; }
+                // Another project folder or another page was asked for meanwhile: this late choice must not
+                // switch the project folder, which would close the page open now with what was typed in it.
+                if (gen != projectGen_ || op != openOp_) { postOpenFailed(op); return; }
                 if (segs) { openFile(*segs, op); return; }
                 setProject(parentOf(f), true, [this, f, op]() {
                     if (const auto s = segmentsBelow(root_, f)) openFile(*s, op);
@@ -765,6 +808,10 @@ void App::onUiMessage(const Json& m) {
         if (const auto segs = pathSegments(m.at("page").str())) copyPicture(m.at("token").str(), *segs, m.at("op").num());
     } else if (type == "viewInBrowser") {
         if (const auto segs = pathSegments(m.at("path").str())) viewInBrowser(*segs);
+    } else if (type == "rescue") {
+        const double id = m.at("id").num();
+        if (const auto segs = pathSegments(m.at("path").str())) rescue(*segs, m.at("text").str(), id);
+        else post(Json::object().set("type", "rescueFailed").set("id", id).set("message", "Der Dateiname ist ungültig."));
     } else if (type == "unsaved") {
         unsaved_ = m.at("value").boolean();
         if (!unsaved_ && endBlocked_) endBlocked_ = !ShutdownBlockReasonDestroy(window_);
@@ -1032,6 +1079,42 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
             rescan("Bild kopiert nach bilder/" + name);
         });
     }, true)) postError("Das Bild konnte nicht kopiert werden", kWorkersBusy);
+}
+
+// A rescue copy of the text in the editor while a save hangs (for example on a network drive that does not
+// answer). It goes to the local disk, %LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien, under a new name with
+// the date and time, on its own worker: neither the project folder nor the file workers are touched, and
+// the save that hangs goes on as before. `bytes` are the file bytes as a save would write them (BOM and
+// every line break as in the editor).
+void App::rescue(const Segments& page, std::string bytes, double id) {
+    if (bytes.size() > kMaxPageBytes) {
+        post(Json::object().set("type", "rescueFailed").set("id", id).set("message", "Die Seite ist größer als 5 MB."));
+        return;
+    }
+    std::wstring stem = toWide(page.back()), extension = L".html";
+    if (const auto dot = stem.rfind(L'.'); dot != std::wstring::npos && dot > 0) {
+        extension = stem.substr(dot);
+        stem.resize(dot);
+    }
+    if (!rescueWorkers_.submit([this, stem, extension, id, bytes = std::move(bytes)]() {
+        const std::wstring folder = localDataFolder(L"Rettungskopien");
+        SYSTEMTIME t;
+        GetLocalTime(&t);
+        wchar_t stamp[32];
+        swprintf_s(stamp, L"%04u-%02u-%02u_%02u-%02u-%02u", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+        std::wstring path;
+        WriteResult w;
+        for (int i = 1; i <= 50; ++i) {
+            path = folder + L"\\" + stem + L"_" + stamp + (i > 1 ? L"_" + std::to_wstring(i) : std::wstring()) + extension;
+            w = createFileAtomic(path, bytes);
+            if (w.error != ERROR_FILE_EXISTS) break;
+        }
+        Json answer = w.error == ERROR_SUCCESS ? Json::object().set("type", "rescued").set("path", toUtf8(path))
+                                               : Json::object().set("type", "rescueFailed").set("message", errorText(w.error));
+        runLater([this, id, answer = std::move(answer)]() mutable { post(answer.set("id", id)); });
+    }, true)) {
+        post(Json::object().set("type", "rescueFailed").set("id", id).set("message", kWorkersBusy));
+    }
 }
 
 void App::viewInBrowser(const Segments& segs) {

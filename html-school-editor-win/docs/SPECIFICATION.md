@@ -63,6 +63,7 @@ The new program loads the page from its real place on disk. A relative address i
 * Before writing, the program checks that the file on disk is still what it last read or wrote. If another program or a second window changed it, nothing is overwritten; the pupil can save a new file or cancel.
 * Writing is atomic: a temporary file in the same folder, then replace. A failed write leaves the old file intact and says so in plain words.
 * Closing the program or the page with unsaved changes asks first. No autosave in stage 1.
+* While a save hangs (for example on a network drive that does not answer) the top bar offers "Rettungskopie speichern" (owner's decision of 2026-11-26). It writes the text in the editor, with its BOM and every line break, to a new file on the local disk (`%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, name with date and time) and shows the path. The page itself keeps its state ("wird gespeichert …", then saved or not saved); the copy changes nothing about it.
 
 ### 3.6 User interface
 
@@ -90,7 +91,7 @@ The new program loads the page from its real place on disk. A relative address i
 * No network access by the program or the page view: all requests that do not go to the project folder or the program's own resources are refused.
 * Page scripts off; no new windows, downloads, permission prompts (camera, location, notifications), developer tools or context-menu entries such as "Inspect" in the release build.
 * No telemetry of the program. WebView2 diagnostic data follows the Windows settings of the computer; this is documented.
-* The program does not store pupils' pages anywhere except where the pupil saves them.
+* The program does not store pupils' pages anywhere except where the pupil saves them, and a rescue copy the pupil asks for while a save hangs (3.5). Rescue copies stay in the local profile of that computer until someone deletes them; the program deletes none.
 
 ## 7. Open questions
 

@@ -40,6 +40,8 @@
 | F-11 | With a preview read held in a test build, close a saved document. The window closes and the process exits cleanly after the worker returns. Repeat with a save in flight and verify that work accepted for writing and the prompt for later unsaved text are preserved. |
 | F-12 | With unsaved text, or a save on its way, a logoff or shutdown query (`WM_QUERYENDSESSION`) is refused with the reason "Eine Seite ist noch nicht gespeichert." and the question for unsaved text appears. With the page saved, the query is allowed. |
 | F-13 | With the project folder resolving slowly (test build, `HSE_TEST_RESOLVE_DELAY_MS=5000`), the window answers within 1 s throughout and the page opens. Resolving the project folder and checking files for opening, saving, pictures, the page view and "Im Browser ansehen" run on worker threads. |
+| F-14 | **A late page choice.** The answer to "Seite öffnen …" is held back (test build, `HSE_TEST_PICK_DELAY_MS`), a file outside the project is chosen, another page B is opened from the list meanwhile and text is typed into it. When the late answer comes, the project folder stays, and B with the typed text stays open. |
+| F-15 | **Rescue copy.** With a save that hangs for 3 s or more, "Rettungskopie speichern" writes the text in the editor (BOM and every line break) to a new local file, also while every file worker waits for the network drive; the path is shown, and the page keeps "wird gespeichert …" and afterwards its own saved state. |
 | F-02 | Changed on disk by another program after opening: "Speichern" writes nothing and offers a new file or cancel. |
 | F-03 | A failed write (read-only file, full disk, lost network drive) keeps the old file intact and says so. |
 | F-04 | Closing with unsaved changes asks; "Abbrechen" keeps the program open with the text. |
@@ -52,7 +54,8 @@
 | --- | --- |
 | X-01 | Starts from a folder on the school server and from a local folder without administrator rights and without installation (owner's hand test on a school computer). |
 | X-02 | Without the WebView2 runtime the program says so in German and exits cleanly. |
-| X-03 | The program writes nothing next to the exe and nothing outside `%LOCALAPPDATA%`, `HKCU` and the files the pupil saves. |
+| X-03 | The program writes nothing next to the exe and nothing outside `%LOCALAPPDATA%`, `HKCU` and the files the pupil saves. Rescue copies (F-15) go to `%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`. |
 | X-04 | User interface texts are German and understandable for 12-year-olds (hand check with a class). |
 | X-05 | Third-party components are listed with version, licence, source and SHA-256; the release zip passes the publication check with `--zip`. |
+| X-07 | **One file dialog per window.** Two quick dialog requests (a double click, or two requests sent at once) open one dialog; after it is cancelled or confirmed no second dialog appears, and the dialog actions work again. |
 | X-06 | Open and cancel the four system dialogs for project folder, page, picture and Save As. The current source stays intact and the controls remain usable. Accept valid choices in a second run and check the returned path and operation. |

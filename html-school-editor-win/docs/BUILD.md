@@ -47,6 +47,8 @@ Use `HSE_TEST_PREVIEW_DELAY_MS=2400` in a test build to hold preview asset repli
 
 Use `HSE_TEST_RESOLVE_DELAY_MS=5000` in a test build to make resolving the project folder slow, as on a network drive, and check that the window keeps answering (F-13).
 
+Use `HSE_TEST_PICK_DELAY_MS=6000` in a test build to hold back the check of a file chosen in the page or picture dialog, so a late answer can be tested (F-14).
+
 ## Tests without Windows
 
 The portable core and the user interface can be tested on any computer:
