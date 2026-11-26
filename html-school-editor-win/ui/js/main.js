@@ -38,7 +38,7 @@ const state = {
   notesOpen: false,
   modal: 0,             // 1 while a question is open or waiting
   closePending: false,  // a close request came while a question was open
-  seen: 0,              // `seq` of the latest page the core handed over that this interface has handled
+  seen: 0,              // highest `seq` of a page the core handed over that this interface has handled
   previewTimer: 0,
 };
 
@@ -175,13 +175,18 @@ function openingDone() {
 
 // The core is told whether text could be lost (unsaved, or a save still on its way), so that logging off
 // or shutting Windows down asks first instead of ending the program (WM_QUERYENDSESSION).
-// `seen` tells the core which page it handed over this report already takes into account.
+// `seen` tells the core up to which page it handed over this report takes everything into account. A page
+// still being handled (for example while the question about its encoding is open) holds `seen` below its
+// `seq`, so the core keeps counting a page as open until it has been taken or refused.
+const handling = new Set();
+const seenNow = () => (handling.size ? Math.min(...handling) - 1 : state.seen);
 let lastUnsaved = '';
 function reportUnsaved(unsaved, open) {
-  const key = unsaved + '/' + open + '/' + state.seen;
+  const seen = seenNow();
+  const key = unsaved + '/' + open + '/' + seen;
   if (key === lastUnsaved) return;
   lastUnsaved = key;
-  send({ type: 'unsaved', value: unsaved, open, seen: state.seen });
+  send({ type: 'unsaved', value: unsaved, open, seen });
 }
 
 function updateChrome() {
@@ -665,8 +670,13 @@ const handlers = {
   // Every page handed over is acknowledged once it is handled, also if it is not taken (an older request,
   // a refused file), so the core knows whether a page is open.
   async opened(m) {
-    state.seen = Math.max(state.seen, m.seq || 0);
-    try { await openedFile(m); } finally { updateChrome(); }
+    const seq = m.seq || 0;
+    handling.add(seq);
+    try { await openedFile(m); } finally {
+      handling.delete(seq);
+      state.seen = Math.max(state.seen, seq);
+      updateChrome();
+    }
   },
   openFailed(m) {
     if (!m.op || m.op !== state.opening) return;

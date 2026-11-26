@@ -753,3 +753,35 @@ test('every page the core hands over is acknowledged, also one that is not taken
   assert.equal(await ui.page.textContent('#docName'), 'erste.html');
   assert.deepEqual(ui.errors, []);
 });
+
+test('a page is acknowledged only once it is taken or refused (encoding question, project refresh, two handovers)', async () => {
+  const cp1252 = [0x3c, 0x70, 0x3e, 0xe4, 0x3c, 0x2f, 0x70, 0x3e, 0x0d, 0x0a];  // <p>ä</p> in Windows-1252
+  const seen = async () => (await ui.last('unsaved')).seen;
+  let ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.page.click('#files li[data-path="index.html"]');
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(cp1252) });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /Zeichenkodierung/);
+  // the project list is refreshed while the question is open: the page is still being handled
+  await ui.deliver({ ...PROJECT, files: [...PROJECT.files, { path: 'neu.html', kind: 'page' }] });
+  // a second handover (an answer to an older request) arrives meanwhile
+  await ui.deliver({ type: 'opened', seq: 2, op: 999, path: 'seiten/tiere.html', name: 'tiere.html', base: '1-0000000000000000', data: b64(Buffer.from(PAGE)) });
+  await ui.page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
+  assert.ok((await seen()) < 1, 'nothing acknowledged while the first page waits for its question');
+  await ui.answer('#dlg button[value="convert"]');
+  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'unsaved').pop().seen === 2);
+  assert.deepEqual([(await ui.last('unsaved')).open, await ui.text()], [true, '<p>ä</p>\n'], 'taken: open, both acknowledged');
+  // cancelled: acknowledged with no page open
+  ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.page.click('#files li[data-path="index.html"]');
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(cp1252) });
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.deliver(PROJECT);
+  assert.ok((await seen()) < 1);
+  await ui.answer('#dlg button[value="cancel"]');
+  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'unsaved').pop().seen === 1);
+  assert.equal((await ui.last('unsaved')).open, false, 'refused: no page');
+  assert.deepEqual(ui.errors, []);
+});
