@@ -76,7 +76,7 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | `layout` {visible, x, y, w, h} | where the page view lies, in device pixels; hidden while a dialog is open | — |
 | `preview` {path, text} | the current, unsaved text, after a pause in typing | `missing` {path, items} after the page view has loaded |
 | `openProject` | choose a folder | `projectChanged`, `project` {name, files} |
-| `openDialog` {op}, `openFile` {op, path} | open a page with the dialog (a page outside the project opens its folder as the project) or from the list | `opened` {op, path, name, base, data (base64)}, `openFailed` {op, title?, message?} (no title: cancelled or out of date) |
+| `openDialog` {op}, `openFile` {op, path} | open a page with the dialog (a page outside the project opens its folder as the project) or from the list | `opened` {op, seq, path, name, base, data (base64)} (`seq` counts the pages handed over), `openFailed` {op, title?, message?} (no title: cancelled or out of date) |
 | `newPage` {op, path, text} | create a page that must not exist yet | `opened` {op, …}, `openFailed` {op, title, message} |
 | `save` {id, path, text, base} | write the encoded text (BOM and every line break as read) over the file the page was read from | `saved` {id, base}, `conflict` {id, kind: changed \| deleted}, `saveFailed` {id, message} |
 | `saveAs` {id, path, text, base, createOnly?} | save dialog in the folder of the page; only inside the project. `createOnly` (the way out of a conflict): no overwrite question, an existing file is refused | `saved` {id, base, path, name}, `saveFailed` {id, message}, `saveCancelled` {id} |
@@ -84,7 +84,7 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | `viewInBrowser` {path} | open the saved file in the standard browser | — |
 | `closeOk` | the window may close (answer to `closeRequest`) | — |
 | `rescue` {id, path, text} | while a save hangs: write the encoded text to a new local file (`%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, `<name>_<date>_<time>.html`, the name cut to 60 characters), on its own worker, without the project folder. No other place: if that folder cannot be used, the copy fails | `rescued` {id, page, path (full local path)}, `rescueFailed` {id, page, message} |
-| `unsaved` {value, open} | whether text could be lost (unsaved, or a save on its way) and whether a page is open; sent when either changes and taken by the core at once, not through the window queue. While a page is open the core refuses a logoff or shutdown query with a reason and sends `closeRequest` (the latest report may still be on its way) | — |
+| `unsaved` {value, open, seen} | whether text could be lost (unsaved, or a save on its way), whether a page is open, and the `seq` of the latest `opened` the interface has handled (taken or not); sent when any of them changes and taken by the core at once, not through the window queue. A page counts as open for the core from the moment it sends `opened`; a report of "no page" counts only if its `seen` is that page's `seq`. While a page is open the core refuses a logoff or shutdown query with a reason and sends `closeRequest` | — |
 
 Rules that keep a pupil's work (`ui/js/main.js`, `src/win/app.cpp`):
 

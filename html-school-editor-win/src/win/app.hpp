@@ -61,6 +61,7 @@ private:
     void refuseDialog(const Json& m);
     void endDialog();
     void noteUnsaved(const Json& m);
+    void postOpened(Json m);
 
     // page view
     void showPreview(const Segments& segs, std::string text);
@@ -107,7 +108,8 @@ private:
     std::wstring root_;
     std::shared_ptr<ProjectBoundary> boundary_;          // root_ as the file system resolves it; one per project folder
     bool unsaved_ = false;                               // the interface holds text that could be lost
-    bool pageOpen_ = false;                              // the interface has a page open
+    bool pageOpen_ = false;                              // the interface has, or may have, a page open
+    double delivered_ = 0;                               // counts pages handed to the interface (`opened`)
     bool endBlocked_ = false;                            // a shutdown block reason is set
     FolderWatcher watcher_;
     bool scanPending_ = false;

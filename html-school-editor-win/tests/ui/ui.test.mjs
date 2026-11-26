@@ -723,3 +723,33 @@ test('questions take turns: an answer is never taken by the next question', asyn
   await ui.answer('#dlg button[value="ok"]');
   assert.deepEqual(ui.errors, []);
 });
+
+test('every page the core hands over is acknowledged, also one that is not taken (logoff right after opening)', async () => {
+  const ui = await openUi(browser);
+  const report = async () => { const m = await ui.last('unsaved'); return [m.value, m.open, m.seen]; };
+  await ui.deliver(PROJECT);
+  await ui.page.click('#files li[data-path="index.html"]');
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  assert.deepEqual(await report(), [false, true, 1], 'the first page: open, and seen');
+  // an answer to an older request is not taken, but acknowledged
+  await ui.deliver({ type: 'opened', seq: 2, op: 999, path: 'seiten/tiere.html', name: 'tiere.html', base: '1-0000000000000000', data: b64(Buffer.from(PAGE)) });
+  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'unsaved').pop().seen === 2);
+  assert.deepEqual(await report(), [false, true, 2]);
+  assert.equal(await ui.page.textContent('#docName'), 'index.html');
+  // a new page as the first page of another project
+  await ui.deliver({ type: 'projectChanged', name: 'anderes' });
+  assert.deepEqual(await report(), [false, false, 2], 'no page after the change');
+  await ui.deliver({ ...PROJECT, name: 'anderes' });
+  await ui.page.click('#bNew');
+  await ui.page.fill('#npName', 'erste');
+  await ui.answer('#dlg button[value="ok"]');
+  await ui.opened({ type: 'opened', seq: 3, path: 'erste.html', name: 'erste.html', data: b64(Buffer.from('<p>neu</p>')) });
+  assert.deepEqual(await report(), [false, true, 3]);
+  // a page that is refused (too large) is acknowledged with the page open before it
+  await ui.page.click('#files li[data-path="index.html"]');
+  await ui.opened({ type: 'opened', seq: 4, path: 'index.html', name: 'index.html', data: b64(Buffer.alloc(5 * 1024 * 1024 + 1, 0x61)) });
+  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'unsaved').pop().seen === 4);
+  assert.deepEqual(await report(), [false, true, 4]);
+  assert.equal(await ui.page.textContent('#docName'), 'erste.html');
+  assert.deepEqual(ui.errors, []);
+});

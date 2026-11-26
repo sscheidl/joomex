@@ -735,9 +735,19 @@ void App::refuseDialog(const Json& m) {
     else if (type == "saveAs") post(Json::object().set("type", "saveCancelled").set("id", m.at("id").num()));
 }
 
+// A page counts as open from the moment the core hands it over, before the interface reports it: a logoff
+// query in between must not find "no page". A report of "no page" counts only once the interface has
+// handled the latest page handed over (`seen`), whether it opened it or not.
+void App::postOpened(Json m) {
+    pageOpen_ = true;
+    post(m.set("seq", ++delivered_));
+}
+
 void App::noteUnsaved(const Json& m) {
     unsaved_ = m.at("value").boolean();
-    pageOpen_ = m.at("open").boolean();
+    const bool open = m.at("open").boolean();
+    if (m.at("seen").num() >= delivered_) pageOpen_ = open;
+    else if (open) pageOpen_ = true;
     if (!unsaved_ && endBlocked_) endBlocked_ = !ShutdownBlockReasonDestroy(window_);
 }
 
@@ -919,8 +929,8 @@ void App::openFile(const Segments& segs, double op) {
                 postOpenFailed(op, "Die Seite kann nicht geöffnet werden", errorText(r.error));
                 return;
             }
-            post(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
-                     .set("base", fingerprintText(fingerprintOf(r.bytes))).set("data", base64Encode(r.bytes)));
+            postOpened(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
+                           .set("base", fingerprintText(fingerprintOf(r.bytes))).set("data", base64Encode(r.bytes)));
         });
     })) postOpenFailed(op, "Die Seite kann gerade nicht geöffnet werden", kWorkersBusy);
 }
@@ -1039,8 +1049,8 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
                 postOpenFailed(op, "Die Seite konnte nicht angelegt werden", errorText(e));
                 return;
             }
-            post(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
-                     .set("base", fingerprintText(fingerprintOf(bytes))).set("data", base64Encode(bytes)));
+            postOpened(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
+                           .set("base", fingerprintText(fingerprintOf(bytes))).set("data", base64Encode(bytes)));
             rescan("Neue Seite angelegt: " + joinSegments(segs));
         });
     }, true)) postOpenFailed(op, "Die Seite konnte nicht angelegt werden", kWorkersBusy);
@@ -1122,7 +1132,8 @@ void App::rescue(const Segments& page, std::string bytes, double id) {
         extension = stem.substr(dot);
         stem.resize(dot);
     }
-    if (stem.size() > 60) stem.resize(60);  // the name gains date and time; keep it well inside the path limit
+    // The name gains date and time; keep it well inside the path limit, without cutting a character in two.
+    if (stem.size() > 60) stem.resize(IS_HIGH_SURROGATE(stem[59]) ? 59 : 60);
     if (extension.size() > 8) extension = L".html";
     const std::string pagePath = joinSegments(page);
     if (!rescueWorkers_.submit([this, stem, extension, id, pagePath, bytes = std::move(bytes)]() {

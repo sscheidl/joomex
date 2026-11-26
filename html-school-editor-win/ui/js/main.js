@@ -38,6 +38,7 @@ const state = {
   notesOpen: false,
   modal: 0,             // 1 while a question is open or waiting
   closePending: false,  // a close request came while a question was open
+  seen: 0,              // `seq` of the latest page the core handed over that this interface has handled
   previewTimer: 0,
 };
 
@@ -174,12 +175,13 @@ function openingDone() {
 
 // The core is told whether text could be lost (unsaved, or a save still on its way), so that logging off
 // or shutting Windows down asks first instead of ending the program (WM_QUERYENDSESSION).
+// `seen` tells the core which page it handed over this report already takes into account.
 let lastUnsaved = '';
 function reportUnsaved(unsaved, open) {
-  const key = unsaved + '/' + open;
+  const key = unsaved + '/' + open + '/' + state.seen;
   if (key === lastUnsaved) return;
   lastUnsaved = key;
-  send({ type: 'unsaved', value: unsaved, open });
+  send({ type: 'unsaved', value: unsaved, open, seen: state.seen });
 }
 
 function updateChrome() {
@@ -660,7 +662,12 @@ const handlers = {
     reportLayout();
     if (m.message) setStatus(m.message, true);
   },
-  opened: openedFile,
+  // Every page handed over is acknowledged once it is handled, also if it is not taken (an older request,
+  // a refused file), so the core knows whether a page is open.
+  async opened(m) {
+    state.seen = Math.max(state.seen, m.seq || 0);
+    try { await openedFile(m); } finally { updateChrome(); }
+  },
   openFailed(m) {
     if (!m.op || m.op !== state.opening) return;
     openingDone();
