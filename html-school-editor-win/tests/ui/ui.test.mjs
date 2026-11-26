@@ -132,27 +132,30 @@ test('typing, preview after a pause, saving keeps BOM and CRLF, undo', async () 
   assert.deepEqual(ui.errors, []);
 });
 
-test('the core learns when text could be lost (logging off asks first)', async () => {
+test('the core learns when text could be lost and whether a page is open (logging off asks first)', async () => {
   const ui = await openUi(browser);
+  const state = async () => { const m = await ui.last('unsaved'); return m && [m.value, m.open]; };
+  assert.deepEqual(await state(), [false, false], 'no page at start');
   await ui.deliver(PROJECT);
   await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
-  assert.equal(await ui.count('unsaved'), 0, 'nothing reported for a page as it is on disk');
+  assert.deepEqual(await state(), [false, true], 'a page as it is on disk');
   await ui.page.click('#src');
   await ui.page.keyboard.press('Control+End');
   await ui.page.keyboard.type('x');
-  assert.equal((await ui.last('unsaved')).value, true, 'typing reports unsaved text');
+  assert.deepEqual(await state(), [true, true], 'typing reports unsaved text');
+  const n = await ui.count('unsaved');
   await ui.page.keyboard.press('Control+s');
   await ui.page.keyboard.type('y');
-  assert.equal(await ui.count('unsaved'), 1, 'a save on its way and later typing stay unsaved');
+  assert.equal(await ui.count('unsaved'), n, 'a save on its way and later typing stay unsaved');
   await ui.reply({ type: 'saved', path: 'index.html' });
-  assert.equal(await ui.count('unsaved'), 1, 'text typed during the save is still unsaved');
+  assert.deepEqual(await state(), [true, true], 'text typed during the save is still unsaved');
   await ui.page.keyboard.press('Control+s');
   await ui.reply({ type: 'saved', path: 'index.html' });
-  assert.equal((await ui.last('unsaved')).value, false, 'saved without later typing');
+  assert.deepEqual(await state(), [false, true], 'saved without later typing');
   await ui.page.keyboard.type('z');
-  assert.equal((await ui.last('unsaved')).value, true);
+  assert.deepEqual(await state(), [true, true]);
   await ui.deliver({ type: 'projectChanged', name: 'anderes' });
-  assert.equal((await ui.last('unsaved')).value, false, 'no page open');
+  assert.deepEqual(await state(), [false, false], 'no page open');
   assert.deepEqual(ui.errors, []);
 });
 
@@ -671,5 +674,52 @@ test('rescue copy: while a save hangs, the text with BOM and line breaks goes to
   await ui.page.keyboard.press('Control+s');
   const s = await ui.last('save');
   assert.equal(s.text, '\ufeff' + mixed + 'xy', 'the next save writes the same bytes');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('a close request while another question is open is answered after it (logoff during "Neue Seite")', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  await ui.page.click('#src');
+  await ui.page.keyboard.type('x');
+  await ui.page.click('#bNew');
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.deliver({ type: 'closeRequest' });
+  assert.match(await ui.page.textContent('#dlgTitle'), /Neue Seite/, 'the open question stays');
+  await ui.answer('#dlg button[value="cancel"]');
+  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/, 'then the question about unsaved text');
+  await ui.answer('#dlg button[value="cancel"]');
+  assert.equal(await ui.count('closeOk'), 0, 'cancelled: the window stays open with the text');
+  assert.ok((await ui.text()).includes('x'));
+  // with everything saved, the kept request closes the window after the question
+  await ui.page.keyboard.press('Control+s');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  await ui.page.click('#bNew');
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.answer('#dlg button[value="cancel"]');
+  await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'closeOk'));
+  assert.deepEqual(ui.errors, []);
+});
+
+test('questions take turns: an answer is never taken by the next question', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.page.click('#bNew');
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.page.fill('#npName', 'rennen');
+  // confirm "Neue Seite" and let another question of the core arrive in the same task, before the close event
+  await ui.page.evaluate(() => {
+    document.querySelector('#dlg button[value="ok"]').click();
+    window.__deliver({ type: 'error', title: 'Zweite Frage', message: 'Kam dazwischen.' });
+  });
+  await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'newPage'));
+  assert.equal(await ui.count('newPage'), 1, 'the new page is asked for exactly once');
+  assert.equal((await ui.last('newPage')).path, 'rennen.html');
+  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
+  assert.match(await ui.page.textContent('#dlgTitle'), /Zweite Frage/, 'the second question comes after the first');
+  await ui.answer('#dlg button[value="ok"]');
   assert.deepEqual(ui.errors, []);
 });

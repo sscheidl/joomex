@@ -463,6 +463,17 @@ void writeSetting(const wchar_t* name, const std::wstring& value) {
     RegCloseKey(key);
 }
 
+std::optional<std::wstring> profileDataFolder(const wchar_t* sub) {
+    PWSTR base = nullptr;
+    std::optional<std::wstring> out;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, nullptr, &base)) && base) {
+        const std::wstring folder = std::wstring(base) + L"\\HtmlSchoolEditor\\" + sub;
+        if (createFolders(folder) == ERROR_SUCCESS && isFolder(folder)) out = folder;
+    }
+    if (base) CoTaskMemFree(base);
+    return out;
+}
+
 std::wstring localDataFolder(const wchar_t* sub) {
     PWSTR base = nullptr;
     std::wstring out;

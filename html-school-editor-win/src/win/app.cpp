@@ -338,9 +338,14 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             break;
         case WM_QUERYENDSESSION:
             // Logging off or shutting down would end the program without the question for unsaved text
-            // (SPECIFICATION.md: closing asks first). Windows shows the reason; the pupil decides there.
-            if (!closing_ && uiReady_ && unsaved_) {
-                if (!endBlocked_) endBlocked_ = ShutdownBlockReasonCreate(window_, L"Eine Seite ist noch nicht gespeichert.") != FALSE;
+            // (SPECIFICATION.md: closing asks first). The interface reports its state by web message, and the
+            // latest report can still be on its way when Windows asks. So while a page is open the answer is
+            // always "not yet": the interface asks about unsaved text, or closes the window at once if all is
+            // saved. Windows shows the reason meanwhile; the pupil decides there. Not handled: a session that
+            // ends without asking (WM_ENDSESSION after a forced logoff) ends the program like any other.
+            if (!closing_ && uiReady_ && (pageOpen_ || unsaved_)) {
+                const wchar_t* reason = unsaved_ ? L"Eine Seite ist noch nicht gespeichert." : L"Der HTML-Schuleditor prüft, ob alles gespeichert ist.";
+                if (ShutdownBlockReasonCreate(window_, reason)) endBlocked_ = true;
                 post(Json::object().set("type", "closeRequest"));
                 return FALSE;
             }
@@ -558,7 +563,19 @@ void App::createUi() {
                     LPWSTR json = nullptr;
                     if (FAILED(a->get_WebMessageAsJson(&json))) return S_OK;
                     auto m = Json::parse(toUtf8(take(json)));
-                    if (m && m->isObject() && claimDialog(*m)) runLater([this, message = std::move(*m)] { onUiMessage(message); });
+                    if (!m || !m->isObject()) return S_OK;
+                    // The state for a logoff query is taken at once, not behind the window queue (which waits
+                    // while a system dialog is open).
+                    if (m->at("type").str() == "unsaved") { noteUnsaved(*m); return S_OK; }
+                    if (!claimDialog(*m)) return S_OK;
+                    const bool dialog = opensDialog(m->at("type").str());
+                    std::optional<Json> copy;
+                    if (dialog) copy = *m;
+                    if (!runLater([this, message = std::move(*m)] { onUiMessage(message); }) && copy) {
+                        // Not queued (the window is closing): the claim must not stay.
+                        refuseDialog(*copy);
+                        endDialog();
+                    }
                     return S_OK;
                 }).Get(), &t);
             layoutUi();
@@ -707,9 +724,21 @@ bool App::claimDialog(const Json& m) {
         dialogBusy_ = true;
         return true;
     }
+    refuseDialog(m);
+    return false;
+}
+
+// The answer to a dialog request that is not carried out.
+void App::refuseDialog(const Json& m) {
+    const std::string& type = m.at("type").str();
     if (type == "openDialog") postOpenFailed(m.at("op").num());
     else if (type == "saveAs") post(Json::object().set("type", "saveCancelled").set("id", m.at("id").num()));
-    return false;
+}
+
+void App::noteUnsaved(const Json& m) {
+    unsaved_ = m.at("value").boolean();
+    pageOpen_ = m.at("open").boolean();
+    if (!unsaved_ && endBlocked_) endBlocked_ = !ShutdownBlockReasonDestroy(window_);
 }
 
 void App::endDialog() {
@@ -812,9 +841,6 @@ void App::onUiMessage(const Json& m) {
         const double id = m.at("id").num();
         if (const auto segs = pathSegments(m.at("path").str())) rescue(*segs, m.at("text").str(), id);
         else post(Json::object().set("type", "rescueFailed").set("id", id).set("message", "Der Dateiname ist ungültig."));
-    } else if (type == "unsaved") {
-        unsaved_ = m.at("value").boolean();
-        if (!unsaved_ && endBlocked_) endBlocked_ = !ShutdownBlockReasonDestroy(window_);
     } else if (type == "closeOk") {
         DestroyWindow(window_);
     }
@@ -1096,8 +1122,20 @@ void App::rescue(const Segments& page, std::string bytes, double id) {
         extension = stem.substr(dot);
         stem.resize(dot);
     }
-    if (!rescueWorkers_.submit([this, stem, extension, id, bytes = std::move(bytes)]() {
-        const std::wstring folder = localDataFolder(L"Rettungskopien");
+    if (stem.size() > 60) stem.resize(60);  // the name gains date and time; keep it well inside the path limit
+    if (extension.size() > 8) extension = L".html";
+    const std::string pagePath = joinSegments(page);
+    if (!rescueWorkers_.submit([this, stem, extension, id, pagePath, bytes = std::move(bytes)]() {
+        // Only the local profile: no fallback to the temporary folder, which may be shared or redirected.
+        const auto profile = profileDataFolder(L"Rettungskopien");
+        if (!profile) {
+            runLater([this, id, pagePath]() {
+                post(Json::object().set("type", "rescueFailed").set("id", id).set("page", pagePath)
+                         .set("message", "Auf diesem Computer kann gerade keine Rettungskopie angelegt werden."));
+            });
+            return;
+        }
+        const std::wstring folder = *profile;
         SYSTEMTIME t;
         GetLocalTime(&t);
         wchar_t stamp[32];
@@ -1111,6 +1149,7 @@ void App::rescue(const Segments& page, std::string bytes, double id) {
         }
         Json answer = w.error == ERROR_SUCCESS ? Json::object().set("type", "rescued").set("path", toUtf8(path))
                                                : Json::object().set("type", "rescueFailed").set("message", errorText(w.error));
+        answer.set("page", pagePath);
         runLater([this, id, answer = std::move(answer)]() mutable { post(answer.set("id", id)); });
     }, true)) {
         post(Json::object().set("type", "rescueFailed").set("id", id).set("message", kWorkersBusy));

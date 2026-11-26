@@ -165,5 +165,7 @@ void writeSetting(const wchar_t* name, const std::wstring& value);
 
 // %LOCALAPPDATA%\HtmlSchoolEditor\<sub>, created if needed; the temporary folder if that fails.
 std::wstring localDataFolder(const wchar_t* sub);
+// %LOCALAPPDATA%\HtmlSchoolEditor\<sub>, created if needed; nothing if that fails (no fallback).
+std::optional<std::wstring> profileDataFolder(const wchar_t* sub);
 
 }  // namespace hse

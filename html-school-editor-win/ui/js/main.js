@@ -36,7 +36,8 @@ const state = {
   problems: [],
   missing: [],
   notesOpen: false,
-  modal: 0,
+  modal: 0,             // 1 while a question is open or waiting
+  closePending: false,  // a close request came while a question was open
   previewTimer: 0,
 };
 
@@ -64,38 +65,52 @@ function bytesOf(base64) {
 
 // Shows a modal question. `body`: text or a node; `buttons`: [{ label, value, primary }]. The value of the
 // pressed button is returned; Esc gives 'cancel'. While a dialog is open the page view is hidden, because
-// the native page view would otherwise cover it. A question that comes while another one is open (the
-// answer to a rescue copy and the answer to the save that hangs) waits until that one is closed.
+// the native page view would otherwise cover it. Questions take turns: one that comes while another is open
+// (or has closed but not yet handed over its answer) waits in line. Each question reads its own answer when
+// its dialog closes, before the next one may touch the dialog.
+const questions = [];
+let questionOpen = false;
+
 function ask(title, body, buttons, onOpen) {
-  if (els.dlg.open) {
-    return new Promise((resolve) => els.dlg.addEventListener('close', () => setTimeout(() => resolve(ask(title, body, buttons, onOpen)), 0), { once: true }));
-  }
   return new Promise((resolve) => {
-    const d = els.dlg;
-    els.dlgTitle.textContent = title;
-    els.dlgBody.replaceChildren(...(typeof body === 'string' ? [paragraph(body)] : [].concat(body)));
-    els.dlgButtons.replaceChildren(...buttons.map((b) => {
-      const btn = document.createElement('button');
-      btn.type = 'submit';
-      btn.value = b.value;
-      btn.textContent = b.label;
-      if (b.primary) btn.className = 'primary';
-      return btn;
-    }));
-    state.modal++;
-    reportLayout();
-    d.returnValue = 'cancel';
-    const done = () => {
-      d.removeEventListener('close', done);
-      state.modal--;
-      reportLayout();
-      resolve(d.returnValue || 'cancel');
-    };
-    d.addEventListener('close', done);
-    d.showModal();
-    if (onOpen) onOpen(d);
-    else { const p = d.querySelector('button.primary') || d.querySelector('button'); if (p) p.focus(); }
+    questions.push({ title, body, buttons, onOpen, resolve });
+    if (!questionOpen) showNextQuestion();
   });
+}
+
+function showNextQuestion() {
+  const q = questions.shift();
+  if (!q) {
+    questionOpen = false;
+    state.modal = 0;
+    reportLayout();
+    // a close request that came while a question was open is answered now
+    if (state.closePending) { state.closePending = false; requestClose(); }
+    return;
+  }
+  questionOpen = true;
+  state.modal = 1;
+  reportLayout();
+  const d = els.dlg;
+  els.dlgTitle.textContent = q.title;
+  els.dlgBody.replaceChildren(...(typeof q.body === 'string' ? [paragraph(q.body)] : [].concat(q.body)));
+  els.dlgButtons.replaceChildren(...q.buttons.map((b) => {
+    const btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.value = b.value;
+    btn.textContent = b.label;
+    if (b.primary) btn.className = 'primary';
+    return btn;
+  }));
+  d.returnValue = 'cancel';
+  d.addEventListener('close', () => {
+    q.resolve(d.returnValue || 'cancel');
+    // the next question after the answer's own follow-up has been queued
+    setTimeout(showNextQuestion, 0);
+  }, { once: true });
+  d.showModal();
+  if (q.onOpen) q.onOpen(d);
+  else { const p = d.querySelector('button.primary') || d.querySelector('button'); if (p) p.focus(); }
 }
 
 function paragraph(text, cls) {
@@ -159,18 +174,19 @@ function openingDone() {
 
 // The core is told whether text could be lost (unsaved, or a save still on its way), so that logging off
 // or shutting Windows down asks first instead of ending the program (WM_QUERYENDSESSION).
-let lastUnsaved = false;
-function reportUnsaved(unsaved) {
-  if (unsaved === lastUnsaved) return;
-  lastUnsaved = unsaved;
-  send({ type: 'unsaved', value: unsaved });
+let lastUnsaved = '';
+function reportUnsaved(unsaved, open) {
+  const key = unsaved + '/' + open;
+  if (key === lastUnsaved) return;
+  lastUnsaved = key;
+  send({ type: 'unsaved', value: unsaved, open });
 }
 
 function updateChrome() {
   const doc = state.doc;
   els.docName.textContent = doc ? doc.path : '';
   const d = dirty();
-  reportUnsaved(!!doc && (d || state.sending !== null));
+  reportUnsaved(!!doc && (d || state.sending !== null), !!doc);
   els.docState.textContent = !doc ? '' : state.sending !== null ? 'wird gespeichert …' : d ? 'nicht gespeichert' : 'gespeichert';
   els.docState.classList.toggle('dirty', !!doc && (d || state.sending !== null));
   document.title = (doc ? (d ? '● ' : '') + doc.name + ' – ' : '') + 'HTML-Schuleditor';
@@ -478,7 +494,7 @@ function rescued(msg) {
     setStatus('Rettungskopie: ' + msg.path);
     const where = paragraph(msg.path, 'path');
     tell('Rettungskopie gespeichert', [
-      paragraph('Dein Text liegt jetzt zusätzlich auf diesem Computer:'), where,
+      paragraph('Dein Text' + (msg.page ? ' von „' + msg.page + '“' : '') + ' liegt jetzt zusätzlich auf diesem Computer:'), where,
       paragraph(state.sending ? 'Die Seite selbst ist noch nicht gespeichert. Der Editor versucht es weiter.' : 'Die Seite selbst ist davon nicht betroffen.'),
     ]);
   } else {
@@ -594,6 +610,13 @@ addEventListener('keydown', (e) => {
   else if (e.key === 'F3') { e.preventDefault(); if (els.findBar.hidden) openFind(); else findStep(e.shiftKey ? -1 : 1); }
 });
 
+// The window is to close (close button, logoff, shutdown). While a question is open the request is kept and
+// answered once the question is done, so the question about unsaved text is never skipped.
+function requestClose() {
+  if (questionOpen) { state.closePending = true; return; }
+  whenSettled('du den Editor schließt', () => send({ type: 'closeOk' }));
+}
+
 // ---------------------------------------------------------------- messages from the core
 
 const handlers = {
@@ -666,10 +689,7 @@ const handlers = {
       { label: 'Öffnen', value: 'open', primary: true }, { label: 'Abbrechen', value: 'cancel' },
     ]).then((c) => { if (c === 'open') whenSettled('du eine andere Seite öffnest', () => requestOpen({ type: 'openFile', path: m.path })); });
   },
-  async closeRequest() {
-    if (state.modal) return;
-    whenSettled('du den Editor schließt', () => send({ type: 'closeOk' }));
-  },
+  closeRequest: requestClose,
   status(m) { setStatus(m.text, m.warn); },
   error(m) { tell(m.title || 'Das hat nicht geklappt', m.message || ''); },
 };
