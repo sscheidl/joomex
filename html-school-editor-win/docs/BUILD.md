@@ -43,13 +43,15 @@ In the test build, `HSE_TEST_SAVE_DELAY_MS` holds the answer to every ordinary s
 $env:HSE_TEST_SAVE_DELAY_MS = 2000
 ```
 
+Use `HSE_TEST_PREVIEW_DELAY_MS=2400` in a test build to hold preview asset replies after disk access for navigation and close tests (P-06 and F-11). Allow a delayed reply to finish after changing pages or closing the window.
+
 ## Tests without Windows
 
 The portable core and the user interface can be tested on any computer:
 
 ```bash
 cmake -S . -B build && cmake --build build && ctest --test-dir build   # core: paths, addresses, JSON
-node --test --test-concurrency=1 tests/ui/                             # interface in Chromium, with a mock of the core
+node --test --test-concurrency=1 "tests/ui/*.test.mjs"                  # interface in Chromium, with a mock of the core
 ```
 
 The interface tests need Playwright with Chromium (`npm install -g playwright` and `npx playwright install chromium`). They replace the C++ core by a labelled mock; the real core, the page view and files are not part of them.

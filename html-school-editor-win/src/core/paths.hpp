@@ -19,7 +19,7 @@ using Segments = std::vector<std::string>;
 // Percent escapes are decoded (the result must be valid UTF-8). Refused (nothing returned): empty paths,
 // empty segments, "." and "..", backslashes, control characters, ':' (drive letters and alternate data
 // streams), segments ending in '.' or ' ', Windows device names (CON, NUL, COM1 …, also with an extension),
-// more than 32 segments, segments longer than 255 bytes.
+// more than 32 segments, segments longer than 255 bytes or paths longer than 2048 bytes after decoding.
 std::optional<Segments> requestSegments(std::string_view urlPath);
 
 // Splits a URL ("https://projekt.example/a/b.png?x#y") into its path ("/a/b.png") if it belongs to the
@@ -27,7 +27,7 @@ std::optional<Segments> requestSegments(std::string_view urlPath);
 std::optional<std::string> pathOfUrl(std::string_view url, std::string_view origin);
 
 // One segment written as part of an address: '%', '#', '?', space, '"', '<', '>', '\', '^', '`', '{',
-// '|', '}' and control characters are percent-encoded; letters with umlauts stay readable.
+// '|', '}', controls and all non-ASCII UTF-8 bytes are percent-encoded.
 std::string encodeSegment(std::string_view segment);
 
 // The address that a page at `page` (segments including its file name) writes to reach `file`:

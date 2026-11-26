@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.1.0-alpha.8 · **Date:** 2026-11-25 · **State:** first code of stage 1 with corrections against lost work from the Codex review of stage 1 (report of 2026-11-25: CHANGE BEFORE BUILD) and line breaks kept break by break (owner's decision of 2026-11-25). Built with MSVC and started on Windows; the acceptance criteria are not measured as a whole, and the other findings of the review are open (see below).
+**Version:** 0.1.0-alpha.9 · **Date:** 2026-11-26 · **State:** stage 1 candidate for independent review. The original review of 2026-11-25 concluded CHANGE BEFORE BUILD. The local measurements below cover individual cases.
 
 ## Decisions so far
 
@@ -17,17 +17,18 @@ The owner's decisions of 2026-11-24 are listed in [SPECIFICATION.md](SPECIFICATI
 
 | Part | Files | State |
 | --- | --- | --- |
-| Portable core: request paths, relative addresses, case check, content types, unique names, fingerprint and its text form, base64, JSON | `src/core/` | MEASURED 2026-11-25 with MSVC (see the evidence below): `tests/core/core_tests.cpp`, 95 of 95 checks pass. Earlier also on Linux (clang 18 and gcc with sanitizers, 84 checks of alpha.1) |
-| User interface: code field (shared modules of the single-file editor 1.0.0-beta.3: tokenizer, colouring, history, file decoding), project list, notes about addresses, search, dialogs, saving, pictures | `ui/`, list of served files `ui/resources.json` | MEASURED 2026-11-25 in headless Chromium (Playwright) with a MOCK of the core: `tests/ui/`, 34 of 34 tests pass (4 unit tests of the address checks, 11 of the line breaks including a random-edit test, 19 browser tests) |
-| Win32 host: window, two WebView2 views, request handler for the project folder with a worker thread and a cache, conflict check, atomic save, dialogs, folder watcher, settings | `src/win/` | builds and runs, see the evidence below. Only the save, open and new-page paths listed there are measured natively |
+| Portable core: request paths, relative addresses, case check, content types, unique names, fingerprint and its text form, base64, JSON | `src/core/` | MEASURED 2026-11-26 with MSVC. All 100 core checks pass. Earlier also on Linux (clang 18 and gcc with sanitizers, 84 checks of alpha.1) |
+| User interface: code field (shared modules of the single-file editor 1.0.0-beta.3: tokenizer, colouring, history, file decoding), project list, notes about addresses, search, dialogs, saving, pictures | `ui/`, list of served files `ui/resources.json` | MEASURED 2026-11-26 with Node 24.22.1 and Playwright 1.62.1 in headless Chromium. All 34 tests pass (15 unit tests and 19 browser tests with a MOCK of the core). |
+| Win32 host: window, two WebView2 views, bounded workers and a cache per preview load, conflict check, atomic save, dialogs, folder watcher, settings | `src/win/` | Build and selected native results below. |
 | Build | `CMakeLists.txt`, `tools/fetch-webview2.ps1`, `dependencies.json`, [BUILD.md](BUILD.md) | MEASURED on Windows, see below. The SHA-256 of the WebView2 SDK 1.0.4314.35 is pinned by the owner (2026-11-25); `tools/fetch-webview2.ps1` verified the local package against it and unpacked it for the alpha.4 builds |
 
-Every Windows-side acceptance criterion (R-01 to R-10, P-01 to P-05, F-01 to F-10, X-01 to X-05) is NOT MEASURED as a whole; the native checks below cover single cases.
+The Windows acceptance suite is NOT MEASURED as a whole. The native checks below cover individual cases.
 
 ## Evidence on Windows
 
 | Date | Exe | What was observed |
 | --- | --- | --- |
+| 2026-11-26 | 0.1.0-alpha.9, Release SHA-256 `d3ff1fb12962e70505fbe55bed0e670309fc0d61df3b0719c6f5c7ec2ada4e8c`, test build `5e08ba013574a2a080c20644d086e98bd946efea5ce8e1378fb101ad70c545f3` | Windows 11 26300.10075, WebView2 158.0.4370.33, MSVC 19.44.35227, Windows SDK 10.0.26100, x64. Both builds compiled without warnings and passed 100 core checks. Native test build on a disposable local project: R-08 page paths, relative images and CSS, saving and reopening passed. P-06 passed with a 2.4 s delay on asset replies. F-06 passed for creating, renaming and deleting files. F-11 passed for closing with a pending preview read and for preserving later input and the saved snapshot when closing during a delayed save. The harness dispatched the HTML close event after cancelling the unsaved-changes prompt in its hidden test window. X-06 covered opening and cancelling all four native dialogs. Dialog acceptance and picture insertion were NOT MEASURED in this run. |
 | 2026-11-25 | 0.1.0-alpha.8, Release SHA-256 `39dfdbcab10a838e0f8f5a15f7e6baf67723d7f86d980ac63502cabc7d2e60fc`, test build `c6bc32c28fb21ebc50a63217bea1465ec75667c5db185fe2dd6facadbfa99977` | Same environment; both build without warnings, 95 of 95 core checks; the interface loads with the host resolver rule. **P-02 and P-03 probe** (test build, a loopback HTTP listener addressed as `127.0.0.1` and as `localhost`): a page with an external picture (both addresses), external and imported style sheets, a font and a background in CSS, an inline style background, `preconnect`, `dns-prefetch`, `prefetch`, `preload`, manifest, icon, `<base>` to the listener, meta refresh, external and inline scripts, an `onerror` handler, frames to the listener, to a project page, `srcdoc` and `data:`, `object`, `embed`, `video`, `audio`, a form submitted by the host, and a click on an internet link with `ping`: **0 requests** at the listener; the title stayed "start" (no script, no handler ran); the page stayed loaded after the refresh time; all frames empty, the project page's frame included; the local style sheet and picture were applied and shown. **P-04:** the refresh and the form posted no link message; a click on the project link offered `seite2.html`, a click on the internet link gave the German hint. R-10 (junctions) was not repeated for this build (the path for pictures and styles behind the boundary is unchanged). NOT MEASURED: a network trace of the whole process, workers (no script can start one), the fail-closed paths (the runtime supports every interface; a failure could not be provoked), the release build (developer tools off) |
 | 2026-11-25 | 0.1.0-alpha.7, Release SHA-256 `b5d0cd2f14be99465b3e07eb38ecacd7f0a0f176d691cac6ec90188af7c1e19d`, test build `958f2aceb49934fee0c0c3ef0a342b9a84f8660c9e5cb0575cb234caca03b6fe` | Same environment; both build without warnings, 95 of 95 core checks. **R-10 MEASURED** on local NTFS with a directory junction `link` to a folder outside the project and a junction `innenlink` to a folder inside it: the project list shows neither junction; in the page view the picture `link/geheim.png` has width 0 and the note names it with the German reason, `innenlink/ok.png` and `innen/ok.png` are shown; through `link/`, opening, saving with a base, a new page (also in a new subfolder `link/unter/`) and "Im Browser ansehen" are refused with that reason, and the folder outside is unchanged (same entries, same content); opening `innenlink/seite.html` works; an ordinary new page, an ordinary save (no temporary files left) and the conflict after an external change still work. NOT MEASURED: a file symbolic link (Windows refused to create one without the privilege), the picture dialog and "In bilder kopieren" with a junction `bilder` (need the system dialog), network drives |
 | 2026-11-25 | 0.1.0-alpha.6, Release SHA-256 `b011c368a2ceb587316d8b7eb6fb553205380e074d93b99acf4c7ecf8bcc0f28`, test build `1c44d387dfb25fb443997fd9da19f7ee0c552ac5dfe126ddcff64a975b49df7d` | Same environment; both build without warnings, 95 of 95 core checks; SDK verified against the pinned hash. **F-10 MEASURED:** `<p>a</p><CR><p>b</p><LF><p>c</p>`, the line `<p>b</p>` deleted with the Delete key, undo and redo, saved: the file is `<p>a</p><CR><CR><LF><p>c</p>`; opened again in a new process: the same three lines; saved without a change: not rewritten. F-07 to F-09 were not repeated natively for this build (the code they test changed only by the rule for breaks that meet; covered by the browser and unit tests) |
@@ -40,6 +41,14 @@ Every Windows-side acceptance criterion (R-01 to R-10, P-01 to P-05, F-01 to F-1
 NOT MEASURED: school computers, mapped drive and UNC path, a network drive that disconnects or is slow while replacing, ACL and attribute behaviour on the school share, disk full, two monitors and zoom, the classroom trial. The exact moment of a late open answer was reproduced in the mock only.
 
 ## Corrections
+
+### 0.1.0-alpha.9 (2026-11-26): preview navigation and window lifetime
+
+Program addresses percent-encode UTF-8 path segments. The preview binds its accepted load to a WebView2 navigation ID and a generation. Switching pages or projects finishes pending deferrals with an explicit empty response and discards queued reads for the old load. Every accepted load owns a separate cache. Project and scan generations also govern folder watch notifications and scan results.
+
+Project file work and preview reads use separate bounded pools. Shutdown closes the window's task queue and completes preview deferrals on the window thread. Accepted writes drain. Running reads are asked to cancel and workers are joined after the window closes. The folder watcher follows project switches without a window-thread join and retries after a failure.
+
+The window dispatches bridge messages after the WebView2 callback returns, including the four messages that open native file dialogs. Queued actions wait while a system dialog runs its nested window loop.
 
 ### 0.1.0-alpha.8 (2026-11-25): protection of the page view
 
@@ -78,7 +87,7 @@ Tests: `tests/ui/ui.test.mjs` "opening: only the answer to the latest request is
 
 ## Open findings of the Codex review (2026-11-25)
 
-Not corrected yet, by weight: `käse.html` leaves the page view on the previous page (High, cause not examined); worker threads and request deferrals after the window closes (High); stale preview requests and scans after a switch (High); system dialogs shown inside the web-message callback, watcher restart (High); further Medium and Low findings and the corrections of the documents listed in the report.
+The Alpha.9 changes address the reported Unicode navigation, background lifetime, stale preview and scan results, watcher restart and native dialog dispatch. The current candidate awaits independent review. Network shares, native dialog acceptance of selected files, and a complete preview policy check are still open. The known write-boundary race and other findings in the report remain review items.
 
 ## Known gaps of this first code
 
@@ -94,4 +103,4 @@ Built and run on Windows 11 with the Visual Studio 2022 Build Tools (see the evi
 
 ## Next step
 
-Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)); stage 1 is corrected before stage 2, as the Codex review recommends: next the file boundary and the protection of the page view, then a small native acceptance baseline.
+Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). Complete the independent stage 1 review before starting the local stage 2 prototype. Verify the school computer and SMB cases before using the editor with pupils' files.

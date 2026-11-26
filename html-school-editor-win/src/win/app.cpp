@@ -5,8 +5,8 @@
 #include <shlwapi.h>
 #include <wrl.h>
 
+#include <algorithm>
 #include <random>
-#include <thread>
 
 #include "../core/paths.hpp"
 
@@ -33,6 +33,8 @@ constexpr const wchar_t* kUiStart = L"https://app.example/index.html";
 constexpr std::size_t kMaxPageBytes = 5u * 1024 * 1024;
 constexpr std::size_t kMaxServedBytes = 32u * 1024 * 1024;
 constexpr std::size_t kCacheBytes = 64u * 1024 * 1024;
+constexpr std::size_t kMaxPreviewRequests = 96;
+constexpr const char* kWorkersBusy = "Der Editor arbeitet noch. Versuch es gleich noch einmal.";
 
 struct UiResource {
     const wchar_t* path;
@@ -124,9 +126,12 @@ std::string randomToken() {
     return buf;
 }
 
-// ---------------------------------------------------------------- cache of project files
+}  // namespace
+
+// A cache belongs to one accepted preview load. A late read only keeps its old cache alive.
 
 struct CacheEntry {
+    FileIdentity identity;
     ULONGLONG size = 0;
     FILETIME time{};
     std::shared_ptr<const std::string> bytes;
@@ -138,13 +143,17 @@ struct FileCache {
     std::map<std::wstring, CacheEntry> entries;
     std::size_t total = 0;
 
-    std::optional<CacheEntry> find(const std::wstring& key, ULONGLONG size, FILETIME time) {
+    std::optional<CacheEntry> find(const std::wstring& key, const CheckedFile& file) {
+        if (!file.identity().index) return std::nullopt;
         std::lock_guard g(lock);
         const auto it = entries.find(key);
-        if (it == entries.end() || it->second.size != size || CompareFileTime(&it->second.time, &time) != 0) return std::nullopt;
+        const FILETIME time = file.time();
+        if (it == entries.end() || it->second.identity != file.identity() ||
+            it->second.size != file.size() || CompareFileTime(&it->second.time, &time) != 0) return std::nullopt;
         return it->second;
     }
     void put(const std::wstring& key, CacheEntry e) {
+        if (!e.identity.index) return;
         std::lock_guard g(lock);
         if (total + e.bytes->size() > kCacheBytes) {
             entries.clear();
@@ -155,13 +164,9 @@ struct FileCache {
         total += e.bytes->size();
         entries[key] = std::move(e);
     }
-    void clear() {
-        std::lock_guard g(lock);
-        entries.clear();
-        total = 0;
-    }
 };
-FileCache gCache;
+
+namespace {
 
 // Spelling of every segment on disk; empty if it equals the request exactly.
 std::string actualSpelling(const std::wstring& root, const Segments& segs) {
@@ -219,15 +224,23 @@ int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
     window_ = CreateWindowExW(0, kWindowClass, L"HTML-Schuleditor", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT,
                               1400, 900, nullptr, nullptr, instance, this);
     if (!window_) return 1;
+    {
+        std::lock_guard lock(taskMutex_);
+        taskWindow_ = window_;
+    }
     ShowWindow(window_, show == SW_SHOWDEFAULT ? SW_SHOWMAXIMIZED : show);
     UpdateWindow(window_);
     createEnvironment();
 
-    MSG msg;
+    MSG msg{};
     while (GetMessageW(&msg, nullptr, 0, 0) > 0) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+    shutdown();
+    watcher_.join();
+    previewWorkers_.join();
+    fileWorkers_.join();
     return static_cast<int>(msg.wParam);
 }
 
@@ -272,22 +285,17 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
         case WM_ACTIVATE:
             if (LOWORD(wp) != WA_INACTIVE && !root_.empty() && GetTickCount64() - lastScan_ > 2000) rescan();
             break;
-        case WM_APP_TASK: {
-            std::unique_ptr<std::function<void()>> task(reinterpret_cast<std::function<void()>*>(lp));
-            (*task)();
+        case WM_APP_TASK:
+            runWindowTask();
             return 0;
-        }
         case WM_APP_FILES:
-            if (!scanPending_) {
-                scanPending_ = true;
-                SetTimer(window_, TIMER_SCAN, 400, nullptr);
-            }
+            if (!closing_ && wp == projectGen_ && !scanPending_)
+                scanPending_ = SetTimer(window_, TIMER_SCAN, 400, nullptr) != 0;
             return 0;
         case WM_TIMER:
-            if (wp == TIMER_SCAN) {
+            if (wp == TIMER_SCAN && scanPending_) {
                 KillTimer(window_, TIMER_SCAN);
                 scanPending_ = false;
-                gCache.clear();
                 rescan();
                 if (!pvSegs_.empty() && pvText_) reloadPreview();  // a picture may have changed
                 return 0;
@@ -301,18 +309,65 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             }
             return 0;
         case WM_DESTROY:
-            watcher_.stop();
-            if (pvController_) pvController_->Close();
-            if (uiController_) uiController_->Close();
+            shutdown();
             PostQuitMessage(0);
             return 0;
     }
     return DefWindowProcW(window_, msg, wp, lp);
 }
 
-void App::runLater(std::function<void()> task) {
-    auto* p = new std::function<void()>(std::move(task));
-    if (!PostMessageW(window_, WM_APP_TASK, 0, reinterpret_cast<LPARAM>(p))) delete p;
+bool App::runLater(std::function<void()> task) {
+    std::lock_guard lock(taskMutex_);
+    if (!taskWindow_) return false;
+    if (windowTasks_.empty() && !PostMessageW(taskWindow_, WM_APP_TASK, 0, 0)) return false;
+    windowTasks_.push_back(std::move(task));
+    return true;
+}
+
+void App::runWindowTask() {
+    // A system file dialog runs a nested message loop. Leave queued actions in order until it returns.
+    if (runningWindowTask_) return;
+    std::function<void()> task;
+    {
+        std::lock_guard lock(taskMutex_);
+        if (windowTasks_.empty()) return;
+        task = std::move(windowTasks_.front());
+        windowTasks_.pop_front();
+    }
+    runningWindowTask_ = true;
+    task();
+    runningWindowTask_ = false;
+    std::lock_guard lock(taskMutex_);
+    if (taskWindow_ && !windowTasks_.empty()) PostMessageW(taskWindow_, WM_APP_TASK, 0, 0);
+}
+
+void App::shutdown() {
+    if (closing_) return;
+    closing_ = true;
+    callbackLifetime_.reset();
+    {
+        std::lock_guard lock(taskMutex_);
+        taskWindow_ = nullptr;
+        windowTasks_.clear();
+    }
+    KillTimer(window_, TIMER_SCAN);
+    watcher_.requestStop();
+    previewWorkers_.stop();
+    fileWorkers_.stop();
+    finishPreviewRequests();
+    if (pvController_) pvController_->Close();
+    if (uiController_) uiController_->Close();
+    pv_.Reset();
+    ui_.Reset();
+    pvController_.Reset();
+    uiController_.Reset();
+}
+
+void App::startupError(const wchar_t* message) {
+    runLater([this, message] {
+        MessageBoxW(window_, message, L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
+        if (!closing_) DestroyWindow(window_);
+    });
 }
 
 void App::layoutUi() {
@@ -340,20 +395,17 @@ void App::createEnvironment() {
     const std::wstring data = localDataFolder(L"WebView2");
     const HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, data.c_str(), options.Get(),
-        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([this, life = std::weak_ptr(callbackLifetime_)](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+            if (life.expired()) return S_OK;
             if (FAILED(result) || !env) {
-                MessageBoxW(window_, L"Die Anzeige (WebView2) konnte nicht gestartet werden.", L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
-                DestroyWindow(window_);
+                startupError(L"Die Anzeige (WebView2) konnte nicht gestartet werden.");
                 return S_OK;
             }
             env_ = env;
             createUi();
             return S_OK;
         }).Get());
-    if (FAILED(hr)) {
-        MessageBoxW(window_, L"Die Anzeige (WebView2) konnte nicht gestartet werden.", L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
-        DestroyWindow(window_);
-    }
+    if (FAILED(hr)) startupError(L"Die Anzeige (WebView2) konnte nicht gestartet werden.");
 }
 
 namespace {
@@ -432,10 +484,10 @@ constexpr const char* kPageCsp =
 
 void App::createUi() {
     env_->CreateCoreWebView2Controller(window_, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-        [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+        [this, life = std::weak_ptr(callbackLifetime_)](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+            if (life.expired()) { if (controller) controller->Close(); return S_OK; }
             if (FAILED(result) || !controller) {
-                MessageBoxW(window_, L"Die Oberfläche konnte nicht geladen werden.", L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
-                DestroyWindow(window_);
+                startupError(L"Die Oberfläche konnte nicht geladen werden.");
                 return S_OK;
             }
             uiController_ = controller;
@@ -453,17 +505,15 @@ void App::createUi() {
                 SUCCEEDED(ui_->add_FrameNavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
                     [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT { a->put_Cancel(TRUE); return S_OK; }).Get(), &t));
             if (!locked) {
-                MessageBoxW(window_, L"Die Oberfläche konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt.",
-                            L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
-                DestroyWindow(window_);
+                startupError(L"Die Oberfläche konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt.");
                 return S_OK;
             }
             ui_->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
                 [this](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* a) -> HRESULT {
                     LPWSTR json = nullptr;
                     if (FAILED(a->get_WebMessageAsJson(&json))) return S_OK;
-                    const auto m = Json::parse(toUtf8(take(json)));
-                    if (m && m->isObject()) onUiMessage(*m);
+                    auto m = Json::parse(toUtf8(take(json)));
+                    if (m && m->isObject()) runLater([this, message = std::move(*m)] { onUiMessage(message); });
                     return S_OK;
                 }).Get(), &t);
             layoutUi();
@@ -478,7 +528,8 @@ void App::createPreview() {
     previewHost_ = CreateWindowExW(0, kPreviewClass, L"", WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, 0, 0, 0, window_, nullptr, instance_, nullptr);
     SetWindowPos(previewHost_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     env_->CreateCoreWebView2Controller(previewHost_, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-        [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+        [this, life = std::weak_ptr(callbackLifetime_)](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+            if (life.expired()) { if (controller) controller->Close(); return S_OK; }
             if (FAILED(result) || !controller) {
                 postError("Die Seitenansicht fehlt", "Die Anzeige der Seite konnte nicht gestartet werden.");
                 return S_OK;
@@ -493,18 +544,33 @@ void App::createPreview() {
                 SUCCEEDED(pv_->add_NavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
                     [this](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
                         LPWSTR raw = nullptr;
-                        a->get_Uri(&raw);
+                        const HRESULT gotUri = a->get_Uri(&raw);
                         const std::wstring uri = take(raw);
-                        if (pvExpectNavigation_ && uri == pvUrl_) {
-                            pvExpectNavigation_ = false;
-                            missing_.clear();
+                        BOOL user = FALSE, redirect = FALSE;
+                        UINT64 id = 0;
+                        const bool known = SUCCEEDED(gotUri) && SUCCEEDED(a->get_IsUserInitiated(&user)) &&
+                                           SUCCEEDED(a->get_IsRedirected(&redirect)) && SUCCEEDED(a->get_NavigationId(&id));
+                        // WebView2 marks host Navigate calls as user-initiated too. The outstanding
+                        // host URL, not IsUserInitiated alone, admits one top-level navigation.
+                        if (known && user && !redirect && pvStart_ && uri == pvStart_->url) {
+                            auto start = std::move(*pvStart_);
+                            pvStart_.reset();
+                            if (!closing_ && !pvFailed_ && start.generation == pvGeneration_) {
+                                pvNavigationId_ = id;
+                                pvScroll_ = std::move(start.scroll);
+                                pvCache_ = std::make_shared<FileCache>();
+                                return S_OK;
+                            }
+                            if (FAILED(a->put_Cancel(TRUE))) failPreview();
+                            runLater([this] {
+                                if (!pvCache_ && !pvStart_) navigatePreview();
+                            });
                             return S_OK;
                         }
-                        a->put_Cancel(TRUE);
+                        if (FAILED(a->put_Cancel(TRUE))) failPreview();
                         // Only a click of the pupil offers another page; a page that tries to go somewhere by
                         // itself (meta refresh, a form) is just stopped.
-                        BOOL user = FALSE;
-                        if (FAILED(a->get_IsUserInitiated(&user)) || !user) return S_OK;
+                        if (!known || !user || !pvCache_ || pvFailed_ || closing_) return S_OK;
                         const auto path = pathOfUrl(toUtf8(uri), kProjectOrigin);
                         const auto segs = path ? requestSegments(*path) : std::nullopt;
                         if (segs) {
@@ -524,25 +590,14 @@ void App::createPreview() {
                 postError("Die Seitenansicht bleibt aus", "Sie konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt. Speichern und „Im Browser ansehen“ gehen trotzdem.");
                 return S_OK;
             }
-            pv_->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
-                [this](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) -> HRESULT {
-                    pvNavigating_ = false;
-                    if (!pvScroll_.empty()) {
-                        const auto xy = Json::parse(toUtf8(pvScroll_));
-                        pvScroll_.clear();
-                        if (xy && xy->size() == 2) {
-                            wchar_t script[96];
-                            swprintf_s(script, L"scrollTo(%d,%d)", static_cast<int>(xy->operator[](0).num()), static_cast<int>(xy->operator[](1).num()));
-                            pv_->ExecuteScript(script, nullptr);
-                        }
-                    }
-                    sendMissing();
-                    if (pvReloadAgain_) {
-                        pvReloadAgain_ = false;
-                        reloadPreview();
-                    }
+            if (FAILED(pv_->add_NavigationCompleted(Callback<ICoreWebView2NavigationCompletedEventHandler>(
+                [this](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs* a) -> HRESULT {
+                    finishPreviewNavigation(a);
                     return S_OK;
-                }).Get(), &t);
+                }).Get(), &t))) {
+                failPreview();
+                return S_OK;
+            }
             pvController_->add_AcceleratorKeyPressed(Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
                 [this](ICoreWebView2Controller*, ICoreWebView2AcceleratorKeyPressedEventArgs* a) -> HRESULT {
                     // Shortcuts pressed while the page view has the focus go to the user interface.
@@ -553,17 +608,17 @@ void App::createPreview() {
                     if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN) return S_OK;
                     const bool ctrl = GetKeyState(VK_CONTROL) < 0;
                     const char* name = (ctrl && key == 'S') ? "save" : (ctrl && key == 'F') ? "find" : key == VK_F3 ? "findNext" : nullptr;
-                    if (!name) return S_OK;
+                    if (!name || !uiController_) return S_OK;
                     a->put_Handled(TRUE);
                     uiController_->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                     post(Json::object().set("type", "shortcut").set("key", name));
                     return S_OK;
                 }).Get(), &t);
-            if (pvVisible_) {
+            if (pvVisible_ && !pvSegs_.empty()) {
                 pvController_->put_Bounds({0, 0, pvRect_.right - pvRect_.left, pvRect_.bottom - pvRect_.top});
                 pvController_->put_IsVisible(TRUE);
             }
-            if (!pvSegs_.empty() && pvText_) reloadPreview();
+            navigatePreview();
             return S_OK;
         }).Get());
 }
@@ -571,7 +626,7 @@ void App::createPreview() {
 // ================================================================ bridge
 
 void App::post(const Json& message) {
-    if (ui_) ui_->PostWebMessageAsJson(toWide(message.dump()).c_str());
+    if (!closing_ && ui_) ui_->PostWebMessageAsJson(toWide(message.dump()).c_str());
 }
 
 void App::postStatus(const std::string& text, bool warn) {
@@ -599,6 +654,7 @@ std::optional<Segments> App::pathSegments(const std::string& path) const {
 void App::onUiMessage(const Json& m) {
     const std::string& type = m.at("type").str();
     if (type == "ready") {
+        if (uiReady_) return;
         uiReady_ = true;
         post(Json::object().set("type", "init").set("version", HSE_VERSION));
         if (!startFile_.empty()) {
@@ -611,13 +667,15 @@ void App::onUiMessage(const Json& m) {
         }
         const std::wstring last = readSetting(L"LastProject");
         if (last.empty()) return;
-        std::thread([this, last]() {
+        const UINT64 generation = projectGen_;
+        if (!fileWorkers_.submit([this, last, generation]() {
             const bool there = isFolder(last);  // may wait for a network drive
-            runLater([this, last, there]() {
-                if (there && root_.empty()) setProject(last, false);
+            runLater([this, last, there, generation]() {
+                if (generation != projectGen_) return;
+                if (there) setProject(last, false);
                 else if (!there) postStatus("Der letzte Projektordner ist gerade nicht erreichbar. Öffne ihn neu.", true);
             });
-        }).detach();
+        })) postStatus(kWorkersBusy, true);
     } else if (type == "layout") {
         pvVisible_ = m.at("visible").boolean();
         const int x = static_cast<int>(m.at("x").num()), y = static_cast<int>(m.at("y").num());
@@ -628,7 +686,7 @@ void App::onUiMessage(const Json& m) {
         }
         if (pvController_) {
             pvController_->put_Bounds({0, 0, w, h});
-            pvController_->put_IsVisible(pvVisible_);
+            pvController_->put_IsVisible(pvVisible_ && !pvSegs_.empty());
         }
     } else if (type == "preview") {
         if (const auto segs = pathSegments(m.at("path").str())) showPreview(*segs, m.at("text").str());
@@ -675,7 +733,6 @@ void App::onUiMessage(const Json& m) {
     } else if (type == "viewInBrowser") {
         if (const auto segs = pathSegments(m.at("path").str())) viewInBrowser(*segs);
     } else if (type == "closeOk") {
-        closing_ = true;
         DestroyWindow(window_);
     }
 }
@@ -713,14 +770,18 @@ void App::setProject(const std::wstring& root, bool remember, std::function<void
     root_ = r;
     rootFinal_ = resolvedPath(root_).value_or(L"");  // where the folder really is (junctions followed)
     ++projectGen_;  // answers of work started for the previous folder are not used any more
+    KillTimer(window_, TIMER_SCAN);
+    scanPending_ = false;
     pictureTokens_.clear();
-    gCache.clear();
     pvSegs_.clear();
     pvText_.reset();
+    pvReloadAgain_ = false;
+    resetPreviewLoad();
+    if (pvController_) pvController_->put_IsVisible(FALSE);
     if (remember) writeSetting(L"LastProject", root_);
     // The interface closes the open page of the previous project now, before anything of the new one arrives.
     post(Json::object().set("type", "projectChanged").set("name", toUtf8(lastComponent(root_))));
-    watcher_.start(root_, window_, WM_APP_FILES);
+    watcher_.start(root_, window_, WM_APP_FILES, static_cast<WPARAM>(projectGen_));
     rescan("Projektordner: " + toUtf8(lastComponent(root_)));
     if (then) then();
 }
@@ -729,11 +790,12 @@ void App::rescan(const std::string& message) {
     if (root_.empty()) return;
     lastScan_ = GetTickCount64();
     const std::wstring root = root_;
-    std::thread([this, root, message]() {
+    const UINT64 project = projectGen_, scan = ++scanGen_;
+    if (!fileWorkers_.submit([this, root, message, project, scan]() {
         const bool there = isFolder(root);
         auto entries = there ? scanProject(root) : std::vector<ProjectEntry>{};
-        runLater([this, root, there, message, entries = std::move(entries)]() {
-            if (root != root_) return;  // another project was opened meanwhile
+        runLater([this, root, there, message, project, scan, entries = std::move(entries)]() {
+            if (project != projectGen_ || scan != scanGen_) return;
             if (!there) {
                 postStatus("Der Projektordner ist gerade nicht erreichbar. Ist die Verbindung zum Netzlaufwerk unterbrochen?", true);
                 return;
@@ -747,7 +809,7 @@ void App::rescan(const std::string& message) {
             if (!message.empty()) m.set("message", message);
             post(m);
         });
-    }).detach();
+    })) postStatus(kWorkersBusy, true);
 }
 
 void App::openFile(const Segments& segs, double op) {
@@ -756,7 +818,7 @@ void App::openFile(const Segments& segs, double op) {
     const UINT64 gen = projectGen_;
     const std::wstring rootFinal = boundary();
     postStatus("Wird geöffnet …");
-    std::thread([this, path, segs, gen, op, rootFinal]() {
+    if (!fileWorkers_.submit([this, path, segs, gen, op, rootFinal]() {
         ReadResult r = readFileBytes(path, kMaxPageBytes, rootFinal);
         runLater([this, segs, gen, op, r = std::move(r)]() {
             if (gen != projectGen_) { postOpenFailed(op); return; }  // another project folder was opened meanwhile
@@ -768,7 +830,7 @@ void App::openFile(const Segments& segs, double op) {
             post(Json::object().set("type", "opened").set("op", op).set("path", joinSegments(segs)).set("name", segs.back())
                      .set("base", fingerprintText(fingerprintOf(r.bytes))).set("data", base64Encode(r.bytes)));
         });
-    }).detach();
+    })) postOpenFailed(op, "Die Seite kann gerade nicht geöffnet werden", kWorkersBusy);
 }
 
 void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprint> base, double id) {
@@ -783,7 +845,7 @@ void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprin
     busy_ = true;
     const std::wstring path = joinPath(root_, segs);
     const std::wstring rootFinal = boundary();
-    std::thread([this, path, base, id, rootFinal, bytes = std::move(bytes)]() {
+    if (!fileWorkers_.submit([this, path, base, id, rootFinal, bytes = std::move(bytes)]() {
         Json answer = writeChecked(path, bytes, base, rootFinal);
 #ifdef HSE_TEST_HOOKS
         // Test build only: holds the answer back, so the acceptance tests can type while a save is on its way.
@@ -794,7 +856,10 @@ void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprin
             busy_ = false;
             post(answer.set("id", id));
         });
-    }).detach();
+    }, true)) {
+        busy_ = false;
+        post(failedAnswer(kWorkersBusy).set("id", id));
+    }
 }
 
 void App::saveAs(const Segments& current, std::string bytes, std::optional<Fingerprint> base, bool createOnly, double id) {
@@ -831,7 +896,7 @@ void App::saveAs(const Segments& current, std::string bytes, std::optional<Finge
     const bool samePage = !current.empty() && lower(path) == lower(joinPath(root_, current));
     busy_ = true;
     const std::wstring rootFinal = boundary();
-    std::thread([this, path, id, base, createOnly, samePage, rootFinal, segs = *checked, bytes = std::move(bytes)]() {
+    if (!fileWorkers_.submit([this, path, id, base, createOnly, samePage, rootFinal, segs = *checked, bytes = std::move(bytes)]() {
         Json answer;
         if (createOnly || !isFile(path)) answer = writeNew(path, bytes, rootFinal);
         else if (samePage) answer = writeChecked(path, bytes, base, rootFinal);
@@ -858,7 +923,10 @@ void App::saveAs(const Segments& current, std::string bytes, std::optional<Finge
             post(answer.set("id", id));
             if (ok) rescan();
         });
-    }).detach();
+    }, true)) {
+        busy_ = false;
+        post(failedAnswer(kWorkersBusy).set("id", id));
+    }
 }
 
 void App::newPage(const Segments& segs, std::string bytes, double op) {
@@ -866,7 +934,7 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
     const std::wstring path = joinPath(root_, segs);
     const UINT64 gen = projectGen_;
     const std::wstring rootFinal = boundary();
-    std::thread([this, path, segs, gen, op, rootFinal, bytes = std::move(bytes)]() {
+    if (!fileWorkers_.submit([this, path, segs, gen, op, rootFinal, bytes = std::move(bytes)]() {
         DWORD e = createFoldersWithin(parentOf(path), rootFinal);
         if (e == ERROR_SUCCESS) e = checkParentWithin(path, rootFinal);
         if (e == ERROR_SUCCESS) e = createFileAtomic(path, bytes).error;
@@ -880,7 +948,7 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
                      .set("base", fingerprintText(fingerprintOf(bytes))).set("data", base64Encode(bytes)));
             rescan("Neue Seite angelegt: " + joinSegments(segs));
         });
-    }).detach();
+    }, true)) postOpenFailed(op, "Die Seite konnte nicht angelegt werden", kWorkersBusy);
 }
 
 void App::pickPicture(const Segments& page, double op) {
@@ -907,7 +975,7 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
     const std::wstring folder = root_ + L"\\bilder";
     const UINT64 gen = projectGen_;
     const std::wstring rootFinal = boundary();
-    std::thread([this, source, folder, page, gen, op, rootFinal]() {
+    if (!fileWorkers_.submit([this, source, folder, page, gen, op, rootFinal]() {
         DWORD e = createFoldersWithin(folder, rootFinal);
         std::string name;
         if (e == ERROR_SUCCESS) {
@@ -931,7 +999,7 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
             post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, {"bilder", name})));
             rescan("Bild kopiert nach bilder/" + name);
         });
-    }).detach();
+    }, true)) postError("Das Bild konnte nicht kopiert werden", kWorkersBusy);
 }
 
 void App::viewInBrowser(const Segments& segs) {
@@ -951,36 +1019,84 @@ void App::viewInBrowser(const Segments& segs) {
 // ================================================================ page view
 
 void App::showPreview(const Segments& segs, std::string text) {
-    const bool samePage = sameSegments(segs, pvSegs_);
+    const bool samePage = segs == pvSegs_;
     pvSegs_ = segs;
     pvText_ = std::make_shared<const std::string>(std::move(text));
-    if (!pv_) return;
     if (!samePage) {
-        pvUrl_ = kProjectOriginW + toWide(urlPathOf(segs));
-        pvScroll_.clear();
-        pvExpectNavigation_ = true;
-        pvNavigating_ = true;
         pvReloadAgain_ = false;
-        pv_->Navigate(pvUrl_.c_str());
+        resetPreviewLoad();
+        navigatePreview();
         return;
     }
     reloadPreview();
 }
 
 void App::reloadPreview() {
-    if (!pv_ || pvSegs_.empty()) return;
-    if (pvNavigating_) {
+    if (!pv_ || pvSegs_.empty() || pvFailed_ || closing_) return;
+    if (pvStart_ || pvNavigationId_ || pvReadingScroll_) {
         pvReloadAgain_ = true;
         return;
     }
-    pvNavigating_ = true;
-    pvUrl_ = kProjectOriginW + toWide(urlPathOf(pvSegs_));
-    pv_->ExecuteScript(L"[scrollX, scrollY]", Callback<ICoreWebView2ExecuteScriptCompletedHandler>([this](HRESULT hr, LPCWSTR result) -> HRESULT {
-        if (SUCCEEDED(hr) && result) pvScroll_ = result;
-        pvExpectNavigation_ = true;
-        pv_->Navigate(pvUrl_.c_str());
-        return S_OK;
-    }).Get());
+    const UINT64 generation = pvGeneration_;
+    const auto continueReload = [this, generation](std::wstring scroll) {
+        if (generation != pvGeneration_ || !pvReadingScroll_) return;
+        pvReloadAgain_ = false;  // the load uses the latest source text
+        resetPreviewLoad();
+        navigatePreview(std::move(scroll));
+    };
+    pvReadingScroll_ = true;
+    const HRESULT hr = pv_->ExecuteScript(L"[scrollX, scrollY]", Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+        [life = std::weak_ptr(callbackLifetime_), continueReload](HRESULT result, LPCWSTR scroll) -> HRESULT {
+            if (!life.expired()) continueReload(SUCCEEDED(result) && scroll ? scroll : L"");
+            return S_OK;
+        }).Get());
+    if (FAILED(hr)) continueReload({});
+}
+
+void App::resetPreviewLoad() {
+    ++pvGeneration_;
+    pvNavigationId_.reset();
+    pvCache_.reset();
+    pvReadingScroll_ = false;
+    pvScroll_.clear();
+    missing_.clear();
+    previewWorkers_.discardReads();
+    finishPreviewRequests();
+    // Let a previously submitted Navigate reach NavigationStarting before submitting another.
+    // This also distinguishes a rapid A → B → A from the first visit to A.
+    if (pv_ && !pvStart_ && !pvFailed_) pv_->Stop();
+}
+
+void App::navigatePreview(std::wstring scroll) {
+    if (!pv_ || pvSegs_.empty() || pvStart_ || pvFailed_ || closing_) return;
+    pvStart_ = PreviewStart{pvGeneration_, kProjectOriginW + toWide(urlPathOf(pvSegs_)), std::move(scroll)};
+    const auto url = pvStart_->url;
+    if (FAILED(pv_->Navigate(url.c_str()))) {
+        pvStart_.reset();
+        postStatus("Die Seitenansicht konnte die Seite gerade nicht öffnen.", true);
+    }
+}
+
+void App::finishPreviewNavigation(ICoreWebView2NavigationCompletedEventArgs* args) {
+    UINT64 id = 0;
+    if (!pv_ || pvFailed_ || closing_ || !pvNavigationId_ || FAILED(args->get_NavigationId(&id)) || id != *pvNavigationId_) return;
+    pvNavigationId_.reset();
+    BOOL success = FALSE;
+    if (SUCCEEDED(args->get_IsSuccess(&success)) && success) {
+        const auto xy = Json::parse(toUtf8(pvScroll_));
+        if (xy && xy->size() == 2) {
+            wchar_t script[96];
+            swprintf_s(script, L"scrollTo(%d,%d)", static_cast<int>((*xy)[0].num()), static_cast<int>((*xy)[1].num()));
+            pv_->ExecuteScript(script, nullptr);
+        }
+        if (pvController_) pvController_->put_IsVisible(pvVisible_);
+        sendMissing();
+    }
+    pvScroll_.clear();
+    if (pvReloadAgain_) {
+        pvReloadAgain_ = false;
+        reloadPreview();
+    }
 }
 
 bool App::respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
@@ -1001,15 +1117,29 @@ bool App::respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, 
 // A request of the page view could not be answered: the engine would then send it itself. The page view
 // is switched off (the host resolver of the environment lets nothing out meanwhile).
 void App::failPreview() {
+    if (closing_ || pvFailed_) return;
+    pvFailed_ = true;
+    if (pv_) pv_->Stop();
     runLater([this]() {
         if (!pvController_) return;
-        for (auto& [id, pending] : pending_) pending.second->Complete();
-        pending_.clear();
+        pvStart_.reset();
+        resetPreviewLoad();
         pvController_->Close();
         pvController_.Reset();
         pv_.Reset();
         postError("Die Seitenansicht wurde abgeschaltet", "Eine Anfrage der Seite konnte nicht sicher beantwortet werden. Starte den Editor neu.");
     });
+}
+
+void App::finishPreviewRequests() {
+    decltype(pending_) requests;
+    requests.swap(pending_);
+    bool failed = false;
+    for (auto& [id, request] : requests) {
+        const bool answered = respond(request.args.Get(), 410, "Gone", "text/plain", nullptr);
+        if (FAILED(request.deferral->Complete()) || !answered) failed = true;
+    }
+    if (failed) failPreview();
 }
 
 void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
@@ -1018,12 +1148,15 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
     COREWEBVIEW2_WEB_RESOURCE_CONTEXT context = COREWEBVIEW2_WEB_RESOURCE_CONTEXT_OTHER;
     if (FAILED(args->get_Request(&request)) || !request || FAILED(request->get_Uri(&raw)) || FAILED(request->get_Method(&method)) ||
         FAILED(args->get_ResourceContext(&context))) {
+        if (raw) CoTaskMemFree(raw);
+        if (method) CoTaskMemFree(method);
         if (!respond(args, 403, "Forbidden", "text/plain", nullptr)) failPreview();
         return;
     }
     const std::string uri = toUtf8(take(raw));
     const std::wstring verb = take(method);
     const auto refuse = [&](int status, const char* reason) { if (!respond(args, status, reason, "text/plain", nullptr)) failPreview(); };
+    if (!pvCache_ || closing_ || pvFailed_) { refuse(410, "Gone"); return; }
     const auto path = pathOfUrl(uri, kProjectOrigin);
     if (!path) { refuse(403, "Forbidden"); return; }  // nothing from the network
     if (verb != L"GET") { refuse(405, "Method Not Allowed"); return; }  // no forms, no uploads
@@ -1047,17 +1180,17 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
         return;
     }
     if (root_.empty()) { refuse(404, "Not Found"); return; }
+    if (pending_.size() >= kMaxPreviewRequests) { refuse(503, "Too Many Preview Requests"); return; }
     // Read on a worker thread: the project folder is usually on a network drive.
     ComPtr<ICoreWebView2Deferral> deferral;
-    args->GetDeferral(&deferral);
+    if (FAILED(args->GetDeferral(&deferral)) || !deferral) { refuse(503, "Preview Unavailable"); return; }
     const UINT64 id = nextRequest_++;
-    pending_[id] = {ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral};
+    pending_.emplace(id, PreviewRequest{pvGeneration_, ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral});
     const std::wstring root = root_;
     const std::wstring rootFinal = boundary();
     const Segments want = *segs;
-    std::thread([this, id, root, rootFinal, want]() {
+    if (!previewWorkers_.submit([this, id, root, rootFinal, want, cache = pvCache_]() {
         const std::wstring file = joinPath(root, want);
-        const std::wstring key = lower(file);
         int status = 200;
         std::string reason = "notFound", detail;
         std::shared_ptr<const std::string> body;
@@ -1072,7 +1205,7 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
                 detail = errorText(e);
             }
         } else {
-            if (auto hit = gCache.find(key, f.size(), f.time())) {
+            if (auto hit = cache->find(file, f)) {
                 body = hit->bytes;
                 detail = hit->actual;
             } else {
@@ -1084,23 +1217,35 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
                 } else {
                     body = std::make_shared<const std::string>(std::move(r.bytes));
                     detail = actualSpelling(root, want);
-                    gCache.put(key, {f.size(), f.time(), body, detail});
+                    cache->put(file, {f.identity(), f.size(), f.time(), body, detail});
                 }
             }
             if (status == 200 && !detail.empty()) reason = "case";
         }
+#ifdef HSE_TEST_HOOKS
+        // Hold a read result after the disk access to exercise navigation and close while it is pending.
+        wchar_t delay[16]{};
+        const DWORD length = GetEnvironmentVariableW(L"HSE_TEST_PREVIEW_DELAY_MS", delay, 16);
+        if (length && length < 16) Sleep(static_cast<DWORD>(std::clamp(_wtoi(delay), 0, 15000)));
+#endif
         runLater([this, id, status, reason, detail, body, want]() {
             const auto it = pending_.find(id);
             if (it == pending_.end()) return;
-            auto [args, deferral] = it->second;
+            const auto [generation, args, deferral] = std::move(it->second);
             pending_.erase(it);
-            const bool answered = status == 200 ? respond(args.Get(), 200, "OK", contentTypeOf(want.back()), body)
-                                                : respond(args.Get(), 404, "Not Found", "text/plain", nullptr);
-            deferral->Complete();
-            if (!answered) failPreview();
+            const bool stale = generation != pvGeneration_ || pvFailed_;
+            const bool answered = stale ? respond(args.Get(), 410, "Gone", "text/plain", nullptr)
+                : status == 200 ? respond(args.Get(), 200, "OK", contentTypeOf(want.back()), body)
+                                : respond(args.Get(), 404, "Not Found", "text/plain", nullptr);
+            if (FAILED(deferral->Complete()) || !answered) { failPreview(); return; }
+            if (stale) return;
             if (status != 200 || reason == "case") reportMissing(joinSegments(want), reason.c_str(), detail);
         });
-    }).detach();
+    })) {
+        pending_.erase(id);
+        refuse(503, "Preview Unavailable");
+        if (FAILED(deferral->Complete())) failPreview();
+    }
 }
 
 void App::reportMissing(const std::string& address, const char* reason, const std::string& detail) {
@@ -1110,7 +1255,7 @@ void App::reportMissing(const std::string& address, const char* reason, const st
     if (std::string_view(reason) == "case") item.set("actual", detail);
     else if (!detail.empty()) item.set("message", detail);
     missing_.emplace_back(address, std::move(item));
-    if (!pvNavigating_) sendMissing();
+    if (!pvNavigationId_) sendMissing();
 }
 
 void App::sendMissing() {

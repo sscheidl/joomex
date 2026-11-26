@@ -75,8 +75,10 @@ std::string extensionOf(std::string_view name) {
 }  // namespace
 
 std::optional<Segments> requestSegments(std::string_view urlPath) {
-    if (urlPath.empty() || urlPath.front() != '/' || urlPath.size() > 2048) return std::nullopt;
+    constexpr std::size_t maxPathBytes = 2048;
+    if (urlPath.empty() || urlPath.front() != '/' || urlPath.size() > maxPathBytes * 3) return std::nullopt;
     Segments out;
+    std::size_t pathBytes = 0;
     std::size_t at = 1;
     for (;;) {
         const std::size_t slash = urlPath.find('/', at);
@@ -96,6 +98,8 @@ std::optional<Segments> requestSegments(std::string_view urlPath) {
             if (c < 0x20 || c == 0x7F || ch == '\\' || ch == ':' || ch == '/' || ch == '*' || ch == '?' || ch == '"' || ch == '<' || ch == '>' || ch == '|') return std::nullopt;
         }
         if (seg.back() == '.' || seg.back() == ' ' || isDeviceName(seg)) return std::nullopt;
+        pathBytes += 1 + seg.size();  // slash and decoded UTF-8 bytes
+        if (pathBytes > maxPathBytes) return std::nullopt;
         out.push_back(std::move(seg));
         if (out.size() > 32) return std::nullopt;
         if (slash == std::string_view::npos) break;
@@ -118,7 +122,7 @@ std::string encodeSegment(std::string_view segment) {
     std::string out;
     for (const char ch : segment) {
         const unsigned char c = static_cast<unsigned char>(ch);
-        const bool encode = c < 0x20 || c == 0x7F || ch == '%' || ch == '#' || ch == '?' || ch == ' ' || ch == '"' || ch == '<' ||
+        const bool encode = c < 0x20 || c >= 0x7F || ch == '%' || ch == '#' || ch == '?' || ch == ' ' || ch == '"' || ch == '<' ||
                             ch == '>' || ch == '\\' || ch == '^' || ch == '`' || ch == '{' || ch == '|' || ch == '}' || ch == '/';
         if (encode) {
             out += '%';

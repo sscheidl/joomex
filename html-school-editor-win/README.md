@@ -2,7 +2,7 @@
 
 A small Windows program in which pupils of about 12–13 years learn HTML: the code on the left, the page on the right, exactly as Microsoft Edge shows it. Pictures and links are found relative to the page, as in a browser, because the page is loaded from its real place in the pupil's project folder.
 
-**State:** 0.1.0-alpha.8, first code of stage 1 with corrections against lost work from the review of 2026-11-25 and line breaks kept as read; built with MSVC, not yet tried in class. See [docs/STATUS.md](docs/STATUS.md); how to build: [docs/BUILD.md](docs/BUILD.md).
+**State:** 0.1.0-alpha.9, stage 1 candidate for independent review and Windows acceptance. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
 
 | Document | Content |
 | --- | --- |

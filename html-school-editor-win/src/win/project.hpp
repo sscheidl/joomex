@@ -3,7 +3,7 @@
 
 #include "winutil.hpp"
 
-#include <atomic>
+#include <mutex>
 #include <thread>
 
 namespace hse {
@@ -17,20 +17,32 @@ struct ProjectEntry {
 // begins with '.', are left out). At most 8 folder levels and 3000 entries. Runs on any thread.
 std::vector<ProjectEntry> scanProject(const std::wstring& root);
 
-// Watches `root` and its subfolders and posts `message` to `window` after a change. Network drives may not
-// support this; the caller scans again when the window is activated anyway.
+// Watches the current project on one thread. The window can change the target without waiting
+// for the old share. Notifications carry the project generation in WPARAM.
 class FolderWatcher {
 public:
     FolderWatcher() = default;
-    ~FolderWatcher() { stop(); }
+    ~FolderWatcher();
     FolderWatcher(const FolderWatcher&) = delete;
     FolderWatcher& operator=(const FolderWatcher&) = delete;
 
-    void start(const std::wstring& root, HWND window, UINT message);
-    void stop();
+    void start(const std::wstring& root, HWND window, UINT message, WPARAM generation);
+    void requestStop();
+    void join();
 
 private:
-    HANDLE stopEvent_ = nullptr;
+    struct Target {
+        std::wstring root;
+        HWND window = nullptr;
+        UINT message = 0;
+        WPARAM generation = 0;
+    };
+    void work();
+
+    std::mutex mutex_;
+    Target target_;
+    bool stopping_ = false;
+    HANDLE changed_ = nullptr;
     std::thread thread_;
 };
 

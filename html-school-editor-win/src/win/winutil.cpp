@@ -120,6 +120,7 @@ DWORD CheckedFile::open(const std::wstring& path, const std::wstring& rootFinal)
     }
     size_ = (static_cast<ULONGLONG>(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
     time_ = info.ftLastWriteTime;
+    identity_ = {info.dwVolumeSerialNumber, (static_cast<ULONGLONG>(info.nFileIndexHigh) << 32) | info.nFileIndexLow};
     return ERROR_SUCCESS;
 }
 

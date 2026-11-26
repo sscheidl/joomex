@@ -47,6 +47,12 @@ struct ReadResult {
     std::string bytes;
 };
 
+struct FileIdentity {
+    DWORD volume = 0;
+    ULONGLONG index = 0;
+    bool operator==(const FileIdentity&) const = default;
+};
+
 // An open file whose resolved path was checked against the project folder.
 class CheckedFile {
 public:
@@ -56,12 +62,14 @@ public:
     ~CheckedFile();
     ULONGLONG size() const { return size_; }
     FILETIME time() const { return time_; }
+    FileIdentity identity() const { return identity_; }
     ReadResult readAll(std::size_t maxBytes);
 
 private:
     HANDLE h_ = INVALID_HANDLE_VALUE;
     ULONGLONG size_ = 0;
     FILETIME time_{};
+    FileIdentity identity_;
 };
 
 // Reads a whole file inside the project folder `rootFinal`; files larger than `maxBytes` give

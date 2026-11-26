@@ -1,6 +1,7 @@
 // The main window with its two WebView2 views (user interface and page view) and the message bridge.
 #pragma once
 
+#include "fileworkers.hpp"
 #include "project.hpp"
 #include "winutil.hpp"
 #include "../core/json.hpp"
@@ -12,11 +13,11 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <set>
 
 namespace hse {
 
 using Microsoft::WRL::ComPtr;
+struct FileCache;
 
 class App {
 public:
@@ -38,7 +39,10 @@ private:
     void postStatus(const std::string& text, bool warn = false);
     void postError(const std::string& title, const std::string& message);
     void onUiMessage(const Json& m);
-    void runLater(std::function<void()> task);   // from any thread: run on the window thread
+    bool runLater(std::function<void()> task);  // from any thread; false once the window is closing
+    void runWindowTask();
+    void shutdown();
+    void startupError(const wchar_t* message);
 
     // project and files
     void setProject(const std::wstring& root, bool remember, std::function<void()> then = {});
@@ -58,6 +62,10 @@ private:
     // page view
     void showPreview(const Segments& segs, std::string text);
     void reloadPreview();
+    void resetPreviewLoad();
+    void navigatePreview(std::wstring scroll = {});
+    void finishPreviewNavigation(ICoreWebView2NavigationCompletedEventArgs* args);
+    void finishPreviewRequests();
     void onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args);
     // false if no response could be set (the engine would then fetch the request itself)
     bool respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
@@ -71,6 +79,13 @@ private:
     HWND window_ = nullptr;
     HWND previewHost_ = nullptr;
     std::wstring startFile_;
+    std::shared_ptr<int> callbackLifetime_ = std::make_shared<int>(0);
+    std::mutex taskMutex_;
+    std::deque<std::function<void()>> windowTasks_;
+    HWND taskWindow_ = nullptr;  // protected by taskMutex_
+    bool runningWindowTask_ = false;
+    FileWorkers fileWorkers_{2, 32};
+    FileWorkers previewWorkers_{4, 96};
 
     ComPtr<ICoreWebView2Environment> env_;
     ComPtr<ICoreWebView2Controller> uiController_;
@@ -89,20 +104,34 @@ private:
     bool scanPending_ = false;
     ULONGLONG lastScan_ = 0;
     UINT64 projectGen_ = 0;                              // counts project folders; work of an older one is dropped
+    UINT64 scanGen_ = 0;
     std::map<std::string, std::wstring> pictureTokens_;  // pictures outside the project waiting for a copy
     bool busy_ = false;                                  // a save runs on a worker thread
 
     // page view
     Segments pvSegs_;
     std::shared_ptr<const std::string> pvText_;
-    std::wstring pvUrl_;
-    bool pvNavigating_ = false;
+    struct PreviewStart {
+        UINT64 generation;
+        std::wstring url;
+        std::wstring scroll;
+    };
+    UINT64 pvGeneration_ = 0;
+    std::optional<PreviewStart> pvStart_;
+    std::optional<UINT64> pvNavigationId_;
+    std::shared_ptr<FileCache> pvCache_;
+    bool pvReadingScroll_ = false;
     bool pvReloadAgain_ = false;
-    bool pvExpectNavigation_ = false;
+    bool pvFailed_ = false;
     std::wstring pvScroll_;                               // "[x,y]" read before a reload
     std::vector<std::pair<std::string, Json>> missing_;   // reports for the current load, by address
     UINT64 nextRequest_ = 1;
-    std::map<UINT64, std::pair<ComPtr<ICoreWebView2WebResourceRequestedEventArgs>, ComPtr<ICoreWebView2Deferral>>> pending_;
+    struct PreviewRequest {
+        UINT64 generation;
+        ComPtr<ICoreWebView2WebResourceRequestedEventArgs> args;
+        ComPtr<ICoreWebView2Deferral> deferral;
+    };
+    std::map<UINT64, PreviewRequest> pending_;
 };
 
 }  // namespace hse

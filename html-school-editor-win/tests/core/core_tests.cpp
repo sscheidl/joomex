@@ -52,6 +52,20 @@ static void testPathOfUrl() {
     CHECK(!pathOfUrl("file:///C:/a.png", o));
 }
 
+static void testUrlPathRoundTrip() {
+    const auto segments = S({"Übungen", "Grüße #1", "100% Süß.html"});
+    const std::string encoded = urlPathOf(segments);
+    CHECK_EQ(encoded, std::string("/%C3%9Cbungen/Gr%C3%BC%C3%9Fe%20%231/100%25%20S%C3%BC%C3%9F.html"));
+    CHECK_EQ(requestSegments(encoded), std::optional{segments});
+    CHECK_EQ(requestSegments(urlPathOf(S({"%C3%A4.html"}))), std::optional{S({"%C3%A4.html"})});
+
+    std::string longSegment;
+    for (int i = 0; i < 90; ++i) longSegment += "ä";
+    const Segments longPath(8, longSegment);
+    CHECK_EQ(requestSegments(urlPathOf(longPath)), std::optional{longPath});
+    CHECK(!requestSegments(urlPathOf(Segments(12, longSegment))));
+}
+
 static void testRelativeAddress() {
     CHECK_EQ(relativeAddress(S({"index.html"}), S({"katze.png"})), std::string("katze.png"));
     CHECK_EQ(relativeAddress(S({"index.html"}), S({"bilder", "katze.png"})), std::string("bilder/katze.png"));
@@ -61,7 +75,7 @@ static void testRelativeAddress() {
     CHECK_EQ(relativeAddress(S({"a", "b", "c.html"}), S({"x.png"})), std::string("../../x.png"));
     CHECK_EQ(relativeAddress(S({"a", "b", "c.html"}), S({"a", "x", "y.png"})), std::string("../x/y.png"));
     CHECK_EQ(relativeAddress(S({"index.html"}), S({"Meine Bilder", "a#b?.png"})), std::string("Meine%20Bilder/a%23b%3F.png"));
-    CHECK_EQ(relativeAddress(S({"index.html"}), S({"K\xC3\xA4tzchen.png"})), std::string("K\xC3\xA4tzchen.png"));
+    CHECK_EQ(relativeAddress(S({"index.html"}), S({"K\xC3\xA4tzchen.png"})), std::string("K%C3%A4tzchen.png"));
     CHECK_EQ(relativeAddress(S({"index.html"}), S({"100%.png"})), std::string("100%25.png"));
 }
 
@@ -138,6 +152,7 @@ static void testJson() {
 int main() {
     testRequestSegments();
     testPathOfUrl();
+    testUrlPathRoundTrip();
     testRelativeAddress();
     testCaseAndKinds();
     testUniqueAndFingerprint();

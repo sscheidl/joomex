@@ -50,48 +50,82 @@ std::vector<ProjectEntry> scanProject(const std::wstring& root) {
     return out;
 }
 
-void FolderWatcher::start(const std::wstring& root, HWND window, UINT message) {
-    stop();
-    stopEvent_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    if (!stopEvent_) return;
-    const HANDLE stopEvent = stopEvent_;
-    thread_ = std::thread([root, window, message, stopEvent]() {
-        const HANDLE dir = CreateFileW(root.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                                       OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
-        if (dir == INVALID_HANDLE_VALUE) return;
-        OVERLAPPED ov{};
-        ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        alignas(DWORD) BYTE buffer[16 * 1024];
-        for (;;) {
-            ResetEvent(ov.hEvent);
-            const DWORD filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE;
-            if (!ReadDirectoryChangesW(dir, buffer, sizeof buffer, TRUE, filter, nullptr, &ov, nullptr)) break;  // not supported here
-            const HANDLE waits[2] = {ov.hEvent, stopEvent};
-            const DWORD w = WaitForMultipleObjects(2, waits, FALSE, INFINITE);
-            if (w != WAIT_OBJECT_0) {
-                CancelIoEx(dir, &ov);
-                DWORD ignored;
-                GetOverlappedResult(dir, &ov, &ignored, TRUE);
-                break;
-            }
-            DWORD bytes = 0;
-            if (!GetOverlappedResult(dir, &ov, &bytes, FALSE)) break;
-            // Several changes usually come together (save = temporary file + replace); the window waits a
-            // moment before it scans (see WM_APP_FILES in app.cpp).
-            PostMessageW(window, message, 0, 0);
-        }
-        CloseHandle(ov.hEvent);
-        CloseHandle(dir);
-    });
+FolderWatcher::~FolderWatcher() {
+    requestStop();
+    join();
+    if (changed_) CloseHandle(changed_);
 }
 
-void FolderWatcher::stop() {
-    if (stopEvent_) SetEvent(stopEvent_);
-    if (thread_.joinable()) thread_.join();
-    if (stopEvent_) {
-        CloseHandle(stopEvent_);
-        stopEvent_ = nullptr;
+void FolderWatcher::start(const std::wstring& root, HWND window, UINT message, WPARAM generation) {
+    std::lock_guard lock(mutex_);
+    if (stopping_) return;
+    if (!changed_) {
+        changed_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        if (!changed_) return;
+        thread_ = std::thread([this] { work(); });
     }
+    target_ = {root, window, message, generation};
+    SetEvent(changed_);
+    CancelSynchronousIo(thread_.native_handle());  // the old folder may still be opening
+}
+
+void FolderWatcher::work() {
+    while (WaitForSingleObject(changed_, INFINITE) == WAIT_OBJECT_0) {
+        Target target;
+        {
+            std::lock_guard lock(mutex_);
+            if (stopping_) return;
+            target = target_;
+            ResetEvent(changed_);
+        }
+        OVERLAPPED ov{};
+        ov.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        if (!ov.hEvent) return;
+        const HANDLE waits[2] = {changed_, ov.hEvent};
+        alignas(DWORD) BYTE buffer[16 * 1024];
+        constexpr DWORD filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE;
+        do {
+            const HANDLE dir = CreateFileW(target.root.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                           nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+            if (dir != INVALID_HANDLE_VALUE) {
+                bool first = true;
+                while (WaitForSingleObject(changed_, 0) == WAIT_TIMEOUT) {
+                    ResetEvent(ov.hEvent);
+                    if (!ReadDirectoryChangesW(dir, buffer, sizeof buffer, TRUE, filter, nullptr, &ov, nullptr)) break;
+                    // A new or recovered watch may have missed changes before it started.
+                    if (first) PostMessageW(target.window, target.message, target.generation, 0);
+                    first = false;
+                    if (WaitForMultipleObjects(2, waits, FALSE, INFINITE) != WAIT_OBJECT_0 + 1) {
+                        CancelIoEx(dir, &ov);
+                        DWORD ignored;
+                        GetOverlappedResult(dir, &ov, &ignored, TRUE);
+                        break;
+                    }
+                    DWORD bytes = 0;
+                    if (!GetOverlappedResult(dir, &ov, &bytes, FALSE)) break;
+                    PostMessageW(target.window, target.message, target.generation, 0);  // also rescan on overflow
+                }
+                CloseHandle(dir);
+            }
+            // Retry on a disconnected share. A switch or close interrupts the wait immediately.
+        } while (WaitForSingleObject(changed_, 2000) == WAIT_TIMEOUT);
+        CloseHandle(ov.hEvent);
+    }
+}
+
+void FolderWatcher::requestStop() {
+    std::lock_guard lock(mutex_);
+    stopping_ = true;
+    if (changed_) SetEvent(changed_);
+    if (thread_.joinable()) CancelSynchronousIo(thread_.native_handle());
+}
+
+void FolderWatcher::join() {
+    if (!thread_.joinable()) return;
+    while (WaitForSingleObject(thread_.native_handle(), 100) == WAIT_TIMEOUT) {
+        CancelSynchronousIo(thread_.native_handle());
+    }
+    thread_.join();
 }
 
 }  // namespace hse

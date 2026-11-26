@@ -30,19 +30,19 @@ This is the point of the program.
 2. Every request to that host is answered by the program (`WebResourceRequested` with a deferral). The request for the page itself gets the **current, unsaved text** of the code editor; every other request gets the file from the project folder.
 3. After a pause in typing (about 0.3 s) the page view reloads; the scroll position is read before and restored after (`ExecuteScript` runs even though page scripts are off).
 
-So the program never resolves an address itself; the engine does it from the page's place, which is what pupils will see later in Edge. The `.example` top-level domain is reserved and never reaches the network.
+The program percent-encodes each UTF-8 path segment of its own navigation and of addresses inserted by the picture dialog. The engine resolves relative addresses from the page's place. The request policy below blocks use of the network.
 
 ### Why the program serves the files itself (network drive, D8)
 
 `SetVirtualHostNameToFolderMapping` would serve the folder too, but project folders lie on a network drive, and the program needs to know about every request:
 
-* **Reads off the user interface thread.** A file is read by a worker thread; the response is created on the user interface thread when the bytes are there. A slow server never freezes the window.
-* **Cache.** Files are kept in memory (limit 64 MB) and served again while size and modification time are unchanged, so a reload after each pause in typing does not read every picture over the network again.
+* **Reads and responses.** Separate bounded pools handle project file work and preview reads. Only the window thread touches WebView2 and completes request deferrals. A superseded request is completed with an explicit empty response. Large or slow projects can delay reads, and initial resolution of the selected project or a native dialog can still involve a network wait.
+* **Cache.** Each accepted preview load owns a cache of up to 64 MB. Repeated reads in that load reuse bytes when the checked file identity, size and time match. Reloads read afresh, including from a share. Older workers may finish with their former cache, which the new load does not use.
 * **Missing files and case.** A file that is not there is answered with 404 and reported to the user interface with the address as requested. A file that exists only with other upper and lower case (Windows finds it, a web server would not) is served and reported.
 * **Boundary.** The URL parser of the engine removes `..` above the host root, so `../../x.png` from a page one folder deep arrives as `/x.png`. Addresses that leave the project folder are therefore found by the user interface, which reads the addresses in the code (see below), not by the request handler.
 * **Links in the project folder.** A path built from checked segments can still lead elsewhere through a junction or symbolic link. Every read opens the file and asks the file system where the handle really leads (`GetFinalPathNameByHandleW`, all links followed); only a file inside the project folder as the file system resolves it is read, through that same handle, so nothing can be swapped in between (`CheckedFile` in `src/win/winutil.cpp`). That holds for the page view (also for cached files: the cache spares only the reading), opening, the check before saving and "Im Browser ansehen". Before a write, the folder that receives the file is checked the same way, and new folders are created only below a folder that resolves inside the project (`checkParentWithin`, `createFoldersWithin`); replacing that folder by a link in the moment between check and write is not caught. A file chosen in a system dialog counts as inside the project only if it also resolves inside it (`projectSegments`). The project list leaves out junctions, symbolic links and mount points (name-surrogate reparse points), files and folders alike. If the project folder cannot be resolved (network drive not reachable), nothing in it is read or written.
 
-What the network drive changes elsewhere: the change notification (`ReadDirectoryChangesW`) is not reliable on every server, so the project list is also scanned again when the window is activated; saving checks the file's content, not only its time stamp, because time stamps of network drives are coarse.
+The folder watcher follows the current project on its own thread and retries if it loses its watch. The project list is also scanned on window activation. Project and scan generations keep old results from replacing the current list. Saving still checks file content because network-drive timestamps can be coarse.
 
 ## Request filter (security)
 
@@ -94,6 +94,8 @@ Rules that keep a pupil's work (`ui/js/main.js`, `src/win/app.cpp`):
 * **Limits.** The check and the replacement are two steps; a change by another program in the moment between them is not noticed. Metadata policy: content first; attributes and ACL of the old file are carried over where the file system allows it, otherwise the file keeps what the folder gives it. An ambiguous result on a network drive that disconnects during the replacement is reported as uncertain; it is not measured (no access to the school server).
 
 The core also sends `link` {path, isPage} when a link in the page view is clicked, `shortcut` {key} for Ctrl+S, Ctrl+F and F3 pressed in the page view, `status` and `error`.
+
+The bridge queues its work on the window thread. File dialogs open after the WebView2 message callback returns. While a dialog runs its own message loop, queued actions wait in order. At shutdown the window stops receiving queued results and completes outstanding preview deferrals before closing the controllers. Queued reads are discarded and running reads are asked to cancel. Accepted writes finish. Workers are joined after the window message loop ends.
 
 ## C++ core
 
