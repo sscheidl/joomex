@@ -51,9 +51,9 @@ NOT MEASURED: school computers, mapped drive and UNC path, a network drive that 
 * **High, a close request during another question:** `closeRequest` was dropped while a question was open. It is now kept and answered once the question is done.
 * **Medium, questions taking each other's answer:** a question that came in the moment after another was confirmed could take its answer. Questions now wait in a real line, and each reads its own answer when its dialog closes.
 * **Medium, a dialog claim that stays:** if a dialog request could not be queued, its claim stayed set. It is now given back with the matching answer.
-* **Rescue copy:** only in `%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, no longer in the temporary folder as a fallback; names cut to 60 characters before date and time; the answer names the page. (The owner expects rescue copies to be rare in practice.)
+* **Rescue copy:** only in `%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, no longer in the temporary folder as a fallback; names cut to 60 characters before date and time; the answer names the page. (The owner expects rescue copies to be rare in practice.) Deleting rescue copies is up to the subject teacher and the system administrator (owner's decision of 2026-11-26); the program and its notice stay as they are.
 * Root `README.md` names the current version (B6).
-* **Still open from that review:** "Im Browser ansehen" starts the browser (`ShellExecuteW`) and the command line checks its file (`isFile`, `src/win/main.cpp`) on the window thread; a blocked network drive can keep the process alive after the window closed (accepted writes drain); B7 (builds not reproducible); B8 (`target=_blank` gives no hint); who may read and delete rescue copies on shared accounts.
+* **Still open from that review:** "Im Browser ansehen" starts the browser (`ShellExecuteW`) and the command line checks its file (`isFile`, `src/win/main.cpp`) on the window thread; a blocked network drive can keep the process alive after the window closed (accepted writes drain); B7 (builds not reproducible); B8 (`target=_blank` gives no hint). On a shared account every pupil of that account can read the rescue copies (deleting is up to the teacher and the system administrator).
 
 ### 0.1.0-alpha.11 (2026-11-26): one file dialog, a late page choice, rescue copy
 
@@ -129,4 +129,4 @@ Built and run on Windows 11 with the Visual Studio 2022 Build Tools (see the evi
 
 ## Next step
 
-Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Get an independent review of alpha.12 (the corrections of the alpha.11 review), measure a real logoff and the network share cases, and start the local stage 2 prototype after the merge. Decide who deletes rescue copies on shared school computers. Verify the school computer and SMB cases before using the editor with pupils' files.
+Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Get an independent review of alpha.12 (the corrections of the alpha.11 review), measure a real logoff and the network share cases, and start the local stage 2 prototype after the merge. Verify the school computer and SMB cases before using the editor with pupils' files.

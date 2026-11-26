@@ -91,7 +91,7 @@ The new program loads the page from its real place on disk. A relative address i
 * No network access by the program or the page view: all requests that do not go to the project folder or the program's own resources are refused.
 * Page scripts off; no new windows, downloads, permission prompts (camera, location, notifications), developer tools or context-menu entries such as "Inspect" in the release build.
 * No telemetry of the program. WebView2 diagnostic data follows the Windows settings of the computer; this is documented.
-* The program does not store pupils' pages anywhere except where the pupil saves them, and a rescue copy the pupil asks for while a save hangs (3.5). Rescue copies stay in the local profile of that computer until someone deletes them; the program deletes none.
+* The program does not store pupils' pages anywhere except where the pupil saves them, and a rescue copy the pupil asks for while a save hangs (3.5). Rescue copies stay in the local profile of that computer until someone deletes them; the program deletes none. Deleting them is up to the subject teacher and the system administrator (owner's decision of 2026-11-26). On a Windows account shared by several pupils, every pupil signed in to that account can read them; who may sign in to which account is the school's matter.
 
 ## 7. Open questions
 
