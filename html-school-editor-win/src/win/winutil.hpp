@@ -6,6 +6,8 @@
 #endif
 #include <windows.h>
 
+#include <algorithm>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -34,6 +36,34 @@ constexpr DWORD ERROR_OUTSIDE_PROJECT = 0x20000001;
 
 // Where `path` (a file or a folder) really leads, all links followed; nothing if it cannot be opened.
 std::optional<std::wstring> resolvedPath(const std::wstring& path);
+
+// The project folder as the file system resolves it, shared by the workers of one project folder. Resolving
+// opens the folder and can wait for a network drive, so only worker threads call get(); the window thread
+// only creates a new boundary for each project folder. Empty while the folder cannot be reached (then every
+// read and write in it fails); tried again on the next call.
+class ProjectBoundary {
+public:
+    explicit ProjectBoundary(std::wstring root) : root_(std::move(root)) {}
+    const std::wstring& root() const { return root_; }
+    std::wstring get() {
+        std::lock_guard lock(mutex_);
+        if (final_.empty()) {
+#ifdef HSE_TEST_HOOKS
+            // Test build only: a slow network drive, to check that the window keeps answering.
+            wchar_t delay[16]{};
+            const DWORD n = GetEnvironmentVariableW(L"HSE_TEST_RESOLVE_DELAY_MS", delay, 16);
+            if (n && n < 16) Sleep(static_cast<DWORD>(std::clamp(_wtoi(delay), 0, 15000)));
+#endif
+            final_ = resolvedPath(root_).value_or(L"");
+        }
+        return final_;
+    }
+
+private:
+    const std::wstring root_;
+    std::mutex mutex_;
+    std::wstring final_;
+};
 
 // True if the resolved path `final` lies inside the resolved folder `rootFinal` (compared without case).
 bool within(const std::wstring& rootFinal, const std::wstring& final);
@@ -123,7 +153,8 @@ std::optional<Segments> segmentsBelow(const std::wstring& root, const std::wstri
 
 std::optional<std::wstring> pickFolder(HWND owner, const std::wstring& start);
 std::optional<std::wstring> pickPageFile(HWND owner, const std::wstring& start);
-std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& start);
+// Starts in `start`, or in `fallback` if `start` cannot be shown.
+std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& start, const std::wstring& fallback);
 // `askOverwrite` false: no overwrite question; the caller refuses an existing file itself.
 std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name, bool askOverwrite);
 

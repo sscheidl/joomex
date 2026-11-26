@@ -185,6 +185,25 @@ std::string actualSpelling(const std::wstring& root, const Segments& segs) {
 
 }  // namespace
 
+namespace {
+
+// Worker threads only (resolving opens files and can wait for a network drive).
+std::wstring rootOf(const std::shared_ptr<ProjectBoundary>& bound) { return bound ? bound->get() : std::wstring(); }
+
+// A file chosen in a system dialog lies in the project only if its place is below the project folder and
+// it also resolves inside it (a junction in the folder may lead elsewhere). Worker threads only.
+std::optional<Segments> projectSegmentsOf(const std::shared_ptr<ProjectBoundary>& bound, const std::wstring& file) {
+    if (!bound) return std::nullopt;
+    auto segs = segmentsBelow(bound->root(), file);
+    if (!segs) return std::nullopt;
+    const auto final = resolvedPath(file);
+    const std::wstring rootFinal = bound->get();
+    if (!final || rootFinal.empty() || !within(rootFinal, *final)) return std::nullopt;
+    return segs;
+}
+
+}  // namespace
+
 // ================================================================ window
 
 int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
@@ -301,6 +320,15 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
                 return 0;
             }
             break;
+        case WM_QUERYENDSESSION:
+            // Logging off or shutting down would end the program without the question for unsaved text
+            // (SPECIFICATION.md: closing asks first). Windows shows the reason; the pupil decides there.
+            if (!closing_ && uiReady_ && unsaved_) {
+                if (!endBlocked_) endBlocked_ = ShutdownBlockReasonCreate(window_, L"Eine Seite ist noch nicht gespeichert.") != FALSE;
+                post(Json::object().set("type", "closeRequest"));
+                return FALSE;
+            }
+            return TRUE;
         case WM_CLOSE:
             if (closing_ || !uiReady_) {
                 DestroyWindow(window_);
@@ -698,15 +726,20 @@ void App::onUiMessage(const Json& m) {
         const double op = m.at("op").num();
         const auto file = pickPageFile(window_, root_);
         if (!file) { postOpenFailed(op); return; }
-        if (const auto segs = projectSegments(*file)) {
-            openFile(*segs, op);
-        } else {
-            const std::wstring f = *file;
-            setProject(parentOf(f), true, [this, f, op]() {
-                if (const auto s = segmentsBelow(root_, f)) openFile(*s, op);
-                else postOpenFailed(op);
+        const std::wstring f = *file;
+        const auto bound = boundary_;
+        const UINT64 gen = projectGen_;
+        if (!fileWorkers_.submit([this, f, bound, gen, op]() {
+            auto segs = projectSegmentsOf(bound, f);
+            runLater([this, f, gen, op, segs = std::move(segs)]() {
+                if (gen != projectGen_) { postOpenFailed(op); return; }
+                if (segs) { openFile(*segs, op); return; }
+                setProject(parentOf(f), true, [this, f, op]() {
+                    if (const auto s = segmentsBelow(root_, f)) openFile(*s, op);
+                    else postOpenFailed(op);
+                });
             });
-        }
+        })) postOpenFailed(op, "Die Seite kann gerade nicht geöffnet werden", kWorkersBusy);
     } else if (type == "openFile") {
         const double op = m.at("op").num();
         if (const auto segs = pathSegments(m.at("path").str())) openFile(*segs, op);
@@ -732,6 +765,9 @@ void App::onUiMessage(const Json& m) {
         if (const auto segs = pathSegments(m.at("page").str())) copyPicture(m.at("token").str(), *segs, m.at("op").num());
     } else if (type == "viewInBrowser") {
         if (const auto segs = pathSegments(m.at("path").str())) viewInBrowser(*segs);
+    } else if (type == "unsaved") {
+        unsaved_ = m.at("value").boolean();
+        if (!unsaved_ && endBlocked_) endBlocked_ = !ShutdownBlockReasonDestroy(window_);
     } else if (type == "closeOk") {
         DestroyWindow(window_);
     }
@@ -739,24 +775,6 @@ void App::onUiMessage(const Json& m) {
 
 // ================================================================ project and files
 
-// The project folder as the file system resolves it; resolved again if it could not be reached before.
-// Empty while it cannot be reached: then every read and write in it fails (nothing is served unchecked).
-std::wstring App::boundary() {
-    if (rootFinal_.empty() && !root_.empty()) rootFinal_ = resolvedPath(root_).value_or(L"");
-    return rootFinal_;
-}
-
-// A file chosen in a system dialog lies in the project only if its place is below the project folder and
-// it also resolves inside it (a junction in the folder may lead elsewhere).
-std::optional<Segments> App::projectSegments(const std::wstring& file) {
-    if (root_.empty()) return std::nullopt;
-    auto segs = segmentsBelow(root_, file);
-    if (!segs) return std::nullopt;
-    const auto final = resolvedPath(file);
-    const std::wstring rootFinal = boundary();
-    if (!final || rootFinal.empty() || !within(rootFinal, *final)) return std::nullopt;
-    return segs;
-}
 
 void App::postOpenFailed(double op, const std::string& title, const std::string& message) {
     Json m = Json::object().set("type", "openFailed").set("op", op);
@@ -768,7 +786,7 @@ void App::setProject(const std::wstring& root, bool remember, std::function<void
     std::wstring r = root;
     while (r.size() > 3 && (r.back() == L'\\' || r.back() == L'/')) r.pop_back();
     root_ = r;
-    rootFinal_ = resolvedPath(root_).value_or(L"");  // where the folder really is (junctions followed)
+    boundary_ = std::make_shared<ProjectBoundary>(root_);  // resolved on the workers (junctions followed)
     ++projectGen_;  // answers of work started for the previous folder are not used any more
     KillTimer(window_, TIMER_SCAN);
     scanPending_ = false;
@@ -816,9 +834,10 @@ void App::openFile(const Segments& segs, double op) {
     if (root_.empty()) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
     const UINT64 gen = projectGen_;
-    const std::wstring rootFinal = boundary();
+    const auto bound = boundary_;
     postStatus("Wird geöffnet …");
-    if (!fileWorkers_.submit([this, path, segs, gen, op, rootFinal]() {
+    if (!fileWorkers_.submit([this, path, segs, gen, op, bound]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         ReadResult r = readFileBytes(path, kMaxPageBytes, rootFinal);
         runLater([this, segs, gen, op, r = std::move(r)]() {
             if (gen != projectGen_) { postOpenFailed(op); return; }  // another project folder was opened meanwhile
@@ -844,8 +863,9 @@ void App::save(const Segments& segs, std::string bytes, std::optional<Fingerprin
     }
     busy_ = true;
     const std::wstring path = joinPath(root_, segs);
-    const std::wstring rootFinal = boundary();
-    if (!fileWorkers_.submit([this, path, base, id, rootFinal, bytes = std::move(bytes)]() {
+    const auto bound = boundary_;
+    if (!fileWorkers_.submit([this, path, base, id, bound, bytes = std::move(bytes)]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         Json answer = writeChecked(path, bytes, base, rootFinal);
 #ifdef HSE_TEST_HOOKS
         // Test build only: holds the answer back, so the acceptance tests can type while a save is on its way.
@@ -895,8 +915,9 @@ void App::saveAs(const Segments& current, std::string bytes, std::optional<Finge
     // The open page under its own name: the same check as an ordinary save.
     const bool samePage = !current.empty() && lower(path) == lower(joinPath(root_, current));
     busy_ = true;
-    const std::wstring rootFinal = boundary();
-    if (!fileWorkers_.submit([this, path, id, base, createOnly, samePage, rootFinal, segs = *checked, bytes = std::move(bytes)]() {
+    const auto bound = boundary_;
+    if (!fileWorkers_.submit([this, path, id, base, createOnly, samePage, bound, segs = *checked, bytes = std::move(bytes)]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         Json answer;
         if (createOnly || !isFile(path)) answer = writeNew(path, bytes, rootFinal);
         else if (samePage) answer = writeChecked(path, bytes, base, rootFinal);
@@ -933,8 +954,9 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
     if (root_.empty() || kindOf(segs.back()) != FileKind::Page) { postOpenFailed(op); return; }
     const std::wstring path = joinPath(root_, segs);
     const UINT64 gen = projectGen_;
-    const std::wstring rootFinal = boundary();
-    if (!fileWorkers_.submit([this, path, segs, gen, op, rootFinal, bytes = std::move(bytes)]() {
+    const auto bound = boundary_;
+    if (!fileWorkers_.submit([this, path, segs, gen, op, bound, bytes = std::move(bytes)]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         DWORD e = createFoldersWithin(parentOf(path), rootFinal);
         if (e == ERROR_SUCCESS) e = checkParentWithin(path, rootFinal);
         if (e == ERROR_SUCCESS) e = createFileAtomic(path, bytes).error;
@@ -953,18 +975,27 @@ void App::newPage(const Segments& segs, std::string bytes, double op) {
 
 void App::pickPicture(const Segments& page, double op) {
     if (root_.empty()) return;
-    const std::wstring pictures = root_ + L"\\bilder";
-    const auto file = pickPictureFile(window_, isFolder(pictures) ? pictures : root_);
+    // The dialog starts in "bilder" if it exists, else in the project folder (the dialog itself checks).
+    const auto file = pickPictureFile(window_, root_ + L"\\bilder", root_);
     if (!file) return;
     const std::string name = toUtf8(lastComponent(*file));
     if (kindOf(name) != FileKind::Picture) postStatus("„" + name + "“ ist vielleicht kein Bildformat, das Browser anzeigen. Gut sind .jpg, .png, .gif, .webp und .svg.", true);
-    if (const auto segs = projectSegments(*file)) {
-        post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, *segs)));
-        return;
-    }
-    const std::string token = randomToken();
-    pictureTokens_[token] = *file;
-    post(Json::object().set("type", "pictureOutside").set("op", op).set("name", name).set("token", token));
+    const std::wstring f = *file;
+    const auto bound = boundary_;
+    const UINT64 gen = projectGen_;
+    if (!fileWorkers_.submit([this, f, name, bound, gen, page, op]() {
+        auto segs = projectSegmentsOf(bound, f);
+        runLater([this, f, name, gen, page, op, segs = std::move(segs)]() {
+            if (gen != projectGen_) return;
+            if (segs) {
+                post(Json::object().set("type", "picture").set("op", op).set("src", relativeAddress(page, *segs)));
+                return;
+            }
+            const std::string token = randomToken();
+            pictureTokens_[token] = f;
+            post(Json::object().set("type", "pictureOutside").set("op", op).set("name", name).set("token", token));
+        });
+    })) postStatus(kWorkersBusy, true);
 }
 
 void App::copyPicture(const std::string& token, const Segments& page, double op) {
@@ -974,8 +1005,9 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
     pictureTokens_.erase(it);
     const std::wstring folder = root_ + L"\\bilder";
     const UINT64 gen = projectGen_;
-    const std::wstring rootFinal = boundary();
-    if (!fileWorkers_.submit([this, source, folder, page, gen, op, rootFinal]() {
+    const auto bound = boundary_;
+    if (!fileWorkers_.submit([this, source, folder, page, gen, op, bound]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         DWORD e = createFoldersWithin(folder, rootFinal);
         std::string name;
         if (e == ERROR_SUCCESS) {
@@ -1003,17 +1035,30 @@ void App::copyPicture(const std::string& token, const Segments& page, double op)
 }
 
 void App::viewInBrowser(const Segments& segs) {
-    const std::wstring path = joinPath(root_, segs);
-    {
-        CheckedFile f;
-        const DWORD e = root_.empty() ? ERROR_PATH_NOT_FOUND : f.open(path, boundary());
-        if (e != ERROR_SUCCESS) {
-            postError("Der Browser wurde nicht geöffnet", errorText(e));
-            return;
-        }
+    if (root_.empty()) {
+        postError("Der Browser wurde nicht geöffnet", errorText(ERROR_PATH_NOT_FOUND));
+        return;
     }
-    const auto r = reinterpret_cast<INT_PTR>(ShellExecuteW(window_, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
-    if (r <= 32) postError("Der Browser konnte nicht geöffnet werden", "Öffne die Datei im Explorer mit einem Doppelklick.");
+    const std::wstring path = joinPath(root_, segs);
+    const auto bound = boundary_;
+    const UINT64 gen = projectGen_;
+    // The check runs on a worker; an unreachable project folder refuses (no unchecked open).
+    if (!fileWorkers_.submit([this, path, bound, gen]() {
+        DWORD e = ERROR_PATH_NOT_FOUND;
+        if (const std::wstring rootFinal = rootOf(bound); !rootFinal.empty()) {
+            CheckedFile f;
+            e = f.open(path, rootFinal);
+        }
+        runLater([this, path, gen, e]() {
+            if (gen != projectGen_) return;
+            if (e != ERROR_SUCCESS) {
+                postError("Der Browser wurde nicht geöffnet", errorText(e));
+                return;
+            }
+            const auto r = reinterpret_cast<INT_PTR>(ShellExecuteW(window_, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+            if (r <= 32) postError("Der Browser konnte nicht geöffnet werden", "Öffne die Datei im Explorer mit einem Doppelklick.");
+        });
+    })) postError("Der Browser wurde nicht geöffnet", kWorkersBusy);
 }
 
 // ================================================================ page view
@@ -1187,9 +1232,10 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
     const UINT64 id = nextRequest_++;
     pending_.emplace(id, PreviewRequest{pvGeneration_, ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral});
     const std::wstring root = root_;
-    const std::wstring rootFinal = boundary();
+    const auto bound = boundary_;
     const Segments want = *segs;
-    if (!previewWorkers_.submit([this, id, root, rootFinal, want, cache = pvCache_]() {
+    if (!previewWorkers_.submit([this, id, root, bound, want, cache = pvCache_]() {
+        const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         const std::wstring file = joinPath(root, want);
         int status = 200;
         std::string reason = "notFound", detail;

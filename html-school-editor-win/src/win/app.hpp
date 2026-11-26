@@ -48,8 +48,6 @@ private:
     void setProject(const std::wstring& root, bool remember, std::function<void()> then = {});
     void rescan(const std::string& message = {});
     std::optional<Segments> pathSegments(const std::string& path) const;
-    std::wstring boundary();
-    std::optional<Segments> projectSegments(const std::wstring& file);
     void openFile(const Segments& segs, double op);
     void postOpenFailed(double op, const std::string& title = {}, const std::string& message = {});
     void save(const Segments& segs, std::string bytes, std::optional<Fingerprint> base, double id);
@@ -99,7 +97,9 @@ private:
 
     // project
     std::wstring root_;
-    std::wstring rootFinal_;                             // root_ as the file system resolves it (see winutil.hpp)
+    std::shared_ptr<ProjectBoundary> boundary_;          // root_ as the file system resolves it; one per project folder
+    bool unsaved_ = false;                               // the interface holds text that could be lost
+    bool endBlocked_ = false;                            // a shutdown block reason is set
     FolderWatcher watcher_;
     bool scanPending_ = false;
     ULONGLONG lastScan_ = 0;

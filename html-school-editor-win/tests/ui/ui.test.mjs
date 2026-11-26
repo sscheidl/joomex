@@ -132,6 +132,30 @@ test('typing, preview after a pause, saving keeps BOM and CRLF, undo', async () 
   assert.deepEqual(ui.errors, []);
 });
 
+test('the core learns when text could be lost (logging off asks first)', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  assert.equal(await ui.count('unsaved'), 0, 'nothing reported for a page as it is on disk');
+  await ui.page.click('#src');
+  await ui.page.keyboard.press('Control+End');
+  await ui.page.keyboard.type('x');
+  assert.equal((await ui.last('unsaved')).value, true, 'typing reports unsaved text');
+  await ui.page.keyboard.press('Control+s');
+  await ui.page.keyboard.type('y');
+  assert.equal(await ui.count('unsaved'), 1, 'a save on its way and later typing stay unsaved');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  assert.equal(await ui.count('unsaved'), 1, 'text typed during the save is still unsaved');
+  await ui.page.keyboard.press('Control+s');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  assert.equal((await ui.last('unsaved')).value, false, 'saved without later typing');
+  await ui.page.keyboard.type('z');
+  assert.equal((await ui.last('unsaved')).value, true);
+  await ui.deliver({ type: 'projectChanged', name: 'anderes' });
+  assert.equal((await ui.last('unsaved')).value, false, 'no page open');
+  assert.deepEqual(ui.errors, []);
+});
+
 test('Enter keeps the indentation, Tab inserts two spaces', async () => {
   const ui = await openUi(browser);
   await ui.deliver(PROJECT);

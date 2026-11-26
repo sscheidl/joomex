@@ -83,6 +83,7 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | `pickPicture` {op, page}, `copyPicture` {op, token, page} | picture dialog; a picture outside the project is copied into `bilder/` after asking | `picture` {op, src}, `pictureOutside` {op, name, token} |
 | `viewInBrowser` {path} | open the saved file in the standard browser | — |
 | `closeOk` | the window may close (answer to `closeRequest`) | — |
+| `unsaved` `value` | whether text could be lost (unsaved, or a save on its way); sent when it changes. The core then refuses a logoff or shutdown query with a reason and sends `closeRequest` | — |
 
 Rules that keep a pupil's work (`ui/js/main.js`, `src/win/app.cpp`):
 

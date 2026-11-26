@@ -138,10 +138,20 @@ function openingDone() {
 
 // ---------------------------------------------------------------- chrome
 
+// The core is told whether text could be lost (unsaved, or a save still on its way), so that logging off
+// or shutting Windows down asks first instead of ending the program (WM_QUERYENDSESSION).
+let lastUnsaved = false;
+function reportUnsaved(unsaved) {
+  if (unsaved === lastUnsaved) return;
+  lastUnsaved = unsaved;
+  send({ type: 'unsaved', value: unsaved });
+}
+
 function updateChrome() {
   const doc = state.doc;
   els.docName.textContent = doc ? doc.path : '';
   const d = dirty();
+  reportUnsaved(!!doc && (d || state.sending !== null));
   els.docState.textContent = !doc ? '' : state.sending !== null ? 'wird gespeichert …' : d ? 'nicht gespeichert' : 'gespeichert';
   els.docState.classList.toggle('dirty', !!doc && (d || state.sending !== null));
   document.title = (doc ? (d ? '● ' : '') + doc.name + ' – ' : '') + 'HTML-Schuleditor';

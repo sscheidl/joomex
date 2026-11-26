@@ -391,7 +391,7 @@ std::optional<std::wstring> resultPath(IFileDialog* d) {
 }
 
 std::optional<std::wstring> openDialog(HWND owner, const std::wstring& start, const wchar_t* title, FILEOPENDIALOGOPTIONS extra,
-                                       const COMDLG_FILTERSPEC* filters, UINT filterCount) {
+                                       const COMDLG_FILTERSPEC* filters, UINT filterCount, const std::wstring& fallback = {}) {
     ComPtr<IFileOpenDialog> d;
     if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&d)))) return std::nullopt;
     FILEOPENDIALOGOPTIONS o = 0;
@@ -399,6 +399,7 @@ std::optional<std::wstring> openDialog(HWND owner, const std::wstring& start, co
     d->SetOptions(o | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | extra);
     d->SetTitle(title);
     if (filterCount) d->SetFileTypes(filterCount, filters);
+    startIn(d.Get(), fallback);  // replaced by `start` below if that folder exists
     startIn(d.Get(), start);
     if (FAILED(d->Show(owner))) return std::nullopt;
     return resultPath(d.Get());
@@ -415,12 +416,12 @@ std::optional<std::wstring> pickPageFile(HWND owner, const std::wstring& start) 
     return openDialog(owner, start, L"Seite öffnen", FOS_FILEMUSTEXIST, f, 1);
 }
 
-std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& start) {
+std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& start, const std::wstring& fallback) {
     static const COMDLG_FILTERSPEC f[] = {
         {L"Bilder (*.png, *.jpg, *.gif, *.webp, *.svg)", L"*.png;*.jpg;*.jpeg;*.jfif;*.gif;*.webp;*.svg;*.bmp;*.ico;*.avif"},
         {L"Alle Dateien", L"*.*"},
     };
-    return openDialog(owner, start, L"Bild einfügen", FOS_FILEMUSTEXIST, f, 2);
+    return openDialog(owner, start, L"Bild einfügen", FOS_FILEMUSTEXIST, f, 2, fallback);
 }
 
 std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name, bool askOverwrite) {

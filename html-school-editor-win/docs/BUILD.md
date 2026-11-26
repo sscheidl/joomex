@@ -45,6 +45,8 @@ $env:HSE_TEST_SAVE_DELAY_MS = 2000
 
 Use `HSE_TEST_PREVIEW_DELAY_MS=2400` in a test build to hold preview asset replies after disk access for navigation and close tests (P-06 and F-11). Allow a delayed reply to finish after changing pages or closing the window.
 
+Use `HSE_TEST_RESOLVE_DELAY_MS=5000` in a test build to make resolving the project folder slow, as on a network drive, and check that the window keeps answering (F-13).
+
 ## Tests without Windows
 
 The portable core and the user interface can be tested on any computer:
