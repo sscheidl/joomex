@@ -98,7 +98,8 @@ test('start, project list, opening a page with BOM and CRLF, notes, page view la
   assert.match(await ui.page.textContent('#bNotes'), /1 Hinweis/);
   await ui.page.click('#bNotes');
   assert.match(await ui.page.textContent('#noteList'), /\.\.\/\.\.\/weg\.png.*aus deinem Projektordner hinaus/s);
-  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').pop().visible === true);
+  await ui.page.waitForSelector('#visualFrame', { state: 'visible' });
+  assert.equal((await ui.last('layout')).visible, false, 'native page view yields to the visual editor');
   const lay = await ui.last('layout');
   assert.ok(lay.w > 200 && lay.h > 200, 'page view has a size');
   assert.equal(await ui.page.textContent('#docState'), 'gespeichert');
@@ -177,6 +178,10 @@ test('conflict: nothing overwritten, the page view is hidden while the dialog is
   await ui.deliver(PROJECT);
   await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
   await ui.page.click('#src');
+  await ui.page.locator('#src').evaluate((field) => {
+    const caret = field.value.indexOf('</title>');
+    field.setSelectionRange(caret, caret);
+  });
   await ui.page.keyboard.type('x');
   await ui.page.click('#bSave');
   await ui.reply({ type: 'conflict', path: 'index.html', kind: 'changed' });
@@ -189,7 +194,7 @@ test('conflict: nothing overwritten, the page view is hidden while the dialog is
   await ui.reply({ type: 'saved', path: 'neu.html', name: 'neu.html' });
   assert.equal(await ui.page.textContent('#docName'), 'neu.html');
   assert.equal((await ui.last('preview')).path, 'neu.html', 'page view follows the new file');
-  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').pop().visible === true);
+  await ui.page.waitForSelector('#visualFrame', { state: 'visible' });
 });
 
 test('picture: inserted at the caret, caret inside alt; picture outside the project offers a copy', async () => {
@@ -721,5 +726,78 @@ test('questions take turns: an answer is never taken by the next question', asyn
   await ui.page.waitForFunction(() => document.getElementById('dlg').open);
   assert.match(await ui.page.textContent('#dlgTitle'), /Zweite Frage/, 'the second question comes after the first');
   await ui.answer('#dlg button[value="ok"]');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('the page is editable on open, and both panes share a byte-preserving undo and save', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const source = '<!doctype html>\r\n<title>Äpfel</title>\r<p>Hallo</p>\n<p>Welt</p>';
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64([...BOM, ...Buffer.from(source)]) });
+  const frame = ui.page.frameLocator('#visualFrame');
+  const first = frame.locator('p').first();
+  await first.click();
+  await ui.page.keyboard.press('End');
+  await ui.page.keyboard.type('!');
+  assert.equal(await ui.text(), source.replace(/\r\n?/g, '\n').replace('Hallo', 'Hallo!'));
+  await ui.page.keyboard.press('Control+z');
+  assert.equal(await first.textContent(), 'Hallo');
+  await ui.page.keyboard.press('Control+y');
+  assert.equal(await first.textContent(), 'Hallo!');
+  await ui.page.fill('#pageTitle', 'Käse & Brot');
+  await ui.page.locator('#pageTitle').press('Enter');
+  await ui.page.click('#bSave');
+  const save = await ui.last('save');
+  assert.equal(save.text, '\ufeff' + source.replace('Äpfel', 'Käse &amp; Brot').replace('Hallo', 'Hallo!'));
+  assert.deepEqual(ui.errors, []);
+});
+
+test('the toolbar edits through the shared commands and only admits local assets in the edit frame', async () => {
+  const ui = await openUi(browser);
+  const requests = [];
+  await ui.page.route('https://projekt.example/**', (route) => {
+    const name = new URL(route.request().url()).pathname;
+    requests.push(name);
+    if (name.endsWith('.css')) return route.fulfill({ contentType: 'text/css', body: 'p { color: rgb(4, 5, 6) }' });
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await ui.deliver(PROJECT);
+  const source = '<!doctype html><link rel="stylesheet" href="../css/stil.css"><p>Hallo Welt</p><img src="../bilder/katze.png"><img src="https://outside.example/katze.png"><iframe title="Andere Seite"></iframe>';
+  await ui.opened({ type: 'opened', path: 'seiten/tiere.html', name: 'tiere.html', data: b64(Buffer.from(source)) });
+  const frame = ui.page.frameLocator('#visualFrame');
+  const paragraph = frame.locator('p');
+  await paragraph.click();
+  await paragraph.evaluate((p) => {
+    const selection = p.ownerDocument.getSelection();
+    selection.setBaseAndExtent(p.firstChild, 0, p.firstChild, 5);
+  });
+  await ui.page.click('[data-edit="bold"]');
+  assert.match(await ui.text(), /<p><b>Hallo<\/b> Welt<\/p>/);
+  assert.equal(await frame.locator('iframe').count(), 0);
+  await paragraph.evaluate((p) => new Promise((resolve, reject) => {
+    const deadline = performance.now() + 2500;
+    function check() {
+      if (getComputedStyle(p).color === 'rgb(4, 5, 6)') resolve();
+      else if (performance.now() > deadline) reject(new Error('project stylesheet did not apply'));
+      else requestAnimationFrame(check);
+    }
+    check();
+  }));
+  assert.ok(requests.includes('/css/stil.css'));
+  assert.ok(requests.includes('/bilder/katze.png'));
+  assert.equal(await frame.locator('img[src^="https://outside.example"]').count(), 0);
+  assert.deepEqual(ui.errors, []);
+});
+
+test('Save As moves the base of the visual projection to the saved path', async () => {
+  const ui = await openUi(browser);
+  await ui.page.route('https://projekt.example/**', (route) => route.fulfill({ status: 404, body: '' }));
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from('<!doctype html><img src="icon.png">')) });
+  const image = ui.page.frameLocator('#visualFrame').locator('img');
+  assert.equal(await image.getAttribute('src'), 'https://projekt.example/icon.png');
+  await ui.page.click('#bSaveAs');
+  await ui.reply({ type: 'saved', path: 'seiten/kopie.html', name: 'kopie.html' });
+  assert.equal(await image.getAttribute('src'), 'https://projekt.example/seiten/icon.png');
   assert.deepEqual(ui.errors, []);
 });

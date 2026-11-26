@@ -30,6 +30,7 @@ constexpr const char* kProjectOrigin = "https://projekt.example";
 constexpr const wchar_t* kProjectOriginW = L"https://projekt.example";
 constexpr const char* kUiOrigin = "https://app.example";
 constexpr const wchar_t* kUiStart = L"https://app.example/index.html";
+constexpr const wchar_t* kEditFrame = L"https://app.example/edit-frame.html";
 constexpr std::size_t kMaxPageBytes = 5u * 1024 * 1024;
 constexpr std::size_t kMaxServedBytes = 32u * 1024 * 1024;
 constexpr std::size_t kCacheBytes = 64u * 1024 * 1024;
@@ -275,6 +276,7 @@ int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
     shutdown();
     watcher_.join();
     previewWorkers_.join();
+    editWorkers_.join();
     fileWorkers_.join();
     return static_cast<int>(msg.wParam);
 }
@@ -402,9 +404,11 @@ void App::shutdown() {
     KillTimer(window_, TIMER_SCAN);
     watcher_.requestStop();
     previewWorkers_.stop();
+    editWorkers_.stop();
     fileWorkers_.stop();
     rescueWorkers_.stop();
     finishPreviewRequests();
+    finishPreviewRequests(true);
     if (pvController_) pvController_->Close();
     if (uiController_) uiController_->Close();
     pv_.Reset();
@@ -530,6 +534,11 @@ constexpr const char* kPageCsp =
     "media-src 'self' data:; script-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; "
     "connect-src 'none'; form-action 'none'; base-uri 'self'; manifest-src 'none'";
 
+constexpr const char* kEditCsp =
+    "sandbox allow-same-origin; default-src 'none'; script-src 'none'; "
+    "style-src 'unsafe-inline' https://projekt.example; img-src data: https://projekt.example; "
+    "base-uri https://projekt.example; form-action 'none'";
+
 }  // namespace
 
 void App::createUi() {
@@ -553,13 +562,20 @@ void App::createUi() {
                         return S_OK;
                     }).Get(), &t)) &&
                 SUCCEEDED(ui_->add_FrameNavigationStarting(Callback<ICoreWebView2NavigationStartingEventHandler>(
-                    [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT { a->put_Cancel(TRUE); return S_OK; }).Get(), &t));
+                    [](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* a) -> HRESULT {
+                        LPWSTR uri = nullptr;
+                        a->get_Uri(&uri);
+                        if (take(uri) != kEditFrame) a->put_Cancel(TRUE);
+                        return S_OK;
+                    }).Get(), &t));
             if (!locked) {
                 startupError(L"Die Oberfläche konnte nicht sicher eingerichtet werden. Vielleicht ist die WebView2-Laufzeitumgebung zu alt.");
                 return S_OK;
             }
             ui_->add_WebMessageReceived(Callback<ICoreWebView2WebMessageReceivedEventHandler>(
                 [this](ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* a) -> HRESULT {
+                    LPWSTR source = nullptr;
+                    if (FAILED(a->get_Source(&source)) || take(source) != kUiStart) return S_OK;
                     LPWSTR json = nullptr;
                     if (FAILED(a->get_WebMessageAsJson(&json))) return S_OK;
                     auto m = Json::parse(toUtf8(take(json)));
@@ -861,6 +877,9 @@ void App::setProject(const std::wstring& root, bool remember, std::function<void
     root_ = r;
     boundary_ = std::make_shared<ProjectBoundary>(root_);  // resolved on the workers (junctions followed)
     ++projectGen_;  // answers of work started for the previous folder are not used any more
+    editWorkers_.discardReads();
+    finishPreviewRequests(true);
+    editCache_ = std::make_shared<FileCache>();
     KillTimer(window_, TIMER_SCAN);
     scanPending_ = false;
     pictureTokens_.clear();
@@ -1298,18 +1317,31 @@ void App::failPreview() {
     });
 }
 
-void App::finishPreviewRequests() {
+void App::finishPreviewRequests(bool edit) {
     decltype(pending_) requests;
-    requests.swap(pending_);
+    requests.swap(edit ? editPending_ : pending_);
     bool failed = false;
     for (auto& [id, request] : requests) {
         const bool answered = respond(request.args.Get(), 410, "Gone", "text/plain", nullptr);
         if (FAILED(request.deferral->Complete()) || !answered) failed = true;
     }
-    if (failed) failPreview();
+    if (failed && edit) failEditView();
+    else if (failed && !edit) failPreview();
 }
 
-void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
+void App::failEditView() {
+    if (closing_ || editFailed_) return;
+    editFailed_ = true;
+    editWorkers_.discardReads();
+    finishPreviewRequests(true);
+    post(Json::object().set("type", "editViewFailed"));
+}
+
+void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args, bool edit) {
+    const auto fail = [this, edit] {
+        if (edit) failEditView();
+        else failPreview();
+    };
     ComPtr<ICoreWebView2WebResourceRequest> request;
     LPWSTR raw = nullptr, method = nullptr;
     COREWEBVIEW2_WEB_RESOURCE_CONTEXT context = COREWEBVIEW2_WEB_RESOURCE_CONTEXT_OTHER;
@@ -1317,13 +1349,14 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
         FAILED(args->get_ResourceContext(&context))) {
         if (raw) CoTaskMemFree(raw);
         if (method) CoTaskMemFree(method);
-        if (!respond(args, 403, "Forbidden", "text/plain", nullptr)) failPreview();
+        if (!respond(args, 403, "Forbidden", "text/plain", nullptr)) fail();
         return;
     }
     const std::string uri = toUtf8(take(raw));
     const std::wstring verb = take(method);
-    const auto refuse = [&](int status, const char* reason) { if (!respond(args, status, reason, "text/plain", nullptr)) failPreview(); };
-    if (!pvCache_ || closing_ || pvFailed_) { refuse(410, "Gone"); return; }
+    const auto refuse = [&](int status, const char* reason) { if (!respond(args, status, reason, "text/plain", nullptr)) fail(); };
+    const auto cache = edit ? editCache_ : pvCache_;
+    if (!cache || closing_ || (edit ? editFailed_ : pvFailed_)) { refuse(410, "Gone"); return; }
     const auto path = pathOfUrl(uri, kProjectOrigin);
     if (!path) { refuse(403, "Forbidden"); return; }  // nothing from the network
     if (verb != L"GET") { refuse(405, "Method Not Allowed"); return; }  // no forms, no uploads
@@ -1337,8 +1370,14 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
     const auto segs = requestSegments(*path);
     if (!segs) {
         refuse(404, "Not Found");
-        if (*path != "/favicon.ico") reportMissing(*path, "notFound", {});
+        if (!edit && *path != "/favicon.ico") reportMissing(*path, "notFound", {});
         return;
+    }
+    if (edit) {
+        const auto type = contentTypeOf(segs->back());
+        const bool image = context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_IMAGE && type.starts_with("image/");
+        const bool sheet = context == COREWEBVIEW2_WEB_RESOURCE_CONTEXT_STYLESHEET && type.starts_with("text/css");
+        if (!image && !sheet) { refuse(403, "Forbidden"); return; }
     }
     if (document) {
         // only the page being edited, with its unsaved text; any other document (a frame) is refused
@@ -1347,16 +1386,18 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
         return;
     }
     if (root_.empty()) { refuse(404, "Not Found"); return; }
-    if (pending_.size() >= kMaxPreviewRequests) { refuse(503, "Too Many Preview Requests"); return; }
+    auto& pending = edit ? editPending_ : pending_;
+    if (pending.size() >= kMaxPreviewRequests) { refuse(503, "Too Many Preview Requests"); return; }
     // Read on a worker thread: the project folder is usually on a network drive.
     ComPtr<ICoreWebView2Deferral> deferral;
     if (FAILED(args->GetDeferral(&deferral)) || !deferral) { refuse(503, "Preview Unavailable"); return; }
     const UINT64 id = nextRequest_++;
-    pending_.emplace(id, PreviewRequest{pvGeneration_, ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral});
+    pending.emplace(id, PreviewRequest{edit ? projectGen_ : pvGeneration_, ComPtr<ICoreWebView2WebResourceRequestedEventArgs>(args), deferral});
     const std::wstring root = root_;
     const auto bound = boundary_;
     const Segments want = *segs;
-    if (!previewWorkers_.submit([this, id, root, bound, want, cache = pvCache_]() {
+    auto& workers = edit ? editWorkers_ : previewWorkers_;
+    if (!workers.submit([this, id, root, bound, want, cache, edit, fail]() {
         const std::wstring rootFinal = rootOf(bound);  // on the worker: may wait for a network drive
         const std::wstring file = joinPath(root, want);
         int status = 200;
@@ -1394,25 +1435,26 @@ void App::onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
         // Hold a read result after the disk access to exercise navigation and close while it is pending.
         wchar_t delay[16]{};
         const DWORD length = GetEnvironmentVariableW(L"HSE_TEST_PREVIEW_DELAY_MS", delay, 16);
-        if (length && length < 16) Sleep(static_cast<DWORD>(std::clamp(_wtoi(delay), 0, 15000)));
+        if (!edit && length && length < 16) Sleep(static_cast<DWORD>(std::clamp(_wtoi(delay), 0, 15000)));
 #endif
-        runLater([this, id, status, reason, detail, body, want]() {
-            const auto it = pending_.find(id);
-            if (it == pending_.end()) return;
+        runLater([this, id, status, reason, detail, body, want, edit, fail]() {
+            auto& queue = edit ? editPending_ : pending_;
+            const auto it = queue.find(id);
+            if (it == queue.end()) return;
             const auto [generation, args, deferral] = std::move(it->second);
-            pending_.erase(it);
-            const bool stale = generation != pvGeneration_ || pvFailed_;
+            queue.erase(it);
+            const bool stale = edit ? generation != projectGen_ : generation != pvGeneration_ || pvFailed_;
             const bool answered = stale ? respond(args.Get(), 410, "Gone", "text/plain", nullptr)
                 : status == 200 ? respond(args.Get(), 200, "OK", contentTypeOf(want.back()), body)
                                 : respond(args.Get(), 404, "Not Found", "text/plain", nullptr);
-            if (FAILED(deferral->Complete()) || !answered) { failPreview(); return; }
-            if (stale) return;
+            if (FAILED(deferral->Complete()) || !answered) { fail(); return; }
+            if (stale || edit) return;
             if (status != 200 || reason == "case") reportMissing(joinSegments(want), reason.c_str(), detail);
         });
     })) {
-        pending_.erase(id);
+        pending.erase(id);
         refuse(503, "Preview Unavailable");
-        if (FAILED(deferral->Complete())) failPreview();
+        if (FAILED(deferral->Complete())) fail();
     }
 }
 
@@ -1434,10 +1476,17 @@ void App::sendMissing() {
 
 void App::onUiRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
     ComPtr<ICoreWebView2WebResourceRequest> request;
-    args->get_Request(&request);
-    LPWSTR raw = nullptr;
-    request->get_Uri(&raw);
-    const auto path = pathOfUrl(toUtf8(take(raw)), kUiOrigin);
+    LPWSTR raw = nullptr, method = nullptr;
+    if (FAILED(args->get_Request(&request)) || !request || FAILED(request->get_Uri(&raw)) || FAILED(request->get_Method(&method))) {
+        CoTaskMemFree(raw);
+        CoTaskMemFree(method);
+        respond(args, 403, "Forbidden", "text/plain", nullptr);
+        return;
+    }
+    const auto uri = toUtf8(take(raw));
+    if (take(method) != L"GET") { respond(args, 405, "Method Not Allowed", "text/plain", nullptr); return; }
+    if (pathOfUrl(uri, kProjectOrigin)) { onPreviewRequest(args, true); return; }
+    const auto path = pathOfUrl(uri, kUiOrigin);
     if (path) {
         for (const auto& res : kUiResources) {
             if (toUtf8(res.path) != *path) continue;
@@ -1446,7 +1495,7 @@ void App::onUiRequest(ICoreWebView2WebResourceRequestedEventArgs* args) {
             const void* data = loaded ? LockResource(loaded) : nullptr;
             if (!data) break;
             auto body = std::make_shared<const std::string>(static_cast<const char*>(data), SizeofResource(instance_, found));
-            respond(args, 200, "OK", res.contentType, body);  // a failure leaves the interface incomplete, nothing more
+            respond(args, 200, "OK", res.contentType, body, *path == "/edit-frame.html" ? kEditCsp : nullptr);
             return;
         }
     }

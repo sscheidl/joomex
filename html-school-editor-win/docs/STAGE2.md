@@ -1,6 +1,6 @@
 # Plan for stage 2: editing on the page side and "Code aufräumen"
 
-**State:** plan of 2026-11-24, updated 2026-11-25. Nothing of it is built. Stage 1 is built and run on Windows. **E1 is decided: two WebView2 views stay** (owner, 2026-11-25, after the Codex review of stage 1); E2 to E5 are still open.
+**State:** Stage 2 local pilot based on Stage 1 Alpha.12. **E1: two WebView2 views stay. E2: the page opens for direct editing.** The pilot covers the basic toolbar, shared source and page undo, and the title field. The deployment decision (E6) is open.
 
 ## 1. Goal
 
@@ -37,27 +37,27 @@ The proposal of 2026-11-24 was one WebView2 with the page as a frame of the same
 
 Direction for stage 2 from the review (to be designed in P1, not decided in detail):
 
-* The raw page stays in the isolated page view, on its own origin and controller, exactly as in stage 1 ("Ansehen").
-* For editing, the trusted interface gets DOM access only to a separately served, filtered projection of the page (only admitted local assets of the right type, no uncontrolled base addresses or navigation, the policy enforced from the first parse). Active or unsupported content stays in the pupil's source with a visible placeholder in the projection.
+* The raw page stays in the isolated page view, on its own origin and controller, as a fallback when direct editing is unavailable.
+* The trusted interface edits a filtered projection in a fixed, sandboxed shell. Its response and document policies disable scripts. The UI sets the project base and the native request handler admits project images and style sheets by request context and file type after checking the project boundary. Active or unsupported content stays in the source.
 * The interface authorises privileged messages only from its own top-level document; `window.name` and named browsing contexts are never used for authorisation.
 
-## 4. Two modes of the page side (decision E2)
+## 4. Direct editing on the page side (decision E2)
 
 | Mode | What the frame shows | Edit |
 | --- | --- | --- |
-| **Ansehen** (stage 1) | the page as the browser shows it: the C++ core serves the current text at the page's address | no |
-| **Bearbeiten** (stage 2) | the single-file editor's safe projection of the page, built in a fixed shell document that the core serves at the page's address (so its base address is the page's place) | yes |
+| **Direct editing** | a filtered projection in the fixed shell, using the project's page URL as the base for relative addresses | yes |
+| **Automatic fallback** | the existing isolated view, using the current source at the original page address | no |
 
-In "Bearbeiten" the projection works as in the single-file editor; the only new piece is the way addresses resolve: instead of reading files from the editor's folder, a picture or style sheet keeps the address as written and the browser resolves it from the shell's address. Project style sheets (`<link rel="stylesheet">` inside the project) are applied in the projection; the single-file editor leaves them out.
+In direct editing, the preview uses the single-file editor's projection, commands and serializer. A picture or style sheet keeps its address in the source. The browser resolves it from the page's position in the project. Project style sheets (`<link rel="stylesheet">` inside the project) are applied in the projection.
 
-Proposal for the switch: a button "Seite bearbeiten" above the page side, **off when a page is opened**, so that pupils write code first; the teacher decides when the class uses it. Alternative: always editable, as in the single-file editor.
+The owner chose direct editing without a mode button. The source stays editable in the fallback. “Im Browser ansehen” opens the saved page in the standard browser.
 
 ## 5. Work packages
 
 | # | Package | Contents | Tests |
 | --- | --- | --- | --- |
 | P0 | Stage 1 corrections | the open findings of the Codex review of stage 1 (file boundary, protection of the page view, threads and lifetime, stale requests) and a small native acceptance baseline (DevTools against the test build) | native acceptance tests; review of every change to the trust boundary or the save lifecycle where it is made |
-| P1 | Projection | filtered projection served apart from the raw page, its trust boundary (reviewed before merging), address resolution, admitted project style sheets; mode switch (E2) | ported cases of the single-file editor for projection and safety (X-01 … X-08, A3, A5 projection cases) |
+| P1 | Projection | filtered projection served apart from the raw page, its trust boundary (reviewed before merging), address resolution, admitted project style sheets and automatic fallback (E2) | ported cases of the single-file editor for projection and safety (X-01 … X-08, A3, A5 projection cases) |
 | P2 | Editing and synchronisation | carry over the synchronisation of `app.js`: commit of the page side, undo across both sides, caret mapping, locked pages (unclosed tags) | ported cases T-01 … T-17, R-01, R-02, A7 … A11 (Chromium only) |
 | P3 | Toolbar | the commands of the single-file editor; link dialog; picture dialog through the C++ file dialog with relative address (stage 1 function); table, alignment, colour | ported cases F-01 … F-16, B2-05 |
 | P4 | "Code aufräumen" | `format` plus the layout check in a hidden frame built like the page side, now with project style sheets | ported format cases, new case with an external project style sheet |
@@ -65,7 +65,7 @@ Proposal for the switch: a button "Seite bearbeiten" above the page side, **off 
 
 All of P0 to P4 runs in headless Chromium with the mock of the core (as the stage 1 interface tests do), because the editing happens inside one browser page. Only file access, dialogs and the request handler need Windows; those are covered by the acceptance tests against a test build.
 
-Order: P0 first (stage 1 is corrected and has its native acceptance baseline before stage 2 starts), then P1 with a review of its trust boundary, then P2 (synchronisation and undo), P3 (toolbar) and P4 (formatting checks).
+Before the Stage 2 integration, close P0 and independently review the projection boundary and save lifecycle. The local pilot exercises P1, P2 and the basic P3 commands. P4 remains separate.
 
 ### Line breaks and the byte promise (owner's decision of 2026-11-25)
 
@@ -76,10 +76,18 @@ Stage 1 keeps every line break as read (`ui/js/breaks.js`; criteria F-07 to F-10
 | # | Question | Proposal |
 | --- | --- | --- |
 | E1 | One WebView2 with the page as a same-origin frame, or two views? | **decided 2026-11-25: two views stay** (section 3) |
-| E2 | Page side editable always, or by a switch "Seite bearbeiten" that is off when a page opens? | switch, off |
-| E3 | Toolbar on the page side: the full set of the single-file editor (paragraph, headings 1–3, bold, italic, underline, superscript, subscript, marker, colour, lists, table, alignment, link, picture)? | the full set, unchanged, so the class knows it |
-| E4 | Title field above the page side, as in the single-file editor? | yes |
-| E5 | Share the modules of the single-file editor by reference (one copy, tests of both folders) or copy them (two copies that drift apart)? | by reference |
+| E2 | How does editing start? | Directly on opening a page, with automatic read-only fallback for unsupported source. |
+| E3 | Which toolbar commands are available? | The pilot includes paragraph, headings 1–3, emphasis, colour, lists, alignment, links, pictures and basic table creation. Advanced link, image and table editing remain part of P3. |
+| E4 | Where is the title field? | Above the editable page. A title change follows the same undo history as source and page changes. |
+| E5 | How are editing modules shared? | By reference through `ui/resources.json`. Verify changes against both editors. |
+| E6 | When does the Windows editor replace the single-file editor in class? | Open. |
+
+### Local pilot evidence
+
+- **MEASURED, 2026-11-26.** Windows 11 26300.10075 and WebView2 `Edg/158.0.4370.45`. On a disposable `seiten/käse.html` fixture, the native test build loaded an image and stylesheet via `../`, accepted direct typing, applied shared undo and redo, changed the page title and saved the expected bytes, including the UTF-8 BOM and mixed line breaks. Test executable SHA-256 `96fe45e29921e885f7f32d03eb20fcce762736c8bae477d156344b5cb93a8f11`.
+- **MEASURED.** The Release pilot started and closed normally, did not open the requested test port and added no entry next to the executable in the smoke run. Release SHA-256 `06d8aeb941e0b07a8435fa92581f99bddf7604eb6797483e69efef930bf10ed4`.
+- **MEASURED.** The single-file editor's 27 unit tests and six selected Edge cases (T-02, T-04, T-05, T-06, T-09, T-13) passed. The complete multi-browser run did not finish. The single-file editor's sources were identical to the base revision.
+- **NOT MEASURED.** The native pilot used local test files. An independent review of the editing projection, extended editing acceptance, real sign-out and SMB acceptance are outstanding. The pilot inherits the unresolved Alpha.12 session-end handoff.
 
 ## 7. What this plan does not solve
 
