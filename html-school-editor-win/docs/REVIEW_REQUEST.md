@@ -2,6 +2,17 @@
 
 Implementer of alpha.10 and alpha.11: Claude Code. Reviewer: Codex. Requested by the owner of this repository on 2026-11-26. (The first request, for alpha.1, is in the history: `git show 36c0905:html-school-editor-win/docs/REVIEW_REQUEST.md`.)
 
+## Re-review of alpha.12 (added 2026-11-26)
+
+Codex reviewed alpha.11 on 2026-11-26 (CHANGE BEFORE MERGE). alpha.12 (`cb9d679`) corrects the merge findings; `e717f4c` only records the owner's decision on deleting rescue copies. Please check, in that order:
+
+1. **Logoff** (`WM_QUERYENDSESSION`, `noteUnsaved` in `src/win/app.cpp`): the state now reaches the core in the `WebMessageReceived` callback, and while a page is open the query is always refused first. Repeat your held-report case and the "Neue Seite" case. With a saved page the editor must close itself.
+2. **Kept close request and the question queue** (`ask`, `showNextQuestion`, `requestClose` in `ui/js/main.js`): repeat your question-completion probe. The new tests are "a close request while another question is open …" and "questions take turns …" in `tests/ui/ui.test.mjs`.
+3. **Dialog claim when queueing fails** (the `WebMessageReceived` callback, `refuseDialog`).
+4. **Rescue copy:** `profileDataFolder` (`src/win/winutil.cpp`) with no fallback, the name limit, `page` in the answer.
+
+Give a new verdict for PR #26. The open items listed in [STATUS.md](STATUS.md#corrections) under alpha.12 are known and not part of the merge decision unless you disagree. Part 2 of the request below still applies to what you could not measure.
+
 ## What this is
 
 [PR #26](https://github.com/sscheidl/joomex/pull/26) brings the Windows editor onto `main` and is on **HOLD**. The owner decided on 2026-11-26: B4 and the late page choice are fixed before the merge, and B3 is fixed before the editor is used with pupils' files. alpha.10 and alpha.11 contain those fixes. Claude wrote them, so nobody has reviewed them independently yet, and several acceptance cases have never been measured.
