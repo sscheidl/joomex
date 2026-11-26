@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.1.0-alpha.14 · **Date:** 2026-11-26 · **State:** stage 1 candidate. The independent review of alpha.9 (Claude, 2026-11-26) rated the local stage 2 prototype READY TO BUILD and the use with pupils' files not yet ready; alpha.10 corrects its findings B1, B2 and B5, alpha.11 corrects B3 and B4 (owner's decisions of 2026-11-26) and a late page choice found while reading alpha.10. The independent review of alpha.11 (Codex, 2026-11-26) concluded CHANGE BEFORE MERGE for PR #26 and NOT READY for pupils' files; alpha.12 corrects its merge findings. The re-review of alpha.12 (Codex, 2026-11-26) concluded CHANGE BEFORE MERGE for one remaining case (the first page of a session, see alpha.13); alpha.13 corrects it. The re-review of alpha.13 (Codex, 2026-11-26) found one more case (a page in another encoding, see alpha.14); alpha.14 corrects it and has no independent review yet. The original review of 2026-11-25 concluded CHANGE BEFORE BUILD. The local measurements below cover individual cases.
+**Version:** 0.1.0-alpha.14 · **Date:** 2026-11-26 · **State:** stage 1 candidate. The independent review of alpha.9 (Claude, 2026-11-26) rated the local stage 2 prototype READY TO BUILD and the use with pupils' files not yet ready; alpha.10 corrects its findings B1, B2 and B5, alpha.11 corrects B3 and B4 (owner's decisions of 2026-11-26) and a late page choice found while reading alpha.10. The independent review of alpha.11 (Codex, 2026-11-26) concluded CHANGE BEFORE MERGE for PR #26 and NOT READY for pupils' files; alpha.12 corrects its merge findings. The re-review of alpha.12 (Codex, 2026-11-26) concluded CHANGE BEFORE MERGE for one remaining case (the first page of a session, see alpha.13); alpha.13 corrects it. The re-review of alpha.13 (Codex, 2026-11-26) found one more case (a page in another encoding, see alpha.14); alpha.14 corrects it. The re-review of alpha.14 (Codex, 2026-11-26) concluded **READY TO MERGE** for PR #26 and NOT READY for pupils' files (real logoff, network shares and the release write checks are still open); PR #26 was merged into `main` on 2026-11-26 (`4b8407d`). The original review of 2026-11-25 concluded CHANGE BEFORE BUILD. The local measurements below cover individual cases.
 
 ## Decisions so far
 
@@ -46,6 +46,10 @@ The Windows acceptance suite is NOT MEASURED as a whole. The native checks below
 NOT MEASURED: school computers, mapped drive and UNC path, a network drive that disconnects or is slow while replacing, ACL and attribute behaviour on the school share, disk full, two monitors and zoom, the classroom trial. The exact moment of a late open answer was reproduced in the mock only.
 
 ## Corrections
+
+### After the merge (2026-11-26)
+
+* The interface test of the rescue copy waited for the dialog to be closed between two queued questions; that moment is short, and the first run of the alpha.14 re-review missed it (timeout, passed on rerun). The tests now wait for the next question by its title (`answerThen` in `tests/ui/ui.test.mjs`). No change to the program.
 
 ### 0.1.0-alpha.14 (2026-11-26): a page in another encoding and a logoff
 
@@ -140,4 +144,4 @@ Built and run on Windows 11 with the Visual Studio 2022 Build Tools (see the evi
 
 ## Next step
 
-Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Get an independent review of alpha.12 (the corrections of the alpha.11 review), measure a real logoff and the network share cases, and start the local stage 2 prototype after the merge. Verify the school computer and SMB cases before using the editor with pupils' files.
+Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Stage 1 is on `main` (PR #26, 0.1.0-alpha.14). A stage 2 pilot exists on its own branch and is to be brought onto `main` and reviewed. Before use with pupils' files: a real logoff, the network share cases and the release write checks. Verify the school computer and SMB cases before using the editor with pupils' files.

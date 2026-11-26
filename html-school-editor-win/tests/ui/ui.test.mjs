@@ -64,6 +64,12 @@ async function openUi(browser) {
       await page.waitForFunction(() => !document.getElementById('dlg').open);
       await page.evaluate(() => new Promise((r) => setTimeout(r, 0)));
     },
+    // Clicks a button of the open dialog when another question waits in line, and waits for that question
+    // (by its title). The dialog is closed only for a moment in between, which polling can miss.
+    answerThen: async (selector, title) => {
+      await page.click(selector);
+      await page.waitForFunction((t) => document.getElementById('dlg').open && document.getElementById('dlgTitle').textContent.includes(t), title);
+    },
   };
   await ui.deliver({ type: 'init', version: '0.1.0-test' });
   return ui;
@@ -665,9 +671,7 @@ test('rescue copy: while a save hangs, the text with BOM and line breaks goes to
   assert.equal(await ui.page.textContent('#docState'), 'wird gespeichert …', 'the original is still on its way');
   // the save fails while the rescue dialog is open: its question waits instead of being lost
   await ui.reply({ type: 'saveFailed', message: 'Das Netzlaufwerk antwortet nicht.' });
-  await ui.answer('#dlg button[value="ok"]');
-  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
-  assert.match(await ui.page.textContent('#dlgTitle'), /Speichern hat nicht geklappt/);
+  await ui.answerThen('#dlg button[value="ok"]', 'Speichern hat nicht geklappt');
   await ui.answer('#dlg button[value="ok"]');
   assert.equal(await ui.page.textContent('#docState'), 'nicht gespeichert', 'the original stays unsaved');
   assert.equal(await ui.page.isHidden('#bRescue'), true, 'no save on its way, no rescue offer');
@@ -687,9 +691,7 @@ test('a close request while another question is open is answered after it (logof
   await ui.page.waitForSelector('dialog[open]');
   await ui.deliver({ type: 'closeRequest' });
   assert.match(await ui.page.textContent('#dlgTitle'), /Neue Seite/, 'the open question stays');
-  await ui.answer('#dlg button[value="cancel"]');
-  await ui.page.waitForFunction(() => document.getElementById('dlg').open);
-  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/, 'then the question about unsaved text');
+  await ui.answerThen('#dlg button[value="cancel"]', 'nicht gespeichert');  // then the question about unsaved text
   await ui.answer('#dlg button[value="cancel"]');
   assert.equal(await ui.count('closeOk'), 0, 'cancelled: the window stays open with the text');
   assert.ok((await ui.text()).includes('x'));
