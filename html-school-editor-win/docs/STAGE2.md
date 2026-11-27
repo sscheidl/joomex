@@ -153,7 +153,7 @@ Editing happens inside one browser page, so source mapping, targeted edits and h
 
 ## 7. Before use with pupils' files (stage 1, still open)
 
-* A real Windows logoff and a session that ends without asking (F-12).
+* Informational, not a requirement (owner's decision of 2026-11-27): whether the school computers set `AutoEndTasks` or the group policy that ends blocking programs. Only without them does the logoff question of F-12 appear.
 * A network share, both as a mapped drive and as a UNC path: R-08, F-01 to F-03, F-06, F-13, and F-15 while the share really stalls; also ACLs and attributes after replacing a file.
 * The release build: P-05 and X-03, with a full trace of what the program writes.
 * "Im Browser ansehen" (`ShellExecuteW`) and the command-line file check still run on the window thread. A blocked share can keep the process alive after the window closes.

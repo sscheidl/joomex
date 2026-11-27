@@ -48,6 +48,17 @@ The Windows acceptance suite is NOT MEASURED as a whole. The native checks below
 
 NOT MEASURED: school computers, mapped drive and UNC path, a network drive that disconnects or is slow while replacing, ACL and attribute behaviour on the school share, disk full, two monitors and zoom, the classroom trial. The exact moment of a late open answer was reproduced in the mock only.
 
+## Decision on logging off (2026-11-27)
+
+**Owner's home tests with alpha.16** (reported by the owner, 2026-11-27; exe hash and WebView2 version not recorded):
+
+* Unsaved text, then "Abmelden" from the Start menu: the session ended at once, with no question.
+* The same again through Ctrl+Alt+Del → "Abmelden": the session ended, and the unsaved text was gone.
+
+On that computer Codex found `HKCU\Control Panel\Desktop\AutoEndTasks` = 1. With this setting Windows ends programs that hold a logoff. The editor's protection (alpha.10 to alpha.14) refuses the query and asks, which works only where Windows lets a program ask. The causal link for these two runs is likely but not measured.
+
+**Owner's decision:** the protection stays as it is. There is no emergency copy or autosave at the end of a session. Saving one's work and shutting down properly are part of computing lessons, and the pupil is responsible for them. A real logoff is therefore no longer a requirement before pupils' files (SPECIFICATION.md 3.5, ACCEPTANCE.md F-12).
+
 ## Corrections
 
 ### 0.1.0-alpha.17 (2026-11-27): two-row header, the page in the middle
@@ -170,4 +181,4 @@ Built and run on Windows 11 with the Visual Studio 2022 Build Tools (see the evi
 
 ## Next step
 
-Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Stage 1 and the stage 2 pilot (P0) are on `main` as 0.1.0-alpha.16 (PR #26, PR #29). The plan for stage 2, with the owner's decisions E1 to E6, is [STAGE2.md](STAGE2.md). Next is P1: a complete network measurement of the editable frame, focus, Tab and scaling, and the open findings S2-2 to S2-5 of the pilot review (listed in PR #29). Before use with pupils' files: a real logoff, the network share cases and the release write checks. Verify the school computer and SMB cases before using the editor with pupils' files.
+Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Stage 1 and the stage 2 pilot (P0) are on `main` as 0.1.0-alpha.16 (PR #26, PR #29). The plan for stage 2, with the owner's decisions E1 to E6, is [STAGE2.md](STAGE2.md). Next is P1: a complete network measurement of the editable frame, focus, Tab and scaling, and the open findings S2-2 to S2-5 of the pilot review (listed in PR #29). Before use with pupils' files: the network share cases and the release write checks. A real logoff is no longer a requirement (owner's decision of 2026-11-27, see below); on the school computers it is worth knowing whether `AutoEndTasks` or the matching group policy is set. Verify the school computer and SMB cases before using the editor with pupils' files.
