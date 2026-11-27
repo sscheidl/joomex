@@ -16,7 +16,7 @@ As in the single-file editor 1.0.0-beta.3, pupils can write on the page side:
 * type text;
 * set headings, bold, lists, links, pictures, tables, alignment and colour.
 
-The code on the left follows and changes only what was edited. "Code aufräumen" indents the code, and only if the page looks exactly the same afterwards.
+The code follows and changes only what was edited. "Code aufräumen" indents the code, and only if the page looks exactly the same afterwards.
 
 What the Windows program does better than the single-file editor, because the page loads from its real place in the project folder:
 
@@ -81,12 +81,12 @@ The rules for these layers:
 
 ## 4. Direct editing (E2, decided by the owner on 2026-11-26)
 
-There is no mode button. When a page opens, the right side is editable at once if the projection can show it. Otherwise the editor falls back automatically to the read-only page view.
+There is no mode button. When a page opens, the page pane is editable at once if the projection can show it. Otherwise the editor falls back automatically to the read-only page view.
 
-| State | Right side | Editable |
+| State | Page pane | Editable |
 | --- | --- | --- |
 | **Direct editing** | the filtered projection in the fixed frame; relative addresses resolve from the page's place in the project | yes |
-| **Automatic fallback** | the stage 1 page view of the current source; a short note says why it is read-only | no, edit the code on the left |
+| **Automatic fallback** | the stage 1 page view of the current source; a short note says why it is read-only | no, edit the code |
 
 **What stays the same.**
 
@@ -153,7 +153,7 @@ Editing happens inside one browser page, so source mapping, targeted edits and h
 
 ## 7. Before use with pupils' files (stage 1, still open)
 
-* A real Windows logoff and a session that ends without asking (F-12).
+* Informational, not a requirement (owner's decision of 2026-11-27): whether the school computers set `AutoEndTasks` or the group policy that ends blocking programs. Only without them does the logoff question of F-12 appear.
 * A network share, both as a mapped drive and as a UNC path: R-08, F-01 to F-03, F-06, F-13, and F-15 while the share really stalls; also ACLs and attributes after replacing a file.
 * The release build: P-05 and X-03, with a full trace of what the program writes.
 * "Im Browser ansehen" (`ShellExecuteW`) and the command-line file check still run on the window thread. A blocked share can keep the process alive after the window closes.

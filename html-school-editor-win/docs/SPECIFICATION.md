@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-A small Windows program in which pupils of about 12–13 years learn to write web pages in HTML. The HTML code is written on the left; on the right the page appears at once, exactly as Microsoft Edge shows it.
+A small Windows program in which pupils of about 12–13 years learn to write web pages in HTML. The page appears in the middle, exactly as Microsoft Edge shows it, and the HTML code on the right; pupils write in either.
 
 It replaces the single-file editor in [`../html-school-editor/`](../html-school-editor/) for Windows. That editor stays in use, with defect corrections only, until this program is ready (owner's decision of 2026-11-24).
 
@@ -63,12 +63,14 @@ The new program loads the page from its real place on disk. A relative address i
 * Before writing, the program checks that the file on disk is still what it last read or wrote. If another program or a second window changed it, nothing is overwritten; the pupil can save a new file or cancel.
 * Writing is atomic: a temporary file in the same folder, then replace. A failed write leaves the old file intact and says so in plain words.
 * Closing the program or the page with unsaved changes asks first. No autosave in stage 1.
+* Logging off or shutting down Windows: where Windows lets a program ask, the editor holds the logoff and asks about unsaved text. Windows can end the program anyway. It does so with `AutoEndTasks` = 1 in the user's profile, with the group policy that ends blocking programs, and on a forced logoff, shutdown or update restart; no program can prevent that. **Owner's decision of 2026-11-27:** this protection stays as it is. There is no emergency copy or autosave at the end of a session, because saving one's work and shutting the computer down properly are part of what pupils learn, and the pupil is responsible for it.
 * While a save hangs (for example on a network drive that does not answer) the top bar offers "Rettungskopie speichern" (owner's decision of 2026-11-26). It writes the text in the editor, with its BOM and every line break, to a new file on the local disk (`%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, name with date and time; no other place) and shows the path. The page itself keeps its state ("wird gespeichert …", then saved or not saved); the copy changes nothing about it.
 
 ### 3.6 User interface
 
 * German, short, written for 12-year-olds. Large enough to read on a projector.
-* One window: the project list on the left (can be folded away), the code in the middle, the page on the right. The divider can be moved.
+* One window: the project list on the left (can be folded away), the page in the middle, the code on the right (owner's request of 2026-11-27, from 0.1.0-alpha.17; until then the code was in the middle). The divider between page and code can be moved.
+* A header of two rows across the window: the first for the project and files (Projektordner öffnen, Neue Seite, Seite öffnen …, Speichern, Speichern unter …, Im Browser ansehen, file name and state), the second for editing (Rückgängig, Wiederholen, the page title, the formatting tools and "Bild einfügen"). All buttons have one height; buttons with a symbol only have one width, a German tooltip and an accessible name.
 * The top bar shows the file name and a clear state: "noch nicht gespeichert", "gespeichert". The bottom bar shows the program version.
 
 ## 4. Stage 2 and later (not in stage 1)

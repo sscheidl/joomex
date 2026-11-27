@@ -45,9 +45,10 @@ const state = {
 };
 
 const editor = createCodeEditor(els, onTextChanged);
+let lastPane = 'code';  // where the pupil wrote last: 'page' or 'code' (for "Bild einfügen")
 const visual = createVisualEditor(els, editor, {
   document: () => state.doc, message: setStatus, layout: () => queueMicrotask(() => scheduleLayout()),
-  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut,
+  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut, focused: () => { lastPane = 'page'; },
 });
 
 // ---------------------------------------------------------------- small helpers
@@ -162,7 +163,7 @@ function askUnsaved(what) {
 function settlePage() {
   if (visual.flush()) return true;
   tell('Der neue Titel ist noch nicht übernommen',
-    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn links im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
+    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn rechts im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
   return false;
 }
 
@@ -264,6 +265,7 @@ function reportLayout() {
 let layoutFrame = 0;
 const scheduleLayout = () => { if (!layoutFrame) layoutFrame = requestAnimationFrame(() => { layoutFrame = 0; reportLayout(); }); };
 new ResizeObserver(scheduleLayout).observe(els.pvSlot);
+new ResizeObserver(scheduleLayout).observe(document.getElementById('top'));  // the header can wrap to more lines
 addEventListener('resize', scheduleLayout);
 
 // divider between code and page
@@ -271,11 +273,14 @@ els.split.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   els.split.setPointerCapture(e.pointerId);
   els.work.classList.add('dragging');
-  const left = els.srcBox.closest('section').getBoundingClientRect().left;
-  const total = els.work.getBoundingClientRect().right - left - 8;
+  // The page pane (left of the divider) gets the width up to the pointer. Its column is a share of the whole
+  // work area, so the divider stays under the pointer; page and code keep at least 200 pixels each.
+  const left = els.pvSlot.closest('section').getBoundingClientRect().left;
+  const work = els.work.getBoundingClientRect();
+  const most = Math.max(200, work.right - left - 8 - 200);
   const move = (ev) => {
-    const pct = Math.min(85, Math.max(15, ((ev.clientX - left) / total) * 100));
-    els.work.style.setProperty('--left', pct + '%');
+    const px = Math.min(most, Math.max(200, ev.clientX - left - 4));
+    els.work.style.setProperty('--left', (px / work.width) * 100 + '%');
     scheduleLayout();
   };
   const stop = () => {
@@ -641,8 +646,16 @@ els.bOpen.addEventListener('click', () => whenSettled('du eine andere Seite öff
 els.bNew.addEventListener('click', newPage);
 els.bSave.addEventListener('click', save);
 els.bSaveAs.addEventListener('click', saveAs);
-els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
-els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
+// Undo and redo from the header keep the place the pupil was writing in (page or code): they do not take the
+// focus, so "Bild einfügen" afterwards still means that place.
+for (const [button, undo] of [[els.bUndo, true], [els.bRedo, false]]) {
+  button.addEventListener('pointerdown', (e) => e.preventDefault());
+  button.addEventListener('click', () => {
+    if (lastPane === 'page' && visual.editing) { visual.history(undo); return; }
+    if (undo) editor.undo(); else editor.redo();
+    editor.focus();
+  });
+}
 els.bFind.addEventListener('click', openFind);
 function askPicture(insert = insertPicture) {
   if (!state.doc || editor.locked || !startPicking()) return;
@@ -650,7 +663,14 @@ function askPicture(insert = insertPicture) {
   state.picture = { op, doc: state.doc, insert };
   send({ type: 'pickPicture', op, page: state.doc.path });
 }
-els.bPicture.addEventListener('click', () => askPicture());
+// "Bild einfügen" puts the picture where the pupil wrote last: into the page (reported by the edit frame), or
+// into the HTML code.
+addEventListener('focusin', (e) => { if (e.target === els.src) lastPane = 'code'; });
+els.bPicture.addEventListener('pointerdown', (e) => e.preventDefault());
+els.bPicture.addEventListener('click', () => {
+  if (lastPane === 'page' && visual.editing) visual.command('image');
+  else askPicture();
+});
 els.bBrowser.addEventListener('click', viewInBrowser);
 els.bRescue.addEventListener('click', rescue);
 
