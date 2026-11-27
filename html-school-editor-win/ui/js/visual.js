@@ -134,8 +134,12 @@ export function createVisualEditor(els, editor, actions) {
     return null;
   }
 
+  // A remembered place in the page is valid only for the page as it is now shown (an undo step rebuilds it).
+  const placeValid = (saved) => !!saved && current() && saved.owner === owner && saved.view === view && saved.path === owner.path
+    && doc.body.contains(saved.range.startContainer) && doc.body.contains(saved.range.endContainer);
+
   function run(fn, saved = capture()) {
-    if (!saved || !current() || saved.owner !== owner || saved.view !== view || saved.path !== owner.path || !doc.body.contains(saved.range.startContainer) || !doc.body.contains(saved.range.endContainer)) {
+    if (!placeValid(saved)) {
       actions.message('Klicke zuerst in deiner Seite an die Stelle, die du bearbeiten möchtest.', true);
       return;
     }
@@ -201,14 +205,28 @@ export function createVisualEditor(els, editor, actions) {
     }
   }
 
+  // One undo or redo step for the page: the caret goes to where the step changed the text, so the next action
+  // (typing, "Bild einfügen") happens there.
+  function historyStep(undo) {
+    const before = editor.text;
+    if (undo) editor.undo(); else editor.redo();
+    const after = editor.text;
+    if (after === before) { render(); return; }
+    const n = Math.min(before.length, after.length);
+    let i = 0;
+    while (i < n && before.charCodeAt(i) === after.charCodeAt(i)) i++;
+    let j = 0;
+    while (j < n - i && before.charCodeAt(before.length - 1 - j) === after.charCodeAt(after.length - 1 - j)) j++;
+    const pos = after.length - j;
+    render([pos, pos]);
+  }
+
   function historyKey(e) {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.isComposing) return false;
     const key = e.key.toLowerCase();
     if (key !== 'z' && key !== 'y') return false;
     e.preventDefault();
-    if (key === 'y' || e.shiftKey) editor.redo();
-    else editor.undo();
-    render();
+    historyStep(!(key === 'y' || e.shiftKey));
     return true;
   }
 
@@ -224,11 +242,19 @@ export function createVisualEditor(els, editor, actions) {
     doc.addEventListener('pointerdown', (e) => {
       if (e.target !== doc.documentElement || !current()) return;
       e.preventDefault();
+      // the end of the last text that is shown and can be edited (not a hidden paragraph, not a locked box)
       const walker = doc.createTreeWalker(doc.body, 4 /* NodeFilter.SHOW_TEXT */);
+      const probe = doc.createRange();
       let last = null;
-      for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.data.trim()) last = n;
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!n.data.trim() || !isEditableAt(n)) continue;
+        probe.selectNodeContents(n);
+        if (probe.getClientRects().length) last = n;
+      }
       const range = doc.createRange();
-      if (last) range.setStart(last, last.data.length); else range.setStart(doc.body, doc.body.childNodes.length);
+      if (last) range.setStart(last, last.data.length);
+      else if (!doc.body.textContent.trim() && !doc.body.querySelector('img, [data-se-box]')) range.setStart(doc.body, doc.body.childNodes.length);
+      else { actions.message('Klicke direkt in einen Text deiner Seite.', true); return; }
       range.collapse(true);
       doc.body.focus({ preventScroll: true });
       const sel = doc.getSelection();
@@ -241,8 +267,7 @@ export function createVisualEditor(els, editor, actions) {
       if (!current()) { e.preventDefault(); render(); return; }
       if (type === 'historyUndo' || type === 'historyRedo') {
         e.preventDefault();
-        if (type === 'historyUndo') editor.undo(); else editor.redo();
-        render();
+        historyStep(type === 'historyUndo');
       } else if (type.startsWith('format') || ['insertFromDrop', 'insertFromPaste', 'insertFromPasteAsQuotation', 'insertLink'].includes(type)) {
         e.preventDefault();
       }
@@ -315,8 +340,14 @@ export function createVisualEditor(els, editor, actions) {
   return {
     get editing() { return editing; },
     flush,
+    history: historyStep,
     // Runs a toolbar command at the last place in the page (used by "Bild einfügen" in the header).
-    command(name) { doCommand(name, capture() || selection); },
+    // The place is checked first, so no file dialog opens for a place that is no longer valid.
+    command(name) {
+      const saved = capture() || selection;
+      if (!placeValid(saved)) { actions.message('Klicke zuerst in deiner Seite an die Stelle, an die das Bild soll.', true); return; }
+      doCommand(name, saved);
+    },
     disable() { failed = true; render(); },
     refresh() { render(); },
     schedule() { clearTimeout(timer); timer = setTimeout(render, 200); },

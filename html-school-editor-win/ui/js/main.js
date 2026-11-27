@@ -646,8 +646,16 @@ els.bOpen.addEventListener('click', () => whenSettled('du eine andere Seite öff
 els.bNew.addEventListener('click', newPage);
 els.bSave.addEventListener('click', save);
 els.bSaveAs.addEventListener('click', saveAs);
-els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
-els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
+// Undo and redo from the header keep the place the pupil was writing in (page or code): they do not take the
+// focus, so "Bild einfügen" afterwards still means that place.
+for (const [button, undo] of [[els.bUndo, true], [els.bRedo, false]]) {
+  button.addEventListener('pointerdown', (e) => e.preventDefault());
+  button.addEventListener('click', () => {
+    if (lastPane === 'page' && visual.editing) { visual.history(undo); return; }
+    if (undo) editor.undo(); else editor.redo();
+    editor.focus();
+  });
+}
 els.bFind.addEventListener('click', openFind);
 function askPicture(insert = insertPicture) {
   if (!state.doc || editor.locked || !startPicking()) return;

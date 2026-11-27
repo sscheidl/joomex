@@ -7,7 +7,7 @@ Independently written Joomla extensions: modules, plugins, templates.
 | [`pdf-book/`](pdf-book/) | `mod_pdfbook`: PDF flipbook module for Joomla 6, built on PDF.js 6.5.438 | Alpha, not for production |
 | [`research/legacy-flipbook/`](research/legacy-flipbook/) | Sanitized behaviour analysis of a legacy commercial flipbook module that `mod_pdfbook` replaces | Findings, no original material |
 | [`html-school-editor/`](html-school-editor/) | Offline single-file HTML learning editor for classroom use (stand-alone, not a Joomla extension), with its task brief and acceptance contract | Beta 1.0.0-beta.3 for an accompanied classroom trial ([release](https://github.com/sscheidl/joomex/releases/tag/html-school-editor-v1.0.0-beta.3)); not a final release |
-| [`html-school-editor-win/`](html-school-editor-win/) | Successor of the single-file editor for Windows: native C++ program with the WebView2 engine; pages and pictures load from their real place in the pupil's project folder | 0.1.0-alpha.17: stage 1 with the stage 2 pilot (editing on the page side), two-row header, page in the middle; built and measured on Windows; not yet for pupils' files |
+| [`html-school-editor-win/`](html-school-editor-win/) | Successor of the single-file editor for Windows: native C++ program with the WebView2 engine; pages and pictures load from their real place in the pupil's project folder | 0.1.0-alpha.18: stage 1 with the stage 2 pilot (editing on the page side), two-row header, page in the middle; built and measured on Windows; not yet for pupils' files |
 
 Binding rules for this repository, including the publication check: [RULES.md](RULES.md).
 

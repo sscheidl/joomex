@@ -1077,3 +1077,48 @@ test('the page pane: no scroll bar for a short page; a click below the content w
   assert.match(await ui.text(), /<p>Hallo Welt<\/p>/, 'typed at the end of the last paragraph');
   assert.deepEqual(ui.errors, []);
 });
+
+test('review of alpha.17, P1: undo from the header keeps the page as the place for "Bild einfügen"', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const source = '<!doctype html>\r\n<title>T</title>\r\n<p>Hallo</p>\r\n';
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  // the caret in the code stays at its start (before the doctype); the pupil writes in the page
+  const p = ui.page.frameLocator('#visualFrame').locator('p');
+  await p.click();
+  await ui.page.keyboard.press('End');
+  await ui.page.keyboard.type('!');
+  await ui.page.click('#bUndo');
+  assert.equal(await ui.page.evaluate(() => document.activeElement.id), 'visualFrame', 'undo leaves the focus in the page');
+  await ui.page.click('#bPicture');
+  const asked = await ui.count('pickPicture');
+  if (asked) {
+    await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' });
+    await ui.deliver({ type: 'dialogDone' });
+  }
+  const text = await ui.text();
+  assert.ok(text.startsWith('<!doctype html>'), 'nothing before the doctype: ' + JSON.stringify(text.slice(0, 40)));
+  if (asked) assert.match(text, /<p>Hallo<img src="bilder\/katze\.png" alt=""><\/p>/, 'the picture went into the page');
+  else assert.match(await ui.page.textContent('#status'), /Klicke zuerst in deiner Seite/, 'or a new place is asked for, before any dialog');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('review of alpha.17, P2: a click below the content never lands in a hidden paragraph or a locked box', async () => {
+  for (const [source, label] of [['<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Sichtbarer Text</p><p hidden>Verborgener Text</p>\r\n', 'hidden'], ['<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Text</p><video></video>\r\n', 'video']]) {
+    const ui = await openUi(browser);
+    await ui.deliver(PROJECT);
+    await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+    await ui.page.frameLocator('#visualFrame').locator('p').first().waitFor();
+    const slot = await ui.page.locator('#pvSlot').boundingBox();
+    await ui.page.mouse.click(slot.x + slot.width / 2, slot.y + slot.height - 30);
+    await ui.page.keyboard.type('X');
+    const text = await ui.text();
+    assert.match(text, label === 'hidden' ? /<p>Sichtbarer TextX<\/p><p hidden>Verborgener Text<\/p>/ : /<p>TextX<\/p><video><\/video>/, label + ': typed at the end of the visible text');
+    await ui.page.click('#bPicture');
+    assert.equal(await ui.count('pickPicture'), 1, label + ': the picture dialog opens for that place');
+    await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' });
+    await ui.deliver({ type: 'dialogDone' });
+    assert.match(await ui.text(), label === 'hidden' ? /<p>Sichtbarer TextX<img src="bilder\/katze\.png" alt=""><\/p><p hidden>Verborgener Text<\/p>/ : /<p>TextX<img src="bilder\/katze\.png" alt=""><\/p><video>/, label + ': the picture is visible in the paragraph');
+    assert.deepEqual(ui.errors, []);
+  }
+});
