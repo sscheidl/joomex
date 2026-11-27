@@ -15,14 +15,20 @@
   <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></symbol>
   <symbol id="i-save-as" viewBox="0 0 24 24"><path d="M12 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9l3 3v4"/><path d="M8 3v5h6V3"/><path d="M14.5 20.5 15 18l4.5-4.5a1.4 1.4 0 0 1 2 2L17 20z"/></symbol>
   <symbol id="i-browser" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.5 5.6 3.5 9s-1 6.4-3.5 9c-2.5-2.6-3.5-5.6-3.5-9s1-6.4 3.5-9"/></symbol>
-  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12h-2" transform="translate(0 -6)"/></symbol>
-  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12h2" transform="translate(0 -6)"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3.5 9.5h6M3.5 9.5v-6"/><path d="M3.8 9.3A8.5 8.5 0 0 1 20 13.5"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20.5 9.5h-6M20.5 9.5v-6"/><path d="M20.2 9.3A8.5 8.5 0 0 0 4 13.5"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9.5" r="1.8"/><path d="m4 18 5-5 3.5 3.5L15 14l5 5"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></symbol>
   <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/><path d="M4 4l16 16"/></symbol>
   <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
   <symbol id="i-numbers" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 4.5l1.5-.5V8M4 8h3M4 11h2.5a1 1 0 0 1 .4 1.9L4 15h3"/></symbol>
+  <symbol id="i-align-left" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
+  <symbol id="i-align-center" viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></symbol>
+  <symbol id="i-align-right" viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></symbol>
+  <symbol id="i-align-justify" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></symbol>
+  <symbol id="i-break" viewBox="0 0 24 24"><path d="M19 5v7a3 3 0 0 1-3 3H6"/><path d="m9.5 11.5-3.5 3.5 3.5 3.5"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.3-2.5 4"/><path d="M12 17.3v.2"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></symbol>
 </svg>
 <header id="top">
@@ -41,6 +47,9 @@
       <button id="bBrowser" type="button" aria-label="Im Browser ansehen" title="Die gespeicherte Seite im Browser ansehen" disabled><svg class="ic" aria-hidden="true"><use href="#i-browser"/></svg><span>Im Browser ansehen</span></button>
     </span>
     <div class="doc"><span id="docName"></span><span id="docState"></span><button id="bRescue" type="button" title="Den Text im Editor als neue Datei auf diesem Computer speichern, solange das Speichern hängt" hidden>Rettungskopie speichern</button></div>
+    <span class="group">
+      <button id="bHelp" type="button" aria-label="Hilfe" title="Kurzanleitung, Version und Lizenz (F1)"><svg class="ic" aria-hidden="true"><use href="#i-help"/></svg><span>Hilfe</span></button>
+    </span>
   </div>
   <div id="topEdit" class="bar" role="toolbar" aria-label="Seite bearbeiten">
     <span class="group">
@@ -48,7 +57,7 @@
       <button id="bRedo" type="button" class="icon" title="Wiederholen (Strg+Y)" aria-label="Wiederholen" disabled><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
     </span>
     <span id="visualTools" class="off">
-      <span class="group titleField"><label for="pageTitle">Seitentitel</label><input id="pageTitle" maxlength="250" type="text" autocomplete="off" disabled></span>
+      <span class="group titleField"><label for="pageTitle">Seitentitel</label><input id="pageTitle" maxlength="250" type="text" autocomplete="off" placeholder="Seitentitel" title="Seitentitel: steht im Browser oben im Tab" disabled></span>
       <span id="visualCommands" role="group" aria-label="Seite gestalten">
         <span class="group">
           <button type="button" class="icon" data-edit="p" title="Absatz" aria-label="Absatz"><span class="gl p">¶</span></button>
@@ -63,6 +72,7 @@
           <button type="button" class="icon" data-edit="sup" title="Hochgestellt" aria-label="Hochgestellt"><span class="gl sup">x²</span></button>
           <button type="button" class="icon" data-edit="sub" title="Tiefgestellt" aria-label="Tiefgestellt"><span class="gl sub">x₂</span></button>
           <button type="button" class="icon" data-edit="mark" title="Hervorheben" aria-label="Hervorheben"><span class="gl mark">ab</span></button>
+          <button type="button" class="icon" data-edit="br" title="Neue Zeile im selben Absatz &lt;br&gt; (Umschalt+Enter)" aria-label="Zeilenumbruch"><svg class="ic" aria-hidden="true"><use href="#i-break"/></svg></button>
         </span>
         <span class="group">
           <button type="button" class="icon" data-edit="ul" title="Liste" aria-label="Liste"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg></button>
@@ -74,8 +84,14 @@
           <button type="button" class="icon" data-edit="table" title="Tabelle einfügen" aria-label="Tabelle einfügen"><svg class="ic" aria-hidden="true"><use href="#i-table"/></svg></button>
         </span>
         <span class="group">
-          <select id="visualAlign" aria-label="Ausrichtung" title="Ausrichtung"><option value="">Ausrichtung</option><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option><option value="justify">Blocksatz</option></select>
-          <select id="visualColor" aria-label="Textfarbe" title="Textfarbe"><option value="">Textfarbe</option><option value="red">Rot</option><option value="orange">Orange</option><option value="green">Grün</option><option value="blue">Blau</option><option value="navy">Dunkelblau</option><option value="purple">Violett</option><option value="brown">Braun</option><option value="gray">Grau</option></select>
+          <button type="button" class="icon" data-edit="align-left" title="Linksbündig (noch einmal drücken nimmt es weg)" aria-label="Linksbündig"><svg class="ic" aria-hidden="true"><use href="#i-align-left"/></svg></button>
+          <button type="button" class="icon" data-edit="align-center" title="Zentriert (noch einmal drücken nimmt es weg)" aria-label="Zentriert"><svg class="ic" aria-hidden="true"><use href="#i-align-center"/></svg></button>
+          <button type="button" class="icon" data-edit="align-right" title="Rechtsbündig (noch einmal drücken nimmt es weg)" aria-label="Rechtsbündig"><svg class="ic" aria-hidden="true"><use href="#i-align-right"/></svg></button>
+          <button type="button" class="icon" data-edit="align-justify" title="Blocksatz (noch einmal drücken nimmt es weg)" aria-label="Blocksatz"><svg class="ic" aria-hidden="true"><use href="#i-align-justify"/></svg></button>
+        </span>
+        <span class="group colorPick">
+          <button id="bColor" type="button" class="icon" data-edit="color" title="Textfarbe" aria-label="Textfarbe"><span class="gl color">A</span><span id="colorBar"></span></button>
+          <button id="bColorMenu" type="button" class="drop" title="Farbe auswählen" aria-label="Farbe auswählen" aria-haspopup="dialog" aria-expanded="false" aria-controls="palette">▾</button>
         </span>
       </span>
     </span>
@@ -90,6 +106,23 @@
     <div class="paneHead"><h2 id="projectName">Kein Projektordner</h2><button id="bFold" type="button" class="small" title="Liste einklappen" aria-expanded="true">«</button></div>
     <ul id="files" role="list"></ul>
   </aside>
+  <section id="srcPane" aria-label="HTML-Code">
+    <div class="paneHead"><h2>HTML-Code</h2><span class="hint" id="pos"></span><button id="bFind" type="button" class="small" title="Im Code suchen (Strg+F)" disabled><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span>Suchen</span></button></div>
+    <div id="findBar" hidden>
+      <input id="findText" type="search" autocomplete="off" spellcheck="false" aria-label="Suchen nach">
+      <button id="bFindPrev" type="button" class="small" title="Vorheriger Treffer (Umschalt+Enter)" aria-label="Vorheriger Treffer">▲</button>
+      <button id="bFindNext" type="button" class="small" title="Nächster Treffer (Enter)" aria-label="Nächster Treffer">▼</button>
+      <span id="findCount" class="hint"></span>
+      <button id="bFindClose" type="button" class="small" title="Suche schließen (Esc)" aria-label="Suche schließen">✕</button>
+    </div>
+    <div id="srcBox">
+      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
+      <div id="marks" aria-hidden="true"><div id="marksIn"></div></div>
+      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite" readonly></textarea>
+    </div>
+  </section>
+  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
   <section id="pvPane" aria-label="Deine Seite">
     <div class="paneHead"><h2>Deine Seite</h2><span class="hint" id="visualHint"></span></div>
     <div id="notes" hidden>
@@ -105,25 +138,11 @@
       </div>
     </div>
   </section>
-  <div id="split" role="separator" aria-orientation="vertical" title="Ziehen, um die Breite zu ändern"></div>
-  <section id="srcPane" aria-label="HTML-Code">
-    <div class="paneHead"><h2>HTML-Code</h2><span class="hint" id="pos"></span><button id="bFind" type="button" class="small" title="Im Code suchen (Strg+F)" disabled><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><span>Suchen</span></button></div>
-    <div id="findBar" hidden>
-      <input id="findText" type="search" autocomplete="off" spellcheck="false" aria-label="Suchen nach">
-      <button id="bFindPrev" type="button" class="small" title="Vorheriger Treffer (Umschalt+Enter)" aria-label="Vorheriger Treffer">▲</button>
-      <button id="bFindNext" type="button" class="small" title="Nächster Treffer (Enter)" aria-label="Nächster Treffer">▼</button>
-      <span id="findCount" class="hint"></span>
-      <button id="bFindClose" type="button" class="small" title="Suche schließen (Esc)" aria-label="Suche schließen">✕</button>
-    </div>
-    <div id="srcBox">
-      <div id="gutter" aria-hidden="true"><div id="gutterIn"></div></div>
-      <div id="hl" aria-hidden="true"><div id="hlIn"></div></div>
-      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" aria-label="HTML-Code der Seite" readonly></textarea>
-    </div>
-  </section>
 </main>
 
 <footer id="bottom"><span id="status" role="status"></span><span id="versionBottom"></span></footer>
+
+<div id="palette" role="dialog" aria-label="Textfarbe auswählen" hidden></div>
 
 <dialog id="dlg">
   <form method="dialog">

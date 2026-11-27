@@ -4,83 +4,7 @@
 // tests. Run: node --test tests/ui/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-import { stageUi, ROOT } from '../../tools/stage-ui.mjs';
-
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
-const stage = stageUi(path.join(ROOT, 'tests', '.stage', 'browser'));
-
-const MOCK_CORE = `
-  window.__sent = [];
-  window.chrome = { webview: {
-    postMessage(m) { window.__sent.push(JSON.parse(JSON.stringify(m))); },
-    addEventListener(type, fn) { if (type === 'message') window.__recv = fn; },
-  } };
-  window.__deliver = (m) => window.__recv({ data: m });
-`;
-
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
-const b64 = (bytes) => Buffer.from(bytes).toString('base64');
-
-async function openUi(browser) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.addInitScript(MOCK_CORE);
-  await page.route('https://app.example/**', (route) => {
-    const p = new URL(route.request().url()).pathname;
-    const file = path.join(stage, p);
-    if (!file.startsWith(stage) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    route.fulfill({ status: 200, contentType: MIME[path.extname(file)] || 'application/octet-stream', body: fs.readFileSync(file) });
-  });
-  await page.goto('https://app.example/index.html');
-  await page.waitForFunction(() => window.__sent && window.__sent.some((m) => m.type === 'ready'));
-  const answered = new Set();
-  const ui = {
-    page, errors,
-    sent: () => page.evaluate(() => window.__sent),
-    last: async (type) => (await ui.sent()).filter((m) => m.type === type).pop(),
-    count: async (type) => (await ui.sent()).filter((m) => m.type === type).length,
-    deliver: (m) => page.evaluate((x) => window.__deliver(x), m),
-    // Delivers the core's answer to the last save or save as, with the id of that request.
-    // Delivers an `opened` answer: to the last open request not answered yet, else as the page given at
-    // program start (op 0).
-    opened: async (m) => {
-      const req = (await ui.sent()).filter((x) => ['openFile', 'openDialog', 'newPage'].includes(x.type)).pop();
-      const op = req && !answered.has(req.op) ? req.op : 0;
-      if (op) answered.add(op);
-      return ui.deliver({ base: '1-0000000000000000', ...m, op });
-    },
-    // Delivers the answer to the last picture request (`pickPicture` or `copyPicture`).
-    pictureReply: async (m) => ui.deliver({ ...m, op: (await ui.sent()).filter((x) => x.type === 'pickPicture' || x.type === 'copyPicture').pop().op }),
-    reply: async (m) => ui.deliver({ ...m, id: (await ui.sent()).filter((x) => x.type === 'save' || x.type === 'saveAs').pop().id }),
-    text: () => page.evaluate(() => document.getElementById('src').value),
-    // Clicks a button of the open dialog and waits until the dialog has closed and its answer was handled.
-    answer: async (selector) => {
-      await page.click(selector);
-      await page.waitForFunction(() => !document.getElementById('dlg').open);
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 0)));
-    },
-    // Clicks a button of the open dialog when another question waits in line, and waits for that question
-    // (by its title). The dialog is closed only for a moment in between, which polling can miss.
-    answerThen: async (selector, title) => {
-      await page.click(selector);
-      await page.waitForFunction((t) => document.getElementById('dlg').open && document.getElementById('dlgTitle').textContent.includes(t), title);
-    },
-  };
-  await ui.deliver({ type: 'init', version: '0.1.0-test' });
-  return ui;
-}
-
-const PROJECT = { type: 'project', name: 'projekt', files: [
-  { path: 'index.html', kind: 'page' }, { path: 'seiten/tiere.html', kind: 'page' }, { path: 'bilder/katze.png', kind: 'picture' }, { path: 'css/stil.css', kind: 'style' },
-] };
-
-const PAGE = '<!DOCTYPE html>\r\n<html lang="de">\r\n<head>\r\n  <meta charset="utf-8">\r\n  <title>Tiere</title>\r\n</head>\r\n<body>\r\n  <img src="../../weg.png" alt="">\r\n</body>\r\n</html>\r\n';
-const BOM = [0xef, 0xbb, 0xbf];
+import { chromium, openUi, b64, PROJECT, PAGE, BOM } from './harness.mjs';
 
 let browser;
 test.before(async () => { browser = await chromium.launch(); });
@@ -912,7 +836,7 @@ test('a title that cannot be applied stops saving and closing, and stays until i
   // the field says at once that this title is changed in the code
   await ui.page.focus('#pageTitle');
   assert.equal(await ui.page.$eval('#pageTitle', (i) => i.readOnly), true, 'read-only where the title cannot be written');
-  assert.match(await ui.page.textContent('#status'), /nur rechts im HTML-Code/);
+  assert.match(await ui.page.textContent('#status'), /nur links im HTML-Code/);
   // a typed title that got into the field anyway: closing and saving stop, nothing is lost
   await ui.page.$eval('#pageTitle', (i) => { i.readOnly = false; i.value = 'Neu'; });
   await ui.deliver({ type: 'closeRequest' });
@@ -936,7 +860,7 @@ test('a title that cannot be applied stops saving and closing, and stays until i
   assert.deepEqual(ui.errors, []);
 });
 
-test('layout: two header rows, project list left, page in the middle, code right; Save and the state stay visible', async () => {
+test('layout: two header rows, project list left, code in the middle, page right; Save and the state stay visible', async () => {
   for (const width of [1280, 1138]) {  // 1138: a 1366 pixel wide screen at 120 % scaling
     const ui = await openUi(browser);
     await ui.page.setViewportSize({ width, height: 720 });
@@ -946,7 +870,8 @@ test('layout: two header rows, project list left, page in the middle, code right
     const box = (sel) => ui.page.locator(sel).boundingBox();
     const [files, edit, proj, pv, split, src] = await Promise.all(['#topFiles', '#topEdit', '#projectPane', '#pvPane', '#split', '#srcPane'].map(box));
     assert.ok(files.y + files.height <= edit.y + 1, width + ': the editing row lies below the file row');
-    assert.ok(proj.x < pv.x && pv.x < split.x && split.x < src.x, width + ': list, page, divider, code from left to right');
+    assert.ok(edit.height <= 42, width + ': the editing row is one line (' + edit.height + ' pixels)');
+    assert.ok(proj.x < src.x && src.x < split.x && split.x < pv.x, width + ': list, code, divider, page from left to right');
     for (const sel of ['#bSave', '#docState']) {
       const b = await box(sel);
       assert.ok(b && b.width > 0 && b.x >= 0 && b.x + b.width <= width && b.y + b.height <= files.y + files.height + 1, width + ': ' + sel + ' visible in the first row');
@@ -964,7 +889,7 @@ test('layout: two header rows, project list left, page in the middle, code right
     await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').length > 0);
     const slot = await box('#pvSlot');
     const lay = await ui.last('layout');
-    assert.ok(Math.abs(lay.x - slot.x) <= 1 && Math.abs(lay.w - slot.width) <= 1, width + ': page view laid over the middle pane');
+    assert.ok(Math.abs(lay.x - slot.x) <= 1 && Math.abs(lay.w - slot.width) <= 1, width + ': page view laid over the page pane on the right');
     assert.deepEqual(ui.errors, []);
   }
 });
@@ -985,7 +910,9 @@ test('layout: folding the list and dragging the divider keep the page view align
   await ui.page.mouse.move(s.x - 200, s.y + 200, { steps: 5 });
   await ui.page.mouse.up();
   const after = await slotX();
-  assert.ok(Math.abs(after.width - (before.width - 200)) <= 6, 'the page pane follows the pointer: ' + before.width + ' -> ' + after.width);
+  // the code pane left of the divider gets 200 pixels narrower, the page pane right of it 200 pixels wider
+  assert.ok(Math.abs(after.width - (before.width + 200)) <= 6, 'the divider follows the pointer: page pane ' + before.width + ' -> ' + after.width);
+  assert.ok(Math.abs(after.x - (before.x - 200)) <= 6, 'the page pane starts at the divider');
   const s2 = await ui.page.locator('#split').boundingBox();
   assert.ok(Math.abs(s2.x + 4 - (s.x - 200)) <= 6, 'the divider stays under the pointer');
   await ui.page.waitForFunction(() => { const l = window.__sent.filter((m) => m.type === 'layout').pop(); const r = document.getElementById('pvSlot').getBoundingClientRect(); return Math.abs(l.w - r.width) <= 1; });
@@ -1045,12 +972,12 @@ test('header: Tab and Shift+Tab move through both rows with a visible focus', as
   await ui.page.keyboard.type('x');  // so that "Rückgängig" can be used
   await ui.page.focus('#bProject');
   const order = [];
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 40; i++) {
     const id = await ui.page.evaluate(() => { const a = document.activeElement; return a.id || a.dataset.edit || a.tagName; });
     order.push(id);
     await ui.page.keyboard.press('Tab');
   }
-  for (const id of ['bProject', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bBrowser', 'bUndo', 'pageTitle', 'p', 'bold', 'link', 'visualAlign', 'visualColor', 'bPicture'])
+  for (const id of ['bProject', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bBrowser', 'bUndo', 'pageTitle', 'p', 'bold', 'link', 'br', 'align-left', 'align-justify', 'bColor', 'bColorMenu', 'bPicture'])
     assert.ok(order.includes(id), id + ' is reached with Tab');
   assert.ok(order.indexOf('bSave') < order.indexOf('bUndo') && order.indexOf('bUndo') < order.indexOf('bPicture'), 'first row, then second row');
   await ui.page.focus('#pageTitle');

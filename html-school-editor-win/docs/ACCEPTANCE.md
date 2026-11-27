@@ -48,6 +48,23 @@
 | F-05 | A file in another encoding is reported, not converted silently. |
 | F-06 | The file list follows files added, renamed and deleted in Explorer. |
 
+## Editing on the page side (the owner's collection of 2026-11-27)
+
+Each criterion has a browser test in `tests/ui/wishes.test.mjs` that failed against alpha.18; the native results are in STATUS.md.
+
+| # | Criterion |
+| --- | --- |
+| V-01 | **Split at a space (B3).** A sentence typed in the page, split with Enter after one space and before another, all selected, "Liste": the code holds `<li>Der</li>`, `<li>schnelle</li>`, `<li>braune Fuchs</li>`, no `&nbsp;` and no leading space. The same for Shift+Enter (`Eins<br>zwei`). A `&nbsp;` written in the code where nothing is split stays. |
+| V-02 | **Links are seen (B4).** In the edit view a link is blue and underlined as in the browser; the page's own rules for `a` win; a click still goes nowhere. |
+| V-03 | **Enter at the end of a link (B5).** Enter three times at the end of a link and typing: one link stays, the new paragraphs hold no link and no empty link. Enter inside a link splits it into two links. |
+| V-04 | **Line break (W3).** "Zeilenumbruch" and Shift+Enter put `<br>` into the paragraph, in the middle and at the end (the new line is seen at once); the button is one undo step; the saved bytes hold the `<br>` and the file's line breaks. |
+| V-05 | **Alignment (W4).** Four symbol buttons; the one in force is pressed; pressing it again takes the alignment away. |
+| V-06 | **Text colour (W5).** The palette writes the eight named colours by name and the shades of the grid and of "Weitere Farben …" as `#rrggbb`, also on a new span; "Farbe entfernen" removes the colour spans; the "A" applies the colour chosen last; Esc closes the palette and gives the focus back. "Weitere Farben …" opens the engine's colour chooser; cancelling it changes nothing. |
+| V-07 | **Link options (W6, W7).** "In neuem Fenster öffnen" writes `target="_blank"`; "Das ist eine E-Mail-Adresse" writes `mailto:` and refuses an address without `@`. |
+| V-08 | **Tables (W11).** In the edit view an empty cell is at least about 2.5 × 1.6 characters and has a dashed guide line; the page's own cell rules win; nothing of it reaches the code. |
+| V-09 | **Search hits (W13).** While the search field has the focus every hit is marked in the code, the current one strongly, on the right line and column (also behind a tab); the marks go with the search. |
+| V-10 | **Symbols (B1).** "Rückgängig" and "Wiederholen" show curved arrows as in office programs. |
+
 ## Program
 
 | # | Criterion |
@@ -57,6 +74,7 @@
 | X-03 | The program writes nothing next to the exe and nothing outside `%LOCALAPPDATA%`, `HKCU` and the files the pupil saves. Rescue copies (F-15) go to `%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`. |
 | X-04 | User interface texts are German and understandable for 12-year-olds (hand check with a class). |
 | X-05 | Third-party components are listed with version, licence, source and SHA-256; the release zip passes the publication check with `--zip`. |
-| X-08 | **Layout (0.1.0-alpha.17).** At 100 % scaling (the school) and at 120 % (the owner's computer): both header rows can be used, "Speichern" and the saved state stay visible, the project list is on the left, the page in the middle, the code on the right. Dragging the divider and folding the list keep the page view on the middle pane. Text marked in the page is formatted from the second row; undo, redo and the visible focus with Tab and Shift+Tab work; Ctrl+S with the caret in the page saves. |
+| X-08 | **Layout (0.1.0-alpha.17, order from 0.1.0-alpha.19).** At 100 % scaling (the school) and at 120 % (the owner's computer): both header rows can be used, each in one line at 1138 CSS pixels and more, "Speichern" and the saved state stay visible, the project list is on the left, the code in the middle, the page on the right. Dragging the divider and folding the list keep the page view on the right pane. Text marked in the page is formatted from the second row; undo, redo and the visible focus with Tab and Shift+Tab work; Ctrl+S with the caret in the page saves. |
+| X-09 | **Help (0.1.0-alpha.19).** "Hilfe" in the first row (and F1) shows a short German guide, the version, the developer and year, the MIT licence text and the licence of the WebView2 SDK, without the internet; the native page view gives way while it is open. |
 | X-07 | **One file dialog per window.** Two quick dialog requests (a double click, or two requests sent at once) open one dialog; after it is cancelled or confirmed no second dialog appears, and the dialog actions work again. |
 | X-06 | Open and cancel the four system dialogs for project folder, page, picture and Save As. The current source stays intact and the controls remain usable. Accept valid choices in a second run and check the returned path and operation. |

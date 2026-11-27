@@ -3,6 +3,8 @@
 // core places over #pvSlot.
 import { createCodeEditor } from './editor.js';
 import { createVisualEditor } from './visual.js';
+import { createPalette } from './palette.js';
+import { helpBody } from './help.js';
 import { addressProblems, PROBLEM_TEXT } from './checks.js';
 import { breaksOfBytes, createBreaks } from './breaks.js';
 import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './shared/util.js';
@@ -11,8 +13,8 @@ const $ = (id) => document.getElementById(id);
 const els = {};
 for (const id of ['version', 'versionBottom', 'bProject', 'bProject2', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bUndo', 'bRedo', 'bFind', 'bPicture', 'bBrowser',
   'docName', 'docState', 'bRescue', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
-  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
-  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'visualAlign', 'visualColor']) els[id] = $(id);
+  'srcBox', 'gutterIn', 'hlIn', 'marksIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
+  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'bColor', 'colorBar', 'bColorMenu', 'palette', 'bHelp']) els[id] = $(id);
 
 const PREVIEW_DELAY = 300;
 const RESCUE_AFTER = 3000;  // a save on its way this long offers a rescue copy
@@ -42,14 +44,16 @@ const state = {
   closePending: false,  // a close request came while a question was open
   seen: 0,              // highest `seq` of a page the core handed over that this interface has handled
   previewTimer: 0,
+  version: '',          // version of the program, from the core
 };
 
 const editor = createCodeEditor(els, onTextChanged);
 let lastPane = 'code';  // where the pupil wrote last: 'page' or 'code' (for "Bild einfügen")
 const visual = createVisualEditor(els, editor, {
   document: () => state.doc, message: setStatus, layout: () => queueMicrotask(() => scheduleLayout()),
-  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut, focused: () => { lastPane = 'page'; },
+  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut, focused: () => { lastPane = 'page'; palette.close(false); },
 });
+const palette = createPalette(els, (value) => visual.applyColor(value));
 
 // ---------------------------------------------------------------- small helpers
 
@@ -79,9 +83,9 @@ function bytesOf(base64) {
 const questions = [];
 let questionOpen = false;
 
-function ask(title, body, buttons, onOpen) {
+function ask(title, body, buttons, onOpen, cls) {
   return new Promise((resolve) => {
-    questions.push({ title, body, buttons, onOpen, resolve });
+    questions.push({ title, body, buttons, onOpen, cls, resolve });
     if (!questionOpen) showNextQuestion();
   });
 }
@@ -100,6 +104,7 @@ function showNextQuestion() {
   state.modal = 1;
   reportLayout();
   const d = els.dlg;
+  d.className = q.cls || '';
   els.dlgTitle.textContent = q.title;
   els.dlgBody.replaceChildren(...(typeof q.body === 'string' ? [paragraph(q.body)] : [].concat(q.body)));
   els.dlgButtons.replaceChildren(...q.buttons.map((b) => {
@@ -130,20 +135,34 @@ function paragraph(text, cls) {
 
 const tell = (title, text) => ask(title, text, [{ label: 'OK', value: 'ok', primary: true }]);
 
+// Fields of a dialog of the page side: { label, value } is a text field, { label, check: true } a tick box
+// (its answer is true or false). Returns the answers in the order of the fields, or null.
 async function askVisualFields(title, fields) {
   const wrapper = document.createElement('div');
-  const inputs = fields.map(({ label, value }) => {
+  const inputs = fields.map(({ label, value, check }) => {
     const field = document.createElement('label');
     const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 2048;
-    input.value = value;
-    field.append(label, input);
+    if (check) {
+      input.type = 'checkbox';
+      field.className = 'check';
+      field.append(input, label);
+    } else {
+      input.type = 'text';
+      input.maxLength = 2048;
+      input.value = value;
+      field.append(label, input);
+    }
     wrapper.append(field);
     return input;
   });
   const result = await ask(title, wrapper, [{ label: 'Einfügen', value: 'insert', primary: true }, { label: 'Abbrechen', value: 'cancel' }], () => inputs[0].select());
-  return result === 'insert' ? inputs.map((input) => input.value) : null;
+  return result === 'insert' ? inputs.map((input) => (input.type === 'checkbox' ? input.checked : input.value)) : null;
+}
+
+// "Hilfe": a short guide, the version, the developer and the licences (MIT, WebView2).
+function showHelp() {
+  palette.close(false);
+  ask('Hilfe', helpBody(state.version), [{ label: 'Schließen', value: 'ok', primary: true }], (d) => d.querySelector('button.primary').focus(), 'help');
 }
 
 // Asks what to do with unsaved changes. Returns 'save', 'discard' or 'cancel'.
@@ -163,7 +182,7 @@ function askUnsaved(what) {
 function settlePage() {
   if (visual.flush()) return true;
   tell('Der neue Titel ist noch nicht übernommen',
-    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn rechts im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
+    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn links im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
   return false;
 }
 
@@ -273,9 +292,9 @@ els.split.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   els.split.setPointerCapture(e.pointerId);
   els.work.classList.add('dragging');
-  // The page pane (left of the divider) gets the width up to the pointer. Its column is a share of the whole
-  // work area, so the divider stays under the pointer; page and code keep at least 200 pixels each.
-  const left = els.pvSlot.closest('section').getBoundingClientRect().left;
+  // The code pane (left of the divider) gets the width up to the pointer. Its column is a share of the whole
+  // work area, so the divider stays under the pointer; code and page keep at least 200 pixels each.
+  const left = els.srcBox.closest('section').getBoundingClientRect().left;
   const work = els.work.getBoundingClientRect();
   const most = Math.max(200, work.right - left - 8 - 200);
   const move = (ev) => {
@@ -623,7 +642,7 @@ function openFind() {
   els.findText.select();
   scheduleLayout();
 }
-function closeFind() { els.findBar.hidden = true; editor.focus(); scheduleLayout(); }
+function closeFind() { els.findBar.hidden = true; editor.markHits('', -1); editor.focus(); scheduleLayout(); }
 function findStep(dir) {
   const r = editor.find(els.findText.value, dir);
   els.findCount.textContent = !els.findText.value ? '' : r.count ? r.index + ' von ' + r.count : 'nicht gefunden';
@@ -673,6 +692,7 @@ els.bPicture.addEventListener('click', () => {
 });
 els.bBrowser.addEventListener('click', viewInBrowser);
 els.bRescue.addEventListener('click', rescue);
+els.bHelp.addEventListener('click', showHelp);
 
 function handleShortcut(e) {
   if (state.modal || e.isComposing) return false;
@@ -680,6 +700,7 @@ function handleShortcut(e) {
   if (ctrl && !e.altKey && key === 's') { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
   else if (ctrl && !e.altKey && key === 'f') { e.preventDefault(); openFind(); }
   else if (e.key === 'F3') { e.preventDefault(); if (els.findBar.hidden) openFind(); else findStep(e.shiftKey ? -1 : 1); }
+  else if (e.key === 'F1' && !ctrl && !e.altKey) { e.preventDefault(); showHelp(); }
   return e.defaultPrevented;
 }
 addEventListener('keydown', handleShortcut);
@@ -695,6 +716,7 @@ function requestClose() {
 
 const handlers = {
   init(m) {
+    state.version = m.version || '';
     els.version.textContent = m.version || '';
     els.versionBottom.textContent = m.version ? 'html-school-editor-win ' + m.version : '';
     updateChrome();

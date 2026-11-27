@@ -22,6 +22,7 @@ export function createCodeEditor(els, onChange) {
 
   function syncScroll() {
     els.hlIn.style.transform = 'translate(' + -ta.scrollLeft + 'px,' + -ta.scrollTop + 'px)';
+    if (els.marksIn) els.marksIn.style.transform = els.hlIn.style.transform;
     els.gutterIn.style.transform = 'translateY(' + -ta.scrollTop + 'px)';
   }
 
@@ -40,6 +41,42 @@ export function createCodeEditor(els, onChange) {
     }
     syncScroll();
     showPosition();
+    if (hits.query) drawHits();
+  }
+
+  // ---- search hits in the code (wish W13): while the search field has the focus, the selection of the text area
+  // is not seen, so every hit is marked behind the text, the current one strongly.
+  const MAX_HITS = 10000, MAX_MARKS = 2000;
+  const hits = { query: '', list: [], now: -1 };
+  function findAll(query) {
+    const out = [];
+    if (!query) return out;
+    const hay = text.toLowerCase(), q = query.toLowerCase();
+    for (let i = hay.indexOf(q); i >= 0 && out.length < MAX_HITS; i = hay.indexOf(q, i + 1)) out.push(i);
+    return out;
+  }
+  // The x position of an offset in its line, as the text area draws it (tabs two columns wide).
+  let measure = null;
+  function xOf(line, offset) {
+    if (!measure) { measure = document.createElement('canvas').getContext('2d'); measure.font = getComputedStyle(ta).font; }
+    let col = '';
+    for (const ch of text.slice(lineStarts[line], offset)) col += ch === '\t' ? ' '.repeat(2 - (col.length % 2)) : ch;
+    return measure.measureText(col).width;
+  }
+  function drawHits() {
+    if (hits.query) hits.list = findAll(hits.query);
+    const n = hits.query.toLowerCase().length, marks = [];
+    for (let k = 0; k < hits.list.length && marks.length < MAX_MARKS; k++) {
+      const a = hits.list[k], line = lineIndexOf(a);
+      if (a + n > (lineStarts[line + 1] ?? text.length + 1)) continue;  // a hit across a line break is not drawn
+      const i = document.createElement('i'), x = xOf(line, a);
+      i.style.left = x + 'px';
+      i.style.top = line * LINE_HEIGHT + 'px';
+      i.style.width = Math.max(2, xOf(line, a + n) - x) + 'px';
+      if (a === hits.now) i.className = 'now';
+      marks.push(i);
+    }
+    els.marksIn?.replaceChildren(...marks);
   }
 
   function lineIndexOf(offset) {
@@ -197,21 +234,28 @@ export function createCodeEditor(els, onChange) {
     // Finds `query` (without case) from the selection on; dir 1 forward, -1 backward. Returns
     // { index, count } with index 0 if nothing is found.
     find(query, dir) {
-      if (!query) return { index: 0, count: 0 };
-      const hay = text.toLowerCase(), q = query.toLowerCase(), hits = [];
-      for (let i = hay.indexOf(q); i >= 0 && hits.length < 10000; i = hay.indexOf(q, i + 1)) hits.push(i);
-      if (!hits.length) return { index: 0, count: 0 };
+      const q = (query || '').toLowerCase();
+      const found = findAll(query);
+      if (!found.length) { api.markHits(query, -1); return { index: 0, count: 0 }; }
       let k;
       if (dir > 0) {
         const from = ta.selectionStart === ta.selectionEnd ? ta.selectionStart : ta.selectionStart + 1;
-        k = hits.findIndex((h) => h >= from);
+        k = found.findIndex((h) => h >= from);
         if (k < 0) k = 0;
       }
-      else { k = -1; for (let j = hits.length - 1; j >= 0; j--) if (hits[j] < ta.selectionStart) { k = j; break; } if (k < 0) k = hits.length - 1; }
-      ta.setSelectionRange(hits[k], hits[k] + q.length);
-      reveal(hits[k], hits[k] + q.length);
+      else { k = -1; for (let j = found.length - 1; j >= 0; j--) if (found[j] < ta.selectionStart) { k = j; break; } if (k < 0) k = found.length - 1; }
+      ta.setSelectionRange(found[k], found[k] + q.length);
+      reveal(found[k], found[k] + q.length);
       showPosition();
-      return { index: k + 1, count: hits.length };
+      api.markHits(query, found[k]);
+      return { index: k + 1, count: found.length };
+    },
+    // Marks every hit of `query` in the code ('' clears), `now`: the offset of the current hit (-1: none).
+    markHits(query, now) {
+      hits.query = query || '';
+      hits.now = now;
+      if (!hits.query) { hits.list = []; els.marksIn?.replaceChildren(); return; }
+      drawHits();
     },
     caretOffset: () => ta.selectionStart,
   };

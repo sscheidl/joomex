@@ -51,17 +51,43 @@ button.primary .ic { stroke: var(--accent-ink); }
 /* Narrow windows (for example 1366 pixels at 100 % or at 120 %): the first row keeps "Projektordner öffnen" and "Speichern"
    with text, the other file buttons show their symbol with the tooltip and accessible name. */
 @media (max-width: 1400px) {
-  #bNew span, #bOpen span, #bSaveAs span, #bBrowser span { display: none; }
-  #bNew, #bOpen, #bSaveAs, #bBrowser { width: var(--ctl); padding: 0 !important; justify-content: center; }
+  #bNew span, #bOpen span, #bSaveAs span, #bBrowser span, #bHelp span { display: none; }
+  #bNew, #bOpen, #bSaveAs, #bBrowser, #bHelp { width: var(--ctl); padding: 0 !important; justify-content: center; }
   .brand small { display: none; }
+  /* the second row fits into one line also at 1138 CSS pixels (1366 at 120 %): the title field keeps its name
+     as tooltip, placeholder and accessible name, the groups move closer together */
+  .titleField label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #pageTitle { width: 8em; }
+  #topEdit.bar { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  #topEdit .group { gap: 2px; }
+  #top #topEdit > .group, #topEdit #visualTools > .group, #topEdit #visualCommands > .group { padding-left: 5px; }
 }
+
+/* Text colour: the "A" with the colour chosen last below it, and a narrow button that opens the palette. */
+.colorPick { gap: 0 !important; }
+#bColor { flex-direction: column; gap: 0 !important; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.gl.color { font-weight: 800; font-size: 14px; line-height: 14px; }
+#colorBar { display: block; width: 16px; height: 4px; margin-top: 1px; border-radius: 1px; background: red; }
+#bColor:disabled #colorBar { opacity: .35; }
+#top button.drop { width: 16px; padding: 0; justify-content: center; font-size: 11px; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+#palette { position: fixed; z-index: 20; width: 292px; padding: 8px 10px 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, .2); }
+#palette .palHead { margin: 2px 0 4px; font-size: 12px; font-weight: 600; color: var(--soft); }
+.palNamed { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.palGrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+#palette .swatch { height: 22px; padding: 0; border: 1px solid rgba(0, 0, 0, .25); border-radius: 3px; }
+#palette .swatch.named { height: 26px; display: flex; align-items: flex-end; overflow: hidden; }
+#palette .swatch.named span { width: 100%; font-size: 10.5px; line-height: 1.3; background: rgba(255, 255, 255, .85); color: var(--ink); }
+#palette .swatch:hover, #palette .swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+#palette .palWide { display: block; width: 100%; margin-top: 6px; font-size: 13px; padding: 3px 8px; text-align: left; }
+.offscreen { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; min-width: 7em; flex: 0 1 auto; }
 #docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
 #docState.dirty { color: #d9480f; }
 #bRescue { font-size: 13px; background: var(--warn-bg); border-color: #f0c36d; color: var(--warn-ink); font-weight: 600; }
 #dlgBody p.path { font: var(--code); word-break: break-all; user-select: text; background: #f1f3f5; padding: 4px 8px; border-radius: 4px; }
 
-/* Project list on the left, the page in the middle, the code on the right; the divider sits between page and code. */
+/* Project list on the left, the code in the middle, the page on the right (owner's decision of 2026-11-27, as in the
+   single-file editor); the divider sits between code and page. --left: the width of the code pane. */
 #work { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--proj, 220px) minmax(0, var(--left, 45%)) 8px minmax(0, 1fr); }
 #work.folded { --proj: 34px; }
 #work.dragging textarea { pointer-events: none; }
@@ -96,6 +122,11 @@ aside { border-right: 1px solid var(--line); background: #fafbfc; }
 #gutterIn { padding: 8px 7px 8px 0; white-space: pre; }
 #hl, #src { position: absolute; left: 46px; top: 0; width: calc(100% - 46px); height: 100%; margin: 0; border: 0; padding: 8px; font: inherit; letter-spacing: 0; white-space: pre; tab-size: 2; }
 #hl { overflow: hidden; pointer-events: none; color: var(--ink); }
+/* Marks behind the coloured text: search hits (all light, the current one strong). */
+#marks { position: absolute; left: 46px; top: 0; width: calc(100% - 46px); height: 100%; overflow: hidden; pointer-events: none; padding: 8px; }
+#marksIn { position: relative; }
+#marksIn > i { position: absolute; height: 20px; border-radius: 2px; background: #ffe066; }
+#marksIn > i.now { background: #ff922b; }
 #hlIn { width: max-content; min-width: 100%; }
 #hlIn > div { height: 20px; }
 #src { display: block; resize: none; outline: none; overflow: auto; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #000; overflow-wrap: normal; }
@@ -132,5 +163,14 @@ dialog p { margin: 6px 0; }
 dialog label { display: block; margin: 10px 0 4px; font-weight: 600; font-size: 14px; }
 dialog input[type="text"], dialog select { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; }
 dialog .code { margin: 8px 0 0; padding: 6px 9px; border-radius: 6px; background: #f1f3f5; font-family: Consolas, "Courier New", monospace; font-size: 13px; overflow-wrap: anywhere; }
+dialog label.check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 8px 0 0; }
+dialog label.check input { width: 18px; height: 18px; margin: 0; }
+dialog.help { max-width: min(640px, 94vw); width: 640px; }
+.helpText { max-height: min(62vh, 560px); overflow: auto; padding-right: 6px; font-size: 14px; }
+.helpText h4 { margin: 14px 0 4px; font-size: 15px; }
+.helpText ul { margin: 4px 0; padding-left: 20px; }
+.helpText li { margin: 2px 0; }
+.helpText pre { white-space: pre-wrap; font: 12px/1.4 Consolas, "Courier New", monospace; background: #f1f3f5; padding: 8px; border-radius: 6px; }
+.helpText kbd { font: 12px Consolas, monospace; background: #f1f3f5; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
 dialog .err { min-height: 1.2em; margin: 8px 0 0; color: #c92a2a; font-size: 14px; }
 .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }

@@ -58,7 +58,7 @@ Layers, from the outside in (`src/win/app.cpp`: `createEnvironment`, `lockDown`,
 
 ## Editing on the page side (stage 2, 0.1.0-alpha.15)
 
-The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the page pane in the middle shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
+The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the page pane on the right shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
 
 * **The frame.** `https://app.example/edit-frame.html` is served with `sandbox allow-same-origin` and a content policy with `script-src 'none'` in the response header, and again in its `<meta>`. The `<iframe>` has `sandbox="allow-same-origin"`. Frame navigation is allowed only to that address.
 * **The projection.** `renderView` of the shared `project.js` builds it from admitted elements and attributes only. It drops event attributes, `srcdoc`, `target`, form targets and named elements, and the interface never inserts raw markup.

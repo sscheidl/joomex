@@ -3,7 +3,7 @@ import { rescueHidden, serializeBody } from './shared/serialize.js';
 import { tokenize } from './shared/tokenizer.js';
 import { withTitle } from './shared/format.js';
 import {
-  caretState, dropEmptyLists, getRange, insertImage, insertLink, insertPlainText, insertTable,
+  blockOf, caretState, closestTag, dropEmptyLists, getRange, insertImage, insertLink, insertPlainText, insertTable,
   isEditableAt, linkProblem, removeLinks, setAlign, setBlock, setColor, stepCell, toggleInline, toggleList,
 } from './shared/commands.js';
 
@@ -11,6 +11,21 @@ const PROJECT_ORIGIN = 'https://projekt.example';
 const FRAME_URL = 'https://app.example/edit-frame.html';
 const INLINE = ['bold', 'italic', 'underline', 'sup', 'sub', 'mark'];
 const TYPING = /^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/;
+const ALIGN = ['left', 'center', 'right', 'justify'];
+const SPACE_END = /[ \u00a0]+$/, SPACE_START = /^[ \u00a0]+/;
+const SEEN = 'img, svg, video, audio, iframe, object, embed, input, select, textarea, button, hr, [data-se-box]';
+const LINK = new Set(['a']);
+// A colour of the palette's grid or of the colour dialog, as the editor writes it (see keepHexColors).
+const HEX_COLOR = /^color: #[0-9a-f]{6}$/;
+// What the pupil is told when a command did not do all it was asked to (run()).
+const NOTES = {
+  strong: 'Erledigt. Eine Regel deiner Seite mit „!important“ kann diese Ausrichtung aber überschreiben.',
+  odd: 'Das style-Attribut an dieser Stelle kann der Editor nicht sicher ändern. Ändere es links im HTML-Code.',
+  part: 'Die Farbe gehört zu einem größeren Teil deiner Seite. Markiere den ganzen Teil, oder ändere sie links im HTML-Code.',
+  intable: 'In eine Tabelle kann keine zweite Tabelle.',
+  inlink: 'Hier ist schon ein Link. Entferne ihn zuerst mit „Link entfernen“.',
+  multi: 'Ein Link geht nur innerhalb eines Absatzes.',
+};
 
 export function createVisualEditor(els, editor, actions) {
   const frame = els.visualFrame;
@@ -19,6 +34,8 @@ export function createVisualEditor(els, editor, actions) {
   const buttons = Array.from(els.visualCommands.querySelectorAll('[data-edit]'));
   let doc, view, owner, base, title = '', composing = false, editing = false, failed = false, timer = 0;
   let selection;
+  let inputKind = null;  // the undo kind of a browser edit that a toolbar button started (see lineBreak)
+  let color = 'red';  // the colour of the "A" button: the one chosen last in the palette
   let keptTitle = null;  // a typed title that could not be applied; it stays until applied or reset with Esc
 
   function projectUrl(address) {
@@ -34,14 +51,15 @@ export function createVisualEditor(els, editor, actions) {
     els.visualTools.classList.toggle('off', !editing);
     els.pageTitle.disabled = !editing;
     for (const b of buttons) b.disabled = !editing;
-    els.visualAlign.disabled = els.visualColor.disabled = !editing;
+    els.bColorMenu.disabled = !editing;
     frame.hidden = !editing;
-    els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code rechts.' : '';
+    els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code links.' : '';
     if (document.activeElement !== els.pageTitle) els.pageTitle.value = keptTitle ?? title;
     const s = editing ? caretState(doc) : {};
     for (const b of buttons) {
       const key = b.dataset.edit;
-      if (!['link', 'unlink', 'image', 'table'].includes(key)) {
+      if (key.startsWith('align-')) b.setAttribute('aria-pressed', String(s.align === key.slice(6)));
+      else if (!['link', 'unlink', 'image', 'table', 'br', 'color'].includes(key)) {
         b.setAttribute('aria-pressed', String(Boolean(s[key] || s.block === key || s.list === key)));
       }
     }
@@ -121,7 +139,7 @@ export function createVisualEditor(els, editor, actions) {
     } catch {
       view = undefined;
       render();
-      actions.message('Diese Änderung lässt sich hier nicht sicher übernehmen. Versuche es rechts im HTML-Code.', true);
+      actions.message('Diese Änderung lässt sich hier nicht sicher übernehmen. Versuche es links im HTML-Code.', true);
       return false;
     }
   }
@@ -148,9 +166,113 @@ export function createVisualEditor(els, editor, actions) {
     const sel = doc.getSelection();
     sel.removeAllRanges();
     sel.addRange(saved.range);
+    const before = doc.body.innerHTML;
     const result = fn(saved.range);
-    if (result === 'ok') commit('cmd');
-    else if (result) actions.message('Dieser Befehl passt hier nicht. Wähle eine andere Stelle.', true);
+    if (result === 'input') return;  // a browser edit: its input event took it into the code
+    // Whatever changed in the page goes into the code, also when a command did only part of its work
+    // ('strong', 'part', 'odd'): the page and the code never differ.
+    if (result === 'ok' || doc.body.innerHTML !== before) commit('cmd');
+    if (NOTES[result]) actions.message(NOTES[result], true);
+    else if (result && result !== 'ok' && result !== 'same') actions.message('Dieser Befehl passt hier nicht. Wähle eine andere Stelle.', true);
+  }
+
+  // A colour of the grid or of the colour dialog is a hex value. The shared writer keeps only palette names in
+  // the style of a new element, so a new colour span with exactly such a value is marked like a copy of a
+  // written element: its style is then written as it stands. Nothing else is marked.
+  function keepHexColors() {
+    for (const el of doc.body.querySelectorAll('span[style]')) {
+      if (!info.has(el) && HEX_COLOR.test(el.getAttribute('style'))) info.set(el, { t: null, copy: true });
+    }
+  }
+
+  // The text node at the start (end: at the end) of `block` if nothing is seen in front of (behind) it in the
+  // block, or null. A line break behind the last text is not seen.
+  function textAtEdge(block, end) {
+    const walker = doc.createTreeWalker(block, 4 /* NodeFilter.SHOW_TEXT */);
+    let node = null;
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.data) { node = n; if (!end) break; }
+    if (!node) return null;
+    const rest = doc.createRange();
+    if (end) { rest.setStartAfter(node); rest.setEnd(block, block.childNodes.length); }
+    else { rest.setStart(block, 0); rest.setEndBefore(node); }
+    const part = rest.cloneContents();
+    return part.textContent === '' && !part.querySelector(end ? SEEN : SEEN + ', br') ? node : null;
+  }
+
+  // Takes the spaces at `node`'s end (or start) away; an emptied block keeps a line break so it stays visible.
+  // Ordinary spaces next to a line break of the code (indentation of the code) are not part of the split
+  // and stay.
+  function trimSpaces(node, end, block) {
+    const m = node && (end ? SPACE_END : SPACE_START).exec(node.data);
+    if (!m) return;
+    const rest = end ? node.data.slice(0, m.index) : node.data.slice(m[0].length);
+    const next = end ? rest.slice(-1) : rest.charAt(0);
+    if (!m[0].includes('\u00a0') && (next === '' ? !/\S/.test(rest) : /[\t\n\r\f]/.test(next))) return;
+    node.data = rest;
+    if (block && !block.textContent && !block.querySelector(SEEN + ', br')) block.append(doc.createElement('br'));
+  }
+
+  // Enter or Shift+Enter at a space: the browser keeps the space at the end of the first part as a no-break
+  // space (&nbsp; in the code) or at the start of the second part. A split point needs no space; both go.
+  function tidySplit(type) {
+    const range = getRange(doc);
+    if (!range || !range.collapsed) return;
+    if (type === 'insertParagraph') {
+      const block = blockOf(range.startContainer, doc.body);
+      const prev = block !== doc.body ? block.previousElementSibling : null;
+      if (!prev || prev.localName !== block.localName || !isEditableAt(prev)) return;
+      trimSpaces(textAtEdge(prev, true), true, prev);
+      trimSpaces(textAtEdge(block, false), false, block);
+    } else {
+      // the line break in front of the caret, and the texts directly around it
+      const { startContainer: c, startOffset: o } = range;
+      const br = c.nodeType === 3 ? (o === 0 ? c.previousSibling : null) : c.childNodes[o - 1];
+      if (!br || br.nodeType !== 1 || br.localName !== 'br') return;
+      if (br.previousSibling && br.previousSibling.nodeType === 3) trimSpaces(br.previousSibling, true);
+      if (br.nextSibling && br.nextSibling.nodeType === 3) trimSpaces(br.nextSibling, false);
+    }
+  }
+
+  // Enter at the end of a link: the new paragraph is not part of the link. The caret goes behind the link
+  // first (the browser would carry the link on), and links without text that the browser made in the new
+  // paragraph go, keeping what is in them.
+  function leaveLink() {
+    const range = getRange(doc);
+    if (!range || !range.collapsed) return;
+    let a = closestTag(range.startContainer, doc.body, LINK);
+    if (!a || !a.isContentEditable) return;
+    for (let up = closestTag(a.parentNode, doc.body, LINK); up; up = closestTag(up.parentNode, doc.body, LINK)) a = up;
+    const rest = doc.createRange();
+    rest.setStart(range.startContainer, range.startOffset);
+    rest.setEnd(a, a.childNodes.length);
+    const part = rest.cloneContents();
+    if (part.textContent !== '' || part.querySelector(SEEN)) return;  // not at the end of the link
+    const sel = doc.getSelection();
+    const after = doc.createRange();
+    after.setStartAfter(a);
+    after.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(after);
+  }
+
+  function dropEmptyLinks() {
+    const range = getRange(doc);
+    if (!range) return;
+    const block = blockOf(range.startContainer, doc.body);
+    if (block === doc.body) return;
+    for (const a of Array.from(block.querySelectorAll('a'))) {
+      if (info.has(a) || a.textContent !== '' || a.querySelector(SEEN)) continue;  // only what the browser just made
+      const keep = saveCaret();
+      while (a.firstChild) a.parentNode.insertBefore(a.firstChild, a);
+      a.remove();
+      restoreCaret(keep);
+    }
+  }
+
+  const saveCaret = () => { const r = getRange(doc); return r ? [r.startContainer, r.startOffset] : null; };
+  function restoreCaret(keep) {
+    if (!keep || !keep[0].isConnected) return;
+    try { doc.getSelection().collapse(keep[0], Math.min(keep[1], keep[0].nodeType === 3 ? keep[0].data.length : keep[0].childNodes.length)); } catch { /* keep the browser's */ }
   }
 
   // The title as it would be written, or null if this page's title cannot be written safely from here (for
@@ -187,14 +309,24 @@ export function createVisualEditor(els, editor, actions) {
     else if (['p', 'h1', 'h2', 'h3'].includes(command)) run(() => setBlock(env, command), saved);
     else if (command === 'ul' || command === 'ol') run(() => toggleList(env, command), saved);
     else if (command === 'unlink') run(() => removeLinks(env), saved);
+    else if (command.startsWith('align-') && ALIGN.includes(command.slice(6))) run(() => setAlign(env, command.slice(6)), saved);
+    else if (command === 'br') run(() => lineBreak(), saved);
+    else if (command === 'color' || command === 'color-set' || command === 'color-remove') {
+      run(() => { const r = setColor(env, command === 'color-remove' ? '' : color); keepHexColors(); return r; }, saved);
+    }
     else if (command === 'image') {
       actions.picture((src) => run((range) => insertImage(env, range, { src, url: projectUrl(src), alt: '' }), saved));
     } else if (command === 'link') {
-      const value = await actions.fields('Link einfügen', [{ label: 'Adresse', value: '' }]);
-      const href = value?.[0].trim();
-      if (href && /^(?:(?:https?|mailto):|[^:/\\\s]+(?:[/?#]|$)|[#./?])/i.test(href) && !/[\u0000-\u0020\u007f]/.test(href)) {
-        run((range) => linkProblem(doc, range) || insertLink(env, range, href, '', false), saved);
-      } else if (value) actions.message('Die Link-Adresse ist ungültig.', true);
+      const value = await actions.fields('Link einfügen', [
+        { label: 'Adresse', value: '' },
+        { label: 'In neuem Fenster öffnen', check: true },
+        { label: 'Das ist eine E-Mail-Adresse', check: true },
+      ]);
+      if (!value) return;
+      const [typed, newTab, mail] = value;
+      const href = linkAddress(typed, mail);
+      if (href) run((range) => linkProblem(doc, range) || insertLink(env, range, href, '', newTab), saved);
+      else actions.message(mail ? 'Die E-Mail-Adresse ist ungültig. Sie sieht so aus: name@example.de' : 'Die Link-Adresse ist ungültig.', true);
     } else if (command === 'table') {
       const value = await actions.fields('Tabelle einfügen', [{ label: 'Zeilen', value: '3' }, { label: 'Spalten', value: '2' }]);
       if (!value) return;
@@ -203,6 +335,23 @@ export function createVisualEditor(els, editor, actions) {
         run((range) => insertTable(env, range, { rows, cols, head: true, border: true }), saved);
       } else actions.message('Wähle 1 bis 25 Zeilen und 1 bis 12 Spalten.', true);
     }
+  }
+
+  // The address for a new link, or '' if it is not valid. An e-mail address gets "mailto:" in front.
+  function linkAddress(typed, mail) {
+    const href = String(typed).trim();
+    if (mail) {
+      const address = href.replace(/^mailto:/i, '');
+      return /^[^\s@:/\\?#"<>]+@[^\s@:/\\?#"<>]+\.[^\s@:/\\?#"<>]+$/.test(address) ? 'mailto:' + address : '';
+    }
+    return href && /^(?:(?:https?|mailto):|[^:/\\\s]+(?:[/?#]|$)|[#./?])/i.test(href) && !/[\u0000-\u0020\u007f]/.test(href) ? href : '';
+  }
+
+  // "Zeilenumbruch": a <br> at the caret, exactly as Shift+Enter makes it, as a step of its own.
+  function lineBreak() {
+    inputKind = 'cmd';
+    try { doc.execCommand('insertLineBreak'); } finally { inputKind = null; }
+    return 'input';
   }
 
   // One undo or redo step for the page: the caret goes to where the step changed the text, so the next action
@@ -270,12 +419,13 @@ export function createVisualEditor(els, editor, actions) {
         historyStep(type === 'historyUndo');
       } else if (type.startsWith('format') || ['insertFromDrop', 'insertFromPaste', 'insertFromPasteAsQuotation', 'insertLink'].includes(type)) {
         e.preventDefault();
-      }
+      } else if (type === 'insertParagraph') leaveLink();
     });
     doc.addEventListener('input', (e) => {
       if (composing) return;
-      if (e.inputType === 'insertParagraph') dropEmptyLists(env);
-      commit('vis-type', TYPING.test(e.inputType));
+      if (e.inputType === 'insertParagraph') { dropEmptyLists(env); dropEmptyLinks(); }
+      if (e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak') tidySplit(e.inputType);
+      commit(inputKind || 'vis-type', TYPING.test(e.inputType));
     });
     doc.addEventListener('compositionstart', () => { composing = true; });
     doc.addEventListener('compositionend', () => { composing = false; commit('vis-type', true); });
@@ -309,7 +459,7 @@ export function createVisualEditor(els, editor, actions) {
   els.pageTitle.addEventListener('focus', () => {
     const writable = current() && titledSource((title ? title + ' ' : '') + 'x') !== null;
     els.pageTitle.readOnly = !writable;
-    if (!writable && current()) actions.message('Den Titel dieser Seite kannst du nur rechts im HTML-Code im Tag <title> ändern.', true);
+    if (!writable && current()) actions.message('Den Titel dieser Seite kannst du nur links im HTML-Code im Tag <title> ändern.', true);
   });
   els.pageTitle.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
@@ -319,13 +469,7 @@ export function createVisualEditor(els, editor, actions) {
     button.addEventListener('pointerdown', (e) => e.preventDefault());
     button.addEventListener('click', () => doCommand(button.dataset.edit, capture() || selection));
   }
-  for (const [select, command] of [[els.visualAlign, setAlign], [els.visualColor, setColor]]) {
-    select.addEventListener('pointerdown', () => { selection = capture() || selection; });
-    select.addEventListener('change', () => {
-      if (select.value) run(() => command(env, select.value), capture() || selection);
-      select.selectedIndex = 0;
-    });
-  }
+  els.bColorMenu.addEventListener('pointerdown', () => { selection = capture() || selection; });
 
   // Applies a page-side edit that is still open: a title typed but not yet confirmed, or a composition
   // (IME or dead key) not yet finished. Called before every decision about saving or closing.
@@ -347,6 +491,12 @@ export function createVisualEditor(els, editor, actions) {
       const saved = capture() || selection;
       if (!placeValid(saved)) { actions.message('Klicke zuerst in deiner Seite an die Stelle, an die das Bild soll.', true); return; }
       doCommand(name, saved);
+    },
+    // A colour from the palette ('' removes the colour) at the last place in the page; it becomes the colour
+    // of the "A" button.
+    applyColor(value) {
+      if (value) color = value;
+      doCommand('color-' + (value ? 'set' : 'remove'), capture() || selection);
     },
     disable() { failed = true; render(); },
     refresh() { render(); },
