@@ -30,9 +30,13 @@ export function createVisualEditor(els, editor, actions) {
   }
 
   function updateTools() {
-    els.visualTools.hidden = !editing;
+    // The toolbar stays in the header; while the page cannot be edited here its controls are off.
+    els.visualTools.classList.toggle('off', !editing);
+    els.pageTitle.disabled = !editing;
+    for (const b of buttons) b.disabled = !editing;
+    els.visualAlign.disabled = els.visualColor.disabled = !editing;
     frame.hidden = !editing;
-    els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code links.' : '';
+    els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code rechts.' : '';
     if (document.activeElement !== els.pageTitle) els.pageTitle.value = keptTitle ?? title;
     const s = editing ? caretState(doc) : {};
     for (const b of buttons) {
@@ -117,7 +121,7 @@ export function createVisualEditor(els, editor, actions) {
     } catch {
       view = undefined;
       render();
-      actions.message('Diese Änderung lässt sich hier nicht sicher übernehmen. Versuche es links im HTML-Code.', true);
+      actions.message('Diese Änderung lässt sich hier nicht sicher übernehmen. Versuche es rechts im HTML-Code.', true);
       return false;
     }
   }
@@ -132,7 +136,7 @@ export function createVisualEditor(els, editor, actions) {
 
   function run(fn, saved = capture()) {
     if (!saved || !current() || saved.owner !== owner || saved.view !== view || saved.path !== owner.path || !doc.body.contains(saved.range.startContainer) || !doc.body.contains(saved.range.endContainer)) {
-      actions.message('Klicke zuerst rechts an die Stelle, die du bearbeiten möchtest.', true);
+      actions.message('Klicke zuerst in deiner Seite an die Stelle, die du bearbeiten möchtest.', true);
       return;
     }
     doc.defaultView.focus();
@@ -214,7 +218,24 @@ export function createVisualEditor(els, editor, actions) {
     base = doc.createElement('base');
     doc.head.append(base);
     try { doc.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* browser default */ }
-    doc.addEventListener('pointerdown', () => { if (!current()) render(); }, true);
+    doc.addEventListener('pointerdown', () => { actions.focused?.(); if (!current()) render(); }, true);
+    // A click below the page's content (the body is only as tall as its content, as in the browser) puts the
+    // caret at the end of the page's text.
+    doc.addEventListener('pointerdown', (e) => {
+      if (e.target !== doc.documentElement || !current()) return;
+      e.preventDefault();
+      const walker = doc.createTreeWalker(doc.body, 4 /* NodeFilter.SHOW_TEXT */);
+      let last = null;
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.data.trim()) last = n;
+      const range = doc.createRange();
+      if (last) range.setStart(last, last.data.length); else range.setStart(doc.body, doc.body.childNodes.length);
+      range.collapse(true);
+      doc.body.focus({ preventScroll: true });
+      const sel = doc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    doc.addEventListener('focusin', () => actions.focused?.());
     doc.addEventListener('beforeinput', (e) => {
       const type = e.inputType;
       if (!current()) { e.preventDefault(); render(); return; }
@@ -263,7 +284,7 @@ export function createVisualEditor(els, editor, actions) {
   els.pageTitle.addEventListener('focus', () => {
     const writable = current() && titledSource((title ? title + ' ' : '') + 'x') !== null;
     els.pageTitle.readOnly = !writable;
-    if (!writable && current()) actions.message('Den Titel dieser Seite kannst du nur links im HTML-Code im Tag <title> ändern.', true);
+    if (!writable && current()) actions.message('Den Titel dieser Seite kannst du nur rechts im HTML-Code im Tag <title> ändern.', true);
   });
   els.pageTitle.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
@@ -294,6 +315,8 @@ export function createVisualEditor(els, editor, actions) {
   return {
     get editing() { return editing; },
     flush,
+    // Runs a toolbar command at the last place in the page (used by "Bild einfügen" in the header).
+    command(name) { doCommand(name, capture() || selection); },
     disable() { failed = true; render(); },
     refresh() { render(); },
     schedule() { clearTimeout(timer); timer = setTimeout(render, 200); },

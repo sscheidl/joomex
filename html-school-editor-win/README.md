@@ -1,8 +1,8 @@
 # HTML School Editor for Windows
 
-A small Windows program in which pupils of about 12–13 years learn HTML: the code on the left, the page on the right, exactly as Microsoft Edge shows it. Pictures and links are found relative to the page, as in a browser, because the page is loaded from its real place in the pupil's project folder.
+A small Windows program in which pupils of about 12–13 years learn HTML: the page in the middle, exactly as Microsoft Edge shows it, and the code on the right, and they write in either. Pictures and links are found relative to the page, as in a browser, because the page is loaded from its real place in the pupil's project folder.
 
-**State:** 0.1.0-alpha.16 on `main` (2026-11-27): stage 1 with the stage 2 pilot for editing on the page side (P0 of [docs/STAGE2.md](docs/STAGE2.md)); not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
+**State:** 0.1.0-alpha.17 on this branch: the stage 2 pilot (0.1.0-alpha.16 on `main`) with the two-row header and the page in the middle; not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
 
 | Document | Content |
 | --- | --- |

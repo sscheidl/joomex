@@ -58,7 +58,7 @@ Layers, from the outside in (`src/win/app.cpp`: `createEnvironment`, `lockDown`,
 
 ## Editing on the page side (stage 2, 0.1.0-alpha.15)
 
-The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the right side shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
+The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the page pane in the middle shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
 
 * **The frame.** `https://app.example/edit-frame.html` is served with `sandbox allow-same-origin` and a content policy with `script-src 'none'` in the response header, and again in its `<meta>`. The `<iframe>` has `sandbox="allow-same-origin"`. Frame navigation is allowed only to that address.
 * **The projection.** `renderView` of the shared `project.js` builds it from admitted elements and attributes only. It drops event attributes, `srcdoc`, `target`, form targets and named elements, and the interface never inserts raw markup.
@@ -68,9 +68,12 @@ The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page 
 
 ## User interface (WebView2 #1)
 
+Layout (from 0.1.0-alpha.17): a header of two rows (`#topFiles` for project and files, `#topEdit` for editing, with the formatting tools of `visual.js` in `#visualCommands`), then the project list, the page pane (`#pvPane`, with `#pvSlot` for the edit frame or the native page view) and the code pane (`#srcPane`). The divider (`#split`) sits between page and code and sets the page pane's share of the work area. While the page cannot be edited, the formatting controls are switched off, not hidden. "Bild einfügen" inserts into the page or into the code, wherever the pupil wrote last (`lastPane`; the edit frame reports its focus). Symbols are one inline SVG sprite in `index.html`.
+
+
 Owner's decision D6 (answer to Q4): own HTML, CSS and JavaScript, compiled into the exe as resources, reusing the source pane of the single-file editor (own code, MIT): line numbers, syntax colouring, undo and redo. Reasons:
 
-* stage 2 (editing on the right) needs the tested JavaScript editing core of the single-file editor; it works against that source pane;
+* stage 2 (editing on the page side) needs the tested JavaScript editing core of the single-file editor; it works against that source pane;
 * no third-party component; the look and the German texts can be carried over;
 * the same automated browser tests (Playwright over the Chrome DevTools Protocol, which WebView2 offers with `--remote-debugging-port` in test builds) can drive it.
 

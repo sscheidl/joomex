@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-A small Windows program in which pupils of about 12–13 years learn to write web pages in HTML. The HTML code is written on the left; on the right the page appears at once, exactly as Microsoft Edge shows it.
+A small Windows program in which pupils of about 12–13 years learn to write web pages in HTML. The page appears in the middle, exactly as Microsoft Edge shows it, and the HTML code on the right; pupils write in either.
 
 It replaces the single-file editor in [`../html-school-editor/`](../html-school-editor/) for Windows. That editor stays in use, with defect corrections only, until this program is ready (owner's decision of 2026-11-24).
 
@@ -68,7 +68,8 @@ The new program loads the page from its real place on disk. A relative address i
 ### 3.6 User interface
 
 * German, short, written for 12-year-olds. Large enough to read on a projector.
-* One window: the project list on the left (can be folded away), the code in the middle, the page on the right. The divider can be moved.
+* One window: the project list on the left (can be folded away), the page in the middle, the code on the right (owner's request of 2026-11-27, from 0.1.0-alpha.17; until then the code was in the middle). The divider between page and code can be moved.
+* A header of two rows across the window: the first for the project and files (Projektordner öffnen, Neue Seite, Seite öffnen …, Speichern, Speichern unter …, Im Browser ansehen, file name and state), the second for editing (Rückgängig, Wiederholen, the page title, the formatting tools and "Bild einfügen"). All buttons have one height; buttons with a symbol only have one width, a German tooltip and an accessible name.
 * The top bar shows the file name and a clear state: "noch nicht gespeichert", "gespeichert". The bottom bar shows the program version.
 
 ## 4. Stage 2 and later (not in stage 1)

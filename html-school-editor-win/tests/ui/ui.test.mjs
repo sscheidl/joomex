@@ -912,7 +912,7 @@ test('a title that cannot be applied stops saving and closing, and stays until i
   // the field says at once that this title is changed in the code
   await ui.page.focus('#pageTitle');
   assert.equal(await ui.page.$eval('#pageTitle', (i) => i.readOnly), true, 'read-only where the title cannot be written');
-  assert.match(await ui.page.textContent('#status'), /nur links im HTML-Code/);
+  assert.match(await ui.page.textContent('#status'), /nur rechts im HTML-Code/);
   // a typed title that got into the field anyway: closing and saving stop, nothing is lost
   await ui.page.$eval('#pageTitle', (i) => { i.readOnly = false; i.value = 'Neu'; });
   await ui.deliver({ type: 'closeRequest' });
@@ -933,5 +933,147 @@ test('a title that cannot be applied stops saving and closing, and stays until i
   assert.equal(await ui.page.inputValue('#pageTitle'), 'Alt');
   await ui.deliver({ type: 'closeRequest' });
   await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'closeOk'));
+  assert.deepEqual(ui.errors, []);
+});
+
+test('layout: two header rows, project list left, page in the middle, code right; Save and the state stay visible', async () => {
+  for (const width of [1280, 1093]) {  // 1093: a 1366 pixel wide screen at 125 % scaling
+    const ui = await openUi(browser);
+    await ui.page.setViewportSize({ width, height: 720 });
+    await ui.deliver(PROJECT);
+    await ui.opened({ type: 'opened', seq: 1, path: 'seiten/tiere.html', name: 'tiere.html', data: b64(Buffer.from(PAGE)) });
+    await ui.page.frameLocator('#visualFrame').locator('h1, p, body').first().waitFor();
+    const box = (sel) => ui.page.locator(sel).boundingBox();
+    const [files, edit, proj, pv, split, src] = await Promise.all(['#topFiles', '#topEdit', '#projectPane', '#pvPane', '#split', '#srcPane'].map(box));
+    assert.ok(files.y + files.height <= edit.y + 1, width + ': the editing row lies below the file row');
+    assert.ok(proj.x < pv.x && pv.x < split.x && split.x < src.x, width + ': list, page, divider, code from left to right');
+    for (const sel of ['#bSave', '#docState']) {
+      const b = await box(sel);
+      assert.ok(b && b.width > 0 && b.x >= 0 && b.x + b.width <= width && b.y + b.height <= files.y + files.height + 1, width + ': ' + sel + ' visible in the first row');
+    }
+    assert.equal(await ui.page.textContent('#docState'), 'gespeichert');
+    const heights = await ui.page.$$eval('#top button:not([hidden]), #top select, #pageTitle', (els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)))]);
+    assert.deepEqual(heights, [30], width + ': one height for all controls of the header');
+    const widths = await ui.page.$$eval('#top button.icon', (els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().width)))]);
+    assert.deepEqual(widths, [30], width + ': one width for the symbol buttons');
+    const unnamed = await ui.page.$$eval('#top button', (els) => els.filter((e) => !(e.getAttribute('aria-label') || e.textContent.trim()) || !e.title).map((e) => e.outerHTML.slice(0, 60)));
+    assert.deepEqual(unnamed, [], 'every header button has a name and a German tooltip');
+    const scrolls = await ui.page.frameLocator('#visualFrame').locator('html').evaluate((h) => h.scrollHeight > h.clientHeight);
+    assert.equal(scrolls, false, width + ': a short page shows no scroll bar in the page pane');
+    // the page view is reported where the middle pane is
+    await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').length > 0);
+    const slot = await box('#pvSlot');
+    const lay = await ui.last('layout');
+    assert.ok(Math.abs(lay.x - slot.x) <= 1 && Math.abs(lay.w - slot.width) <= 1, width + ': page view laid over the middle pane');
+    assert.deepEqual(ui.errors, []);
+  }
+});
+
+test('layout: folding the list and dragging the divider keep the page view aligned', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  const slotX = async () => (await ui.page.locator('#pvSlot').boundingBox());
+  const before = await slotX();
+  await ui.page.click('#bFold');
+  await ui.page.waitForFunction((x) => Math.round(document.getElementById('pvSlot').getBoundingClientRect().left) < x, before.x);
+  await ui.page.waitForFunction(() => { const l = window.__sent.filter((m) => m.type === 'layout').pop(); const r = document.getElementById('pvSlot').getBoundingClientRect(); return Math.abs(l.x - r.left) <= 1 && Math.abs(l.w - r.width) <= 1; });
+  await ui.page.click('#bFold');
+  const s = await ui.page.locator('#split').boundingBox();
+  await ui.page.mouse.move(s.x + 4, s.y + 200);
+  await ui.page.mouse.down();
+  await ui.page.mouse.move(s.x - 200, s.y + 200, { steps: 5 });
+  await ui.page.mouse.up();
+  const after = await slotX();
+  assert.ok(Math.abs(after.width - (before.width - 200)) <= 6, 'the page pane follows the pointer: ' + before.width + ' -> ' + after.width);
+  const s2 = await ui.page.locator('#split').boundingBox();
+  assert.ok(Math.abs(s2.x + 4 - (s.x - 200)) <= 6, 'the divider stays under the pointer');
+  await ui.page.waitForFunction(() => { const l = window.__sent.filter((m) => m.type === 'layout').pop(); const r = document.getElementById('pvSlot').getBoundingClientRect(); return Math.abs(l.w - r.width) <= 1; });
+  assert.deepEqual(ui.errors, []);
+});
+
+test('header: formatting from the second row, undo and redo, Ctrl+S from the page, the picture goes where the pupil wrote last', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Hallo Welt</p>\r\n';
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  const p = ui.page.frameLocator('#visualFrame').locator('p');
+  await p.click();
+  await ui.page.keyboard.press('End');
+  for (let i = 0; i < 4; i++) await ui.page.keyboard.press('Shift+ArrowLeft');
+  await ui.page.click('[data-edit="bold"]');
+  assert.match(await ui.text(), /<p>Hallo (?:<b>|<strong>)Welt(?:<\/b>|<\/strong>)<\/p>/, 'bold from the header row');
+  await ui.page.click('#bUndo');
+  assert.equal(await ui.text(), source.replace(/\r\n/g, '\n'), 'undo from the header row');
+  await ui.page.click('#bRedo');
+  assert.match(await ui.text(), /Hallo (?:<b>|<strong>)Welt/);
+  // typing in the page and Ctrl+S while the caret is there
+  await p.click();
+  await ui.page.keyboard.press('End');
+  await ui.page.keyboard.type('!');
+  await ui.page.keyboard.press('Control+s');
+  const save = await ui.last('save');
+  assert.ok(save && /Welt(?:!(?:<\/b>|<\/strong>)|(?:<\/b>|<\/strong>)!)<\/p>/.test(save.text), 'Ctrl+S from the page saves the typed text');
+  await ui.reply({ type: 'saved', path: 'index.html' });
+  // "Bild einfügen" after writing in the page: the picture goes into the page
+  await p.click();
+  await ui.page.keyboard.press('End');
+  await ui.page.click('#bPicture');
+  assert.equal(await ui.count('pickPicture'), 1);
+  await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' });
+  await ui.deliver({ type: 'dialogDone' });
+  assert.match(await ui.text(), /<p>[^\n]*<img src="bilder\/katze\.png" alt="">[^\n]*<\/p>/, 'inserted in the paragraph of the page');
+  // after writing in the code: the picture goes to the caret in the code
+  await ui.page.click('#src');
+  await ui.page.keyboard.press('Control+End');
+  await ui.page.click('#bPicture');
+  await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' });
+  await ui.deliver({ type: 'dialogDone' });
+  assert.ok((await ui.text()).endsWith('<img src="bilder/katze.png" alt="">'), 'inserted at the end of the code');
+  // the page side asks before another page opens with unsaved text
+  await ui.page.click('#files li[data-path="seiten/tiere.html"]');
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/);
+  assert.deepEqual(ui.errors, []);
+});
+
+test('header: Tab and Shift+Tab move through both rows with a visible focus', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
+  await ui.page.click('#src');
+  await ui.page.keyboard.type('x');  // so that "Rückgängig" can be used
+  await ui.page.focus('#bProject');
+  const order = [];
+  for (let i = 0; i < 30; i++) {
+    const id = await ui.page.evaluate(() => { const a = document.activeElement; return a.id || a.dataset.edit || a.tagName; });
+    order.push(id);
+    await ui.page.keyboard.press('Tab');
+  }
+  for (const id of ['bProject', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bBrowser', 'bUndo', 'pageTitle', 'p', 'bold', 'link', 'visualAlign', 'visualColor', 'bPicture'])
+    assert.ok(order.includes(id), id + ' is reached with Tab');
+  assert.ok(order.indexOf('bSave') < order.indexOf('bUndo') && order.indexOf('bUndo') < order.indexOf('bPicture'), 'first row, then second row');
+  await ui.page.focus('#pageTitle');
+  await ui.page.keyboard.press('Shift+Tab');
+  assert.equal(await ui.page.evaluate(() => document.activeElement.id), 'bUndo', 'Shift+Tab goes back');
+  await ui.page.keyboard.press('Tab');
+  await ui.page.keyboard.press('Tab');
+  const outline = await ui.page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle);
+  assert.notEqual(outline, 'none', 'the focus is visible');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('the page pane: no scroll bar for a short page; a click below the content writes at its end', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<h1>Start</h1>\r\n<p>Hallo</p>\r\n';
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  const html = ui.page.frameLocator('#visualFrame').locator('html');
+  await ui.page.frameLocator('#visualFrame').locator('p').waitFor();
+  assert.equal(await html.evaluate((h) => h.scrollHeight > h.clientHeight), false, 'no scroll bar (the margin of the h1 collapses as in the browser)');
+  const slot = await ui.page.locator('#pvSlot').boundingBox();
+  await ui.page.mouse.click(slot.x + slot.width / 2, slot.y + slot.height - 30);
+  await ui.page.keyboard.type(' Welt');
+  assert.match(await ui.text(), /<p>Hallo Welt<\/p>/, 'typed at the end of the last paragraph');
   assert.deepEqual(ui.errors, []);
 });
