@@ -7,7 +7,7 @@ import { createHistory } from './shared/history.js';
 import { mapOffset } from './shared/util.js';
 
 const HIGHLIGHT_LIMIT = 1500000;
-const LINE_HEIGHT = 20;
+const LINE_HEIGHT = 20, FONT_SIZE = 14, GUTTER = 46;  // at 100 %; the code zoom scales them (setZoom)
 const HISTORY_CHARS = 40 * 1024 * 1024;
 
 export function createCodeEditor(els, onChange) {
@@ -15,6 +15,7 @@ export function createCodeEditor(els, onChange) {
   const history = createHistory(HISTORY_CHARS);
   const hlState = {};
   let text = '', lineStarts = [0], lineCount = 0, plain = false, charWidth = 0;
+  let lineHeight = LINE_HEIGHT;  // pixels per line at the current zoom
   // The line breaks of the open file (breaks.js). The history stores raw texts (every break as it stands
   // in the file), so each undo step brings back its own breaks.
   let breaks = null;
@@ -41,13 +42,15 @@ export function createCodeEditor(els, onChange) {
     }
     syncScroll();
     showPosition();
-    if (hits.query) drawHits();
+    if (hits.query || source) drawHits();
   }
 
-  // ---- search hits in the code (wish W13): while the search field has the focus, the selection of the text area
-  // is not seen, so every hit is marked behind the text, the current one strongly.
-  const MAX_HITS = 10000, MAX_MARKS = 2000;
+  // ---- marks behind the text. Search hits (wish W13): while the search field has the focus, the selection of the
+  // text area is not seen, so every hit is marked, the current one strongly. The place of the page (wish W8): what
+  // is marked or clicked in the page is marked in the code, without taking the focus from the page.
+  const MAX_HITS = 10000, MAX_MARKS = 2000, MAX_SOURCE_LINES = 400;
   const hits = { query: '', list: [], now: -1 };
+  let source = null;  // [from, to] of the place in the page, or null
   function findAll(query) {
     const out = [];
     if (!query) return out;
@@ -63,18 +66,29 @@ export function createCodeEditor(els, onChange) {
     for (const ch of text.slice(lineStarts[line], offset)) col += ch === '\t' ? ' '.repeat(2 - (col.length % 2)) : ch;
     return measure.measureText(col).width;
   }
+  function mark(line, from, to, cls) {
+    const i = document.createElement('i'), x = xOf(line, from);
+    i.style.left = x + 'px';
+    i.style.top = line * lineHeight + 'px';
+    i.style.width = Math.max(3, xOf(line, to) - x) + 'px';
+    if (cls) i.className = cls;
+    return i;
+  }
   function drawHits() {
+    const marks = [];
+    if (source && source[1] <= text.length) {
+      const [a, b] = source, first = lineIndexOf(a), last = Math.min(lineIndexOf(b), first + MAX_SOURCE_LINES);
+      for (let line = first; line <= last; line++) {
+        const end = (lineStarts[line + 1] ?? text.length + 1) - 1;
+        marks.push(mark(line, line === first ? a : lineStarts[line], line === lineIndexOf(b) ? b : end + 1, 'src'));
+      }
+    }
     if (hits.query) hits.list = findAll(hits.query);
-    const n = hits.query.toLowerCase().length, marks = [];
+    const n = hits.query.toLowerCase().length;
     for (let k = 0; k < hits.list.length && marks.length < MAX_MARKS; k++) {
       const a = hits.list[k], line = lineIndexOf(a);
       if (a + n > (lineStarts[line + 1] ?? text.length + 1)) continue;  // a hit across a line break is not drawn
-      const i = document.createElement('i'), x = xOf(line, a);
-      i.style.left = x + 'px';
-      i.style.top = line * LINE_HEIGHT + 'px';
-      i.style.width = Math.max(2, xOf(line, a + n) - x) + 'px';
-      if (a === hits.now) i.className = 'now';
-      marks.push(i);
+      marks.push(mark(line, a, a + n, a === hits.now ? 'now' : ''));
     }
     els.marksIn?.replaceChildren(...marks);
   }
@@ -139,8 +153,8 @@ export function createCodeEditor(els, onChange) {
 
   // Scrolls so that the range is visible.
   function reveal(a, b) {
-    const line = lineIndexOf(a), y = line * LINE_HEIGHT, view = ta.clientHeight;
-    if (y < ta.scrollTop || y > ta.scrollTop + view - 2 * LINE_HEIGHT) ta.scrollTop = Math.max(0, y - view / 3);
+    const line = lineIndexOf(a), y = line * lineHeight, view = ta.clientHeight;
+    if (y < ta.scrollTop || y > ta.scrollTop + view - 2 * lineHeight) ta.scrollTop = Math.max(0, y - view / 3);
     const xa = (a - lineStarts[line]) * measureChar(), xb = (b - lineStarts[lineIndexOf(b)]) * measureChar(), w = ta.clientWidth - 40;
     if (xa < ta.scrollLeft || xb > ta.scrollLeft + w) ta.scrollLeft = Math.max(0, xa - w / 3);
     syncScroll();
@@ -258,6 +272,34 @@ export function createCodeEditor(els, onChange) {
       drawHits();
     },
     caretOffset: () => ta.selectionStart,
+    // The selection of the code, and setting it back (a modal dialog puts the caret of the text area to its
+    // start when it gives the focus back).
+    get selection() { return [ta.selectionStart, ta.selectionEnd]; },
+    select(range) {
+      const a = Math.min(range[0], text.length), b = Math.min(range[1], text.length);
+      ta.setSelectionRange(a, b);
+    },
+    // Marks [from, to) of the code as the place of the page (null clears) and scrolls it into view. The focus
+    // and the caret of the code stay as they are.
+    markSource(range) {
+      source = range && range[1] >= range[0] ? [range[0], range[1]] : null;
+      drawHits();
+      if (source) reveal(source[0], source[0] === source[1] ? source[0] : Math.min(source[1], lineStarts[lineIndexOf(source[0]) + 1] ?? source[1]));
+    },
+    get sourceMark() { return source; },
+    // Display zoom of the code in percent: font, line height and the line numbers grow together. Only the look
+    // changes; the text, its breaks and the caret stay.
+    setZoom(percent) {
+      const z = percent / 100;
+      lineHeight = Math.round(LINE_HEIGHT * z);
+      els.srcBox.style.setProperty('--code-size', Math.round(FONT_SIZE * z * 10) / 10 + 'px');
+      els.srcBox.style.setProperty('--code-line', lineHeight + 'px');
+      els.srcBox.style.setProperty('--gutter', Math.round(GUTTER * Math.max(1, z)) + 'px');
+      charWidth = 0;
+      measure = null;
+      render();
+      reveal(ta.selectionStart, ta.selectionEnd);
+    },
   };
   return api;
 }

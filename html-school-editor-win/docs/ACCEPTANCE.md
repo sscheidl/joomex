@@ -64,6 +64,11 @@ Each criterion has a browser test in `tests/ui/wishes.test.mjs` that failed agai
 | V-08 | **Tables (W11).** In the edit view an empty cell is at least about 2.5 × 1.6 characters and has a dashed guide line; the page's own cell rules win; nothing of it reaches the code. |
 | V-09 | **Search hits (W13).** While the search field has the focus every hit is marked in the code, the current one strongly, on the right line and column (also behind a tab); the marks go with the search. |
 | V-10 | **Symbols (B1).** "Rückgängig" and "Wiederholen" show curved arrows as in office programs. |
+| V-11 | **Zoom (W2, alpha.20).** Ctrl+wheel over the code zooms only the code (font, line height and line numbers together), over the page only the page (edit frame, and the native page view through its zoom factor); Ctrl+0 resets the pane with the focus; the interface itself never zooms; the levels are sent to the core and are there again after a restart; saving after zooming writes the bytes of the file unchanged. |
+| V-12 | **The place in the code (W8).** A selection in the page marks exactly its characters in the code, a caret the element around it, a selection over two lines both lines; the code scrolls to it; the focus and the caret of the code stay; the mark goes when the code gets the focus. |
+| V-13 | **Pictures (W9).** A click chooses a picture (outline, the tag marked in the code); a double click opens "Bild einfügen" without the size step and replaces the address only; Delete or Backspace takes the chosen picture out as one undo step, with its line when it stands on a line of its own; a click elsewhere ends the choice. |
+| V-14 | **Picture size (W10).** "Bild einfügen" names the formats; the size step writes `width` and `height` in pixels, or `style="width: N%"`; a wrong value is refused with a hint; empty fields insert the picture at its own size; into the code the tag goes to the caret of the code, also after the question about a picture outside the project. |
+| V-15 | **Tables (W12).** With the caret in a table, "Tabelle markieren" chooses the table and marks its lines in the code; a click on the frame of the table does the same; Delete or Backspace takes it out at once, without a question and without an empty line; "Rückgängig" brings it back. |
 
 ## Program
 

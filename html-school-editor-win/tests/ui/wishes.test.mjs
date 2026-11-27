@@ -1,6 +1,7 @@
 // Browser tests of the owner's collection after alpha.18 (2026-11-27): bugs B1 to B5 and wishes W1 to W13. One
-// test per item; each was run against the alpha.18 interface first and failed there (negative control, see
-// docs/STATUS.md). MOCK of the C++ core as in ui.test.mjs.
+// test per item; each was run against the interface before it first and failed there (negative control, see
+// docs/STATUS.md): the tests of version A (alpha.19) against alpha.18, those of version B (alpha.20) against
+// alpha.19. MOCK of the C++ core as in ui.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -329,5 +330,197 @@ test('W13: search marks every hit in the code, the current one strongly, while t
   assert.ok(row && Math.abs(row[1] - '<p>Katze und  '.length * charW) < 1, 'after the tab: ' + JSON.stringify(tabbed));
   await ui.page.keyboard.press('Escape');
   assert.equal(await ui.page.locator('#marksIn > i').count(), 0, 'gone with the search');
+  assert.deepEqual(ui.errors, []);
+});
+
+// ---------------------------------------------------------------- version B (0.1.0-alpha.20)
+
+test('W2: Ctrl+wheel zooms each pane on its own, Ctrl+0 resets, the level goes to the core, never into the code', async () => {
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Hallo</p>\r\n';
+  const ui = await openPage(source);
+  const font = () => ui.page.$eval('#src', (t) => [getComputedStyle(t).fontSize, getComputedStyle(t).lineHeight]);
+  const pageZoom = () => ui.frame.locator('html').evaluate((h) => getComputedStyle(h).zoom);
+  assert.deepEqual(await font(), ['14px', '20px']);
+  const src = await ui.page.locator('#src').boundingBox();
+  await ui.page.mouse.move(src.x + 100, src.y + 100);
+  await ui.page.keyboard.down('Control');
+  await ui.page.mouse.wheel(0, -100);
+  await ui.page.mouse.wheel(0, -100);
+  await ui.page.keyboard.up('Control');
+  assert.deepEqual(await font(), ['17.5px', '25px'], 'code at 125 %');
+  assert.equal(await pageZoom(), '1', 'the page keeps its level');
+  assert.equal(await ui.page.evaluate(() => getComputedStyle(document.body).zoom), '1', 'the interface itself never zooms');
+  // the gutter and the colours follow the text area: line 3 of the numbers and of the colours lies on line 3
+  const lines = await ui.page.evaluate(() => [document.querySelectorAll('#hlIn > div')[2].getBoundingClientRect().height, getComputedStyle(document.getElementById('gutterIn')).lineHeight]);
+  assert.deepEqual(lines, [25, '25px']);
+  await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'zoom'));
+  assert.deepEqual(await ui.last('zoom'), { type: 'zoom', code: 125, page: 100 }, 'the level goes to the core (HKCU)');
+  // the page pane: Ctrl+wheel in the page
+  const slot = await ui.page.locator('#pvSlot').boundingBox();
+  await ui.page.mouse.move(slot.x + 100, slot.y + 50);
+  await ui.page.keyboard.down('Control');
+  await ui.page.mouse.wheel(0, 100);
+  await ui.page.keyboard.up('Control');
+  assert.equal(await pageZoom(), '0.9', 'page at 90 %');
+  assert.deepEqual(await font(), ['17.5px', '25px'], 'the code keeps its level');
+  // Ctrl+0 in the page resets the page only; in the code it resets the code
+  await ui.frame.locator('p').click();
+  await ui.page.keyboard.press('Control+0');
+  assert.equal(await pageZoom(), '1');
+  assert.deepEqual(await font(), ['17.5px', '25px']);
+  await ui.page.click('#src');
+  await ui.page.keyboard.press('Control+0');
+  assert.deepEqual(await font(), ['14px', '20px']);
+  // nothing of it in the code or the saved bytes
+  assert.equal(await ui.text(), lf(source));
+  assert.equal(await saveText(ui), source);
+  // the levels the core remembered come back at the start; the native page view's own zoom reaches the frame
+  const ui2 = await openUi(browser);
+  await ui2.deliver({ type: 'init', version: '0.1.0-test', zoomCode: 150, zoomPage: 80 });
+  await ui2.deliver(PROJECT);
+  await ui2.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  await ui2.page.waitForSelector('#visualFrame', { state: 'visible' });
+  assert.equal(await ui2.page.$eval('#src', (t) => getComputedStyle(t).fontSize), '21px');
+  assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '0.8');
+  await ui2.deliver({ type: 'zoom', page: 110 });
+  assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '1.1');
+  await ui2.deliver({ type: 'shortcut', key: 'zoomReset' });
+  assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '1', 'Ctrl+0 in the native page view');
+  for (const u of [ui, ui2]) assert.deepEqual(u.errors, []);
+});
+
+test('W8: what is marked or clicked in the page is marked in the code, and the page keeps the focus', async () => {
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<h1>Titel</h1>\r\n<p>Hallo schöne Welt</p>\r\n<ul>\r\n  <li>Eins</li>\r\n  <li>Zwei</li>\r\n</ul>\r\n';
+  const ui = await openPage(source);
+  const marks = () => ui.page.$$eval('#marksIn > i.src', (m) => m.map((i) => [i.style.top, Math.round(parseFloat(i.style.left)), Math.round(parseFloat(i.style.width))]));
+  const charW = await ui.page.evaluate(() => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(document.getElementById('src')).font; return c.measureText('0').width; });
+  // a selection: "schöne" in line 4, from its first to its last character
+  await caret(ui, 'p', 6, 12);
+  await ui.page.waitForFunction(() => document.querySelectorAll('#marksIn > i.src').length > 0);
+  const [m] = await marks();
+  assert.equal(m[0], '60px', 'line 4');
+  assert.ok(Math.abs(m[1] - '<p>Hallo '.length * charW) <= 1 && Math.abs(m[2] - 6 * charW) <= 1, 'exactly "schöne": ' + JSON.stringify(m));
+  assert.equal(await ui.page.evaluate(() => document.activeElement.id), 'visualFrame', 'the focus stays in the page');
+  // a click into a list item marks the item
+  await ui.frame.locator('li').nth(1).click();
+  await ui.page.waitForFunction(() => document.querySelector('#marksIn > i.src')?.style.top === '120px');
+  const [li] = await marks();
+  assert.ok(Math.abs(li[1] - 2 * charW) <= 1 && Math.abs(li[2] - '<li>Zwei</li>'.length * charW) <= 1, 'the whole <li>…</li>: ' + JSON.stringify(li));
+  // a selection over two lines marks both
+  await ui.frame.locator('body').evaluate((b) => { const d = b.ownerDocument, l = d.querySelectorAll('li'); d.getSelection().setBaseAndExtent(l[0].firstChild, 1, l[1].firstChild, 2); });
+  await ui.page.waitForFunction(() => document.querySelectorAll('#marksIn > i.src').length === 2);
+  // the code is scrolled to the place, its caret and focus untouched
+  assert.equal(await ui.page.$eval('#src', (t) => t.selectionStart), 0);
+  // back in the code: the mark goes
+  await ui.page.click('#src');
+  assert.equal(await ui.page.locator('#marksIn > i.src').count(), 0);
+  assert.equal(await ui.text(), lf(source), 'marking changes nothing');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('W9: a click chooses a picture and marks its code, a double click replaces it, Delete takes it out', async () => {
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Hallo <img src="bilder/katze.png" alt="Katze" width="40"> Welt</p>\r\n<img src="bilder/hund.png" alt="Hund">\r\n<p>Ende</p>\r\n';
+  const ui = await openPage(source);
+  const img = ui.frame.locator('img').first();
+  await img.click();
+  assert.equal(await img.getAttribute('data-se-picked'), '', 'outlined');
+  await ui.page.waitForFunction(() => document.querySelectorAll('#marksIn > i.src').length === 1);
+  const charW = await ui.page.evaluate(() => { const c = document.createElement('canvas').getContext('2d'); c.font = getComputedStyle(document.getElementById('src')).font; return c.measureText('0').width; });
+  const w = await ui.page.$eval('#marksIn > i.src', (i) => parseFloat(i.style.width));
+  assert.ok(Math.abs(w - '<img src="bilder/katze.png" alt="Katze" width="40">'.length * charW) <= 1, 'the <img> tag is marked');
+  // double click: "Bild einfügen" for this picture; the new file replaces it, alt and width stay
+  await img.dblclick();
+  assert.equal(await ui.count('pickPicture'), 1);
+  await ui.pictureReply({ type: 'picture', src: 'bilder/maus.png' });
+  await ui.deliver({ type: 'dialogDone' });
+  assert.equal(await ui.page.locator('dialog[open]').count(), 0, 'no size step when replacing');
+  assert.match(await ui.text(), /<p>Hallo <img src="bilder\/maus\.png" alt="Katze" width="40"> Welt<\/p>/);
+  // Delete with the picture chosen takes it out, as one undo step
+  await ui.frame.locator('img').first().click();
+  await ui.page.keyboard.press('Delete');
+  assert.match(await ui.text(), /<p>Hallo  Welt<\/p>/);
+  await ui.page.keyboard.press('Control+z');
+  assert.match(await ui.text(), /<p>Hallo <img src="bilder\/maus\.png" alt="Katze" width="40"> Welt<\/p>/, 'undo brings it back');
+  // a picture on a line of its own goes with its line
+  await ui.frame.locator('img').nth(1).click();
+  await ui.page.keyboard.press('Backspace');
+  assert.equal((await ui.text()).split('\n').slice(3).join('\n'), '<p>Ende</p>\n', 'no empty line left');
+  // a click elsewhere: the picture is no longer chosen, Delete deletes text as always
+  await ui.frame.locator('img').first().click();
+  await ui.frame.locator('p').last().click();
+  await ui.page.waitForFunction(() => !document.getElementById('visualFrame').contentDocument.querySelector('[data-se-picked]'), null, { timeout: 2000 });
+  await ui.page.keyboard.press('End');
+  await ui.page.keyboard.press('Backspace');
+  assert.match(await ui.text(), /<p>End<\/p>/, 'Backspace deletes a character again');
+  assert.match(await ui.text(), /<img src="bilder\/maus\.png"/, 'the picture stays');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('W10: the size step writes width and height in pixels or a width in percent, and names the formats', async () => {
+  const ui = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Hallo</p>\r\n');
+  const pick = async (fill) => {
+    await ui.frame.locator('p').click();
+    await ui.page.keyboard.press('End');
+    await ui.page.click('#bPicture');
+    assert.match(await ui.page.textContent('#status'), /jpg, png, gif, webp und svg/, 'formats named on opening');
+    await ui.pictureReply({ type: 'picture', src: 'bilder/katze.png' }, true);
+    await ui.deliver({ type: 'dialogDone' });
+    await ui.page.waitForSelector('dialog[open]');
+    assert.equal(await ui.page.textContent('#dlgTitle'), 'Bildgröße');
+    await fill();
+    await ui.page.click('#dlg button[value="ok"]');
+    await ui.page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
+  };
+  await pick(async () => { await ui.page.fill('#psWidth', '200'); await ui.page.fill('#psHeight', '150'); });
+  assert.match(await ui.text(), /<p>Hallo<img src="bilder\/katze\.png" alt="" width="200" height="150"><\/p>/);
+  await ui.page.keyboard.press('Control+z');
+  await pick(async () => { await ui.page.selectOption('#psUnit', '%'); assert.equal(await ui.page.isDisabled('#psHeight'), true, 'percent: the height follows'); await ui.page.fill('#psWidth', '50'); });
+  assert.match(await ui.text(), /<p>Hallo<img src="bilder\/katze\.png" alt="" style="width: 50%"><\/p>/);
+  await ui.page.keyboard.press('Control+z');
+  // a wrong value is refused with a hint, nothing is inserted until it is right
+  await pick(async () => { await ui.page.fill('#psWidth', '20px'); });
+  assert.match(await ui.page.textContent('#dlgBody .err'), /ganze Zahl/);
+  assert.match(await ui.text(), /<p>Hallo<\/p>/);
+  await ui.page.fill('#psWidth', '');
+  await ui.answer('#dlg button[value="ok"]');
+  assert.match(await ui.text(), /<p>Hallo<img src="bilder\/katze\.png" alt=""><\/p>/, 'empty: the picture keeps its own size');
+  // into the code, with a size, at the caret of the code (also after the questions on the way)
+  await ui.page.click('#src');
+  await ui.page.keyboard.press('Control+End');
+  await ui.page.click('#bPicture');
+  await ui.pictureReply({ type: 'pictureOutside', name: 'urlaub.jpg', token: 't1' });
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.answer('dialog button.primary');
+  await ui.pictureReply({ type: 'picture', src: 'bilder/urlaub.jpg' }, true);
+  await ui.page.waitForFunction(() => document.getElementById('dlgTitle').textContent === 'Bildgröße');
+  await ui.page.fill('#psWidth', '120');
+  await ui.answer('#dlg button[value="ok"]');
+  const text = await ui.text();
+  assert.ok(text.startsWith('<!DOCTYPE html>'), 'nothing before the doctype');
+  assert.ok(text.endsWith('<img src="bilder/urlaub.jpg" alt="" width="120">'), 'at the end of the code: ' + JSON.stringify(text.slice(-60)));
+  assert.deepEqual(ui.errors, []);
+});
+
+test('W12: a table is chosen as a whole and marked in the code; Delete takes it out without a question', async () => {
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Vorher</p>\r\n<table border="1">\r\n  <tr><td>A</td><td>B</td></tr>\r\n</table>\r\n<p>Nachher</p>\r\n';
+  const ui = await openPage(source);
+  assert.equal(await ui.page.isVisible('#bPickTable'), false, 'only offered in a table');
+  await ui.frame.locator('td').first().click();
+  await ui.page.waitForSelector('#bPickTable', { state: 'visible', timeout: 2000 });
+  await ui.page.click('#bPickTable');
+  assert.equal(await ui.frame.locator('table').getAttribute('data-se-picked'), '');
+  await ui.page.waitForFunction(() => document.querySelectorAll('#marksIn > i.src').length === 3);
+  const tops = await ui.page.$$eval('#marksIn > i.src', (m) => m.map((i) => i.style.top));
+  assert.deepEqual(tops, ['60px', '80px', '100px'], 'the three lines of the table');
+  await ui.page.keyboard.press('Delete');
+  assert.equal(await ui.page.locator('dialog[open]').count(), 0, 'no question');
+  assert.equal(await ui.text(), '<!DOCTYPE html>\n<title>T</title>\n<p>Vorher</p>\n<p>Nachher</p>\n');
+  await ui.page.click('#bUndo');
+  assert.equal(await ui.text(), lf(source), 'undo brings it back');
+  // a click on the frame of the table (not into a cell) chooses it too
+  await ui.frame.locator('table').evaluate((t) => t.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  assert.equal(await ui.frame.locator('table').getAttribute('data-se-picked'), '');
+  await ui.page.keyboard.press('Backspace');
+  assert.doesNotMatch(await ui.text(), /<table/);
   assert.deepEqual(ui.errors, []);
 });

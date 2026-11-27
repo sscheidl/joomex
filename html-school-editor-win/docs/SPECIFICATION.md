@@ -75,6 +75,9 @@ The new program loads the page from its real place on disk. A relative address i
 * "Hilfe" (also F1): a short guide in German for 12-year-olds, the version, the developer (Stefan Scheidl, 2026), the MIT licence and the licence of the WebView2 SDK, all inside the program.
 * In the code, the search marks every hit, the current one strongly, while the search field has the focus.
 * In the edit view only, links look like links in the browser (blue, underlined) and table cells have a minimum size and dashed guide lines; nothing of this reaches the code.
+* Zoom (from 0.1.0-alpha.20): Ctrl+wheel, Ctrl+plus and Ctrl+minus zoom the code pane and the page pane each on its own (50 to 200 %), Ctrl+0 resets the pane; the levels are remembered in HKCU (`ZoomCode`, `ZoomPage`). Only the look changes, never the code.
+* What is marked or clicked in the page is marked in the code (light blue) and scrolled into view; the page keeps the focus. A click on a picture chooses it (outline, its tag marked in the code); a double click replaces the picture through "Bild einfügen" (size, alt text and other attributes stay); Delete takes it out. A table is chosen as a whole by "Tabelle markieren" in the head of the page pane (shown while the caret is in a table) or a click on its frame; Delete takes it out without a question; "Rückgängig" brings it back.
+* "Bild einfügen" names the allowed formats (jpg, png, gif, webp, svg) and, after the file is chosen, asks for the size: width and height in pixels (attributes), or the width in percent (`style="width: N%"`); empty fields keep the picture's own size. Pictures are not resized with the mouse (owner's decision of 2026-11-27).
 * The top bar shows the file name and a clear state: "noch nicht gespeichert", "gespeichert". The bottom bar shows the program version.
 
 ## 4. Stage 2 and later (not in stage 1)

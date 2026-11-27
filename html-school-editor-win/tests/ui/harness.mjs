@@ -51,8 +51,15 @@ export async function openUi(browser) {
       if (op) answered.add(op);
       return ui.deliver({ base: '1-0000000000000000', ...m, op });
     },
-    // Delivers the answer to the last picture request (`pickPicture` or `copyPicture`).
-    pictureReply: async (m) => ui.deliver({ ...m, op: (await ui.sent()).filter((x) => x.type === 'pickPicture' || x.type === 'copyPicture').pop().op }),
+    // Delivers the answer to the last picture request (`pickPicture` or `copyPicture`). A chosen picture is
+    // followed by the size step (from alpha.20); it is confirmed with empty fields (the picture's own size),
+    // unless `keepSizeStep` is set.
+    pictureReply: async (m, keepSizeStep = false) => {
+      await ui.deliver({ ...m, op: (await ui.sent()).filter((x) => x.type === 'pickPicture' || x.type === 'copyPicture').pop().op });
+      if (m.type !== 'picture' || keepSizeStep) return;
+      const asked = await page.waitForFunction(() => document.getElementById('dlg').open && document.getElementById('dlgTitle').textContent === 'Bildgröße', null, { timeout: 2000 }).then(() => true, () => false);
+      if (asked) await ui.answer('#dlg button[value="ok"]');
+    },
     reply: async (m) => ui.deliver({ ...m, id: (await ui.sent()).filter((x) => x.type === 'save' || x.type === 'saveAs').pop().id }),
     text: () => page.evaluate(() => document.getElementById('src').value),
     // Clicks a button of the open dialog and waits until the dialog has closed and its answer was handled.

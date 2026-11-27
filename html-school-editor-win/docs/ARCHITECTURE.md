@@ -66,6 +66,10 @@ The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page 
 * **Messages.** The core accepts web messages only from the interface's own top-level document (`get_Source`).
 * **One document.** Changes from the page side go through `editor.editFromPage`, into the history of raw texts and through `breaks.follow`. A page-side edit that is still open (a title typed but not confirmed, an unfinished composition) is applied by `visual.flush()` before every decision about saving, a rescue copy, opening another page or folder, "Im Browser ansehen" and closing (this includes a logoff). If it cannot be applied (a title that this page does not let the field write, for example after a `<title>` inside a `<template>`), `flush()` says so and the save, the opening or the close stops with a message; the typed title stays in the field until it is applied or reset with Esc. Where the title cannot be written from the field at all, the field becomes read-only when it gets the focus.
 
+* **Choosing a picture or a table (alpha.20).** A chosen element carries `data-se-picked` (an outline of the edit frame); attributes `data-se-*` are never written, and the serializer writes elements from the source as they stand. Deleting it removes the white space in front of it when it stood on a line of its own, and marks that white space as dropped, as `commands.js` does for table rows.
+* **The place in the code (alpha.20).** `srcOffsetOf` and `srcElementRange` of the shared `project.js` give the source range of a selection or of the element around the caret; the code pane draws it in its mark layer (`#marks`) and scrolls to it, without the focus.
+* **Display zoom (alpha.20).** The edit frame gets a `<style id="se-zoom">` in its head (outside the body, so never serialized); the code pane scales font, line height and gutter through CSS variables; the native page view uses `ICoreWebView2Controller::put_ZoomFactor`, and its own Ctrl+wheel zoom (`IsZoomControlEnabled` on the page view only, a comfort setting) is reported back. The interface view keeps its zoom off.
+
 ## User interface (WebView2 #1)
 
 Layout (from 0.1.0-alpha.17): a header of two rows (`#topFiles` for project and files, `#topEdit` for editing, with the formatting tools of `visual.js` in `#visualCommands`), then the project list, the page pane (`#pvPane`, with `#pvSlot` for the edit frame or the native page view) and the code pane (`#srcPane`). The divider (`#split`) sits between page and code and sets the page pane's share of the work area. While the page cannot be edited, the formatting controls are switched off, not hidden. "Bild einfügen" inserts into the page or into the code, wherever the pupil wrote last (`lastPane`; the edit frame reports its focus). Symbols are one inline SVG sprite in `index.html`.
@@ -85,7 +89,8 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 
 | From the interface | Meaning | Answer |
 | --- | --- | --- |
-| `ready` | the interface has loaded | `init` (version); the last project folder is opened again if it can be reached |
+| `ready` | the interface has loaded | `init` (version, `zoomCode`, `zoomPage` in percent from HKCU); the last project folder is opened again if it can be reached |
+| `zoom` {code, page} | the display zoom of both panes in percent (from alpha.20); the core keeps 50 to 200, writes `ZoomCode` and `ZoomPage` to HKCU and sets the zoom factor of the page view. Only the look changes | — (the core sends `zoom` {page} when the page view zoomed itself with Ctrl+wheel, and `shortcut` {key: zoomReset} for Ctrl+0 there) |
 | `layout` {visible, x, y, w, h} | where the page view lies, in device pixels; hidden while a dialog is open | — |
 | `preview` {path, text} | the current, unsaved text, after a pause in typing | `missing` {path, items} after the page view has loaded |
 | `openProject` | choose a folder | `projectChanged`, `project` {name, files} |

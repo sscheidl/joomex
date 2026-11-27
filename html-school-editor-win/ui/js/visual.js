@@ -1,10 +1,10 @@
-import { analyze, previewPosOf, renderView } from './shared/project.js';
+import { analyze, previewPosOf, renderView, srcElementRange, srcOffsetOf } from './shared/project.js';
 import { rescueHidden, serializeBody } from './shared/serialize.js';
 import { tokenize } from './shared/tokenizer.js';
 import { withTitle } from './shared/format.js';
 import {
   blockOf, caretState, closestTag, dropEmptyLists, getRange, insertImage, insertLink, insertPlainText, insertTable,
-  isEditableAt, linkProblem, removeLinks, setAlign, setBlock, setColor, stepCell, toggleInline, toggleList,
+  isEditableAt, linkProblem, removeLinks, setAlign, setBlock, setColor, stepCell, tableAt, toggleInline, toggleList, changeImage,
 } from './shared/commands.js';
 
 const PROJECT_ORIGIN = 'https://projekt.example';
@@ -17,6 +17,9 @@ const SEEN = 'img, svg, video, audio, iframe, object, embed, input, select, text
 const LINK = new Set(['a']);
 // A colour of the palette's grid or of the colour dialog, as the editor writes it (see keepHexColors).
 const HEX_COLOR = /^color: #[0-9a-f]{6}$/;
+// The size of a new picture in percent of the width, as the size step writes it (see insertPicture).
+const PERCENT_WIDTH = /^width: (?:100|[1-9][0-9]?)%$/;
+const PICKED = 'data-se-picked';  // marks a picture or table chosen as a whole (never written: data-se-*)
 // What the pupil is told when a command did not do all it was asked to (run()).
 const NOTES = {
   strong: 'Erledigt. Eine Regel deiner Seite mit „!important“ kann diese Ausrichtung aber überschreiben.',
@@ -36,6 +39,8 @@ export function createVisualEditor(els, editor, actions) {
   let selection;
   let inputKind = null;  // the undo kind of a browser edit that a toolbar button started (see lineBreak)
   let color = 'red';  // the colour of the "A" button: the one chosen last in the palette
+  let picked = null;  // a picture or a table chosen as a whole (wishes W9, W12), or null
+  let zoom = 100;     // display zoom of the page in percent (wish W2); never part of the code
   let keptTitle = null;  // a typed title that could not be applied; it stays until applied or reset with Esc
 
   function projectUrl(address) {
@@ -52,6 +57,7 @@ export function createVisualEditor(els, editor, actions) {
     els.pageTitle.disabled = !editing;
     for (const b of buttons) b.disabled = !editing;
     els.bColorMenu.disabled = !editing;
+    if (els.bPickTable) els.bPickTable.hidden = !(editing && tableAt(doc));
     frame.hidden = !editing;
     els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code links.' : '';
     if (document.activeElement !== els.pageTitle) els.pageTitle.value = keptTitle ?? title;
@@ -90,6 +96,7 @@ export function createVisualEditor(els, editor, actions) {
     if (next !== owner) {
       owner = next;
       keptTitle = null;
+      picked = null;
       view = undefined;
       selection = undefined;
       composing = false;
@@ -105,6 +112,7 @@ export function createVisualEditor(els, editor, actions) {
           sheets(view);
           title = result.title;
           editing = true;
+          if (picked) { if (picked.isConnected) picked.setAttribute(PICKED, ''); else picked = null; }
           if (offsets && offsets.length === 2) {
             const a = previewPosOf(view, offsets[0]), b = previewPosOf(view, offsets[1]);
             if (a && b) doc.getSelection().setBaseAndExtent(a.node, a.offset, b.node, b.offset);
@@ -315,7 +323,7 @@ export function createVisualEditor(els, editor, actions) {
       run(() => { const r = setColor(env, command === 'color-remove' ? '' : color); keepHexColors(); return r; }, saved);
     }
     else if (command === 'image') {
-      actions.picture((src) => run((range) => insertImage(env, range, { src, url: projectUrl(src), alt: '' }), saved));
+      actions.picture((src, size) => run((range) => insertPicture(range, src, size), saved));
     } else if (command === 'link') {
       const value = await actions.fields('Link einfügen', [
         { label: 'Adresse', value: '' },
@@ -354,6 +362,106 @@ export function createVisualEditor(els, editor, actions) {
     return 'input';
   }
 
+  // A new picture at `range`, with the size of the size step (wish W10): { width, height } in pixels, or
+  // { percent } of the width. A size in percent is a style, which the shared writer keeps only for an element
+  // marked like a copy; only exactly "width: N%" is marked so.
+  function insertPicture(range, src, size) {
+    const result = insertImage(env, range, { src, url: projectUrl(src), alt: '', width: size?.width ? String(size.width) : '' });
+    const sel = doc.getSelection();
+    const img = sel.anchorNode?.childNodes?.[sel.anchorOffset - 1];
+    if (img && img.localName === 'img' && size) {
+      if (size.height) img.setAttribute('height', String(size.height));
+      if (size.percent) {
+        const style = 'width: ' + size.percent + '%';
+        if (PERCENT_WIDTH.test(style)) { img.setAttribute('style', style); info.set(img, { t: null, copy: true }); }
+      }
+    }
+    return result;
+  }
+
+  // ---- a picture or a table as a whole (wishes W9, W12)
+
+  // True if the selection of the page is exactly `el`.
+  function selectsExactly(el) {
+    const r = getRange(doc);
+    if (!r || !el.parentNode || r.startContainer !== el.parentNode || r.endContainer !== el.parentNode) return false;
+    const i = Array.prototype.indexOf.call(el.parentNode.childNodes, el);
+    return r.startOffset === i && r.endOffset === i + 1;
+  }
+  function unpick() {
+    if (picked) picked.removeAttribute(PICKED);
+    picked = null;
+  }
+  // Chooses a picture or a table as a whole: it is selected and outlined, and its code is marked.
+  function pick(el) {
+    if (!current() || !el.isConnected || !isEditableAt(el.parentNode)) return false;
+    unpick();
+    picked = el;
+    el.setAttribute(PICKED, '');
+    const r = doc.createRange();
+    r.selectNode(el);
+    const sel = doc.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    selection = capture();
+    showSource();
+    return true;
+  }
+
+  // Takes a chosen picture or table out of the page, with the line break in front of it when it stands on a
+  // line of its own (as commands.js does for rows), so no empty line stays in the code.
+  function removePicked() {
+    const el = picked;
+    if (!el || !el.isConnected) return 'none';
+    const blank = (n) => !!n && n.nodeType === 3 && !/[^ \t\n\f\r]/.test(n.data);
+    const prev = el.previousSibling, next = el.nextSibling, parent = el.parentNode;
+    if (blank(prev) && (blank(next) || !next)) {
+      const inf = info.get(prev);
+      if (inf && inf.t) inf.t.dropped = true;
+      prev.remove();
+    }
+    unpick();
+    el.remove();
+    if (parent !== doc.body && !parent.textContent && !parent.querySelector(SEEN + ', br')) parent.append(doc.createElement('br'));
+    return 'ok';
+  }
+
+  // Double click on a picture: "Bild einfügen" chooses another file for it; size, alt text and every other
+  // attribute stay.
+  function replacePicture(img) {
+    if (!pick(img)) return;
+    const saved = capture();
+    actions.picture((src) => run(() => (img.isConnected ? changeImage(env, img, { src, url: projectUrl(src) }) : 'none'), saved), { size: false });
+  }
+
+  // ---- the place of the page in the code (wish W8)
+
+  // Marks in the code what is marked in the page: a selection from its start to its end; a caret, a picture or
+  // a table as the whole element around it. The focus stays in the page.
+  function showSource() {
+    if (!current() || composing) return;
+    const sel = doc.getSelection();
+    if (!sel || !sel.rangeCount || !doc.body.contains(sel.anchorNode) || !doc.body.contains(sel.focusNode)) return;
+    let range;
+    if (picked) range = srcElementRange(info, doc.body, picked);
+    else if (sel.isCollapsed) range = srcElementRange(info, doc.body, sel.anchorNode);
+    else {
+      const a = srcOffsetOf(view, info, sel.anchorNode, sel.anchorOffset), b = srcOffsetOf(view, info, sel.focusNode, sel.focusOffset);
+      range = [Math.min(a, b), Math.max(a, b)];
+    }
+    actions.markSource?.(range);
+  }
+
+  // ---- display zoom of the page (wish W2): a style of the edit frame, outside the body, so never in the code
+
+  function applyZoom() {
+    if (!doc) return;
+    let st = doc.getElementById('se-zoom');
+    if (zoom === 100) { st?.remove(); return; }
+    if (!st) { st = doc.createElement('style'); st.id = 'se-zoom'; doc.head.prepend(st); }
+    st.textContent = ':root:root:root { zoom: ' + zoom / 100 + '; }';
+  }
+
   // One undo or redo step for the page: the caret goes to where the step changed the text, so the next action
   // (typing, "Bild einfügen") happens there.
   function historyStep(undo) {
@@ -385,6 +493,13 @@ export function createVisualEditor(els, editor, actions) {
     base = doc.createElement('base');
     doc.head.append(base);
     try { doc.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* browser default */ }
+    applyZoom();
+    // Ctrl+wheel in the page zooms the page (the wheel of a frame does not reach the interface)
+    doc.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      if (e.deltaY) actions.zoom?.('page', e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
     doc.addEventListener('pointerdown', () => { actions.focused?.(); if (!current()) render(); }, true);
     // A click below the page's content (the body is only as tall as its content, as in the browser) puts the
     // caret at the end of the page's text.
@@ -435,9 +550,22 @@ export function createVisualEditor(els, editor, actions) {
       if (text) run(() => insertPlainText(env, text.slice(0, 200000)));
     });
     for (const event of ['dragover', 'drop', 'dragstart']) doc.addEventListener(event, (e) => e.preventDefault());
-    doc.addEventListener('click', (e) => { if (e.target.closest('a, area, button, input, select')) e.preventDefault(); });
+    doc.addEventListener('click', (e) => {
+      if (e.target.closest('a, area, button, input, select')) e.preventDefault();
+      // a click on a picture chooses it; a click on the frame of a table (not into a cell) chooses the table
+      const t = e.target;
+      if (t.localName === 'img') pick(t);
+      else if (['table', 'tbody', 'thead', 'tfoot', 'tr'].includes(t.localName)) { const table = t.closest('table'); if (table) pick(table); }
+    });
+    doc.addEventListener('dblclick', (e) => { if (e.target.localName === 'img' && current()) { e.preventDefault(); replacePicture(e.target); } });
     doc.addEventListener('keydown', (e) => {
       if (historyKey(e) || actions.shortcut(e)) return;
+      // Delete or Backspace with a chosen picture or table takes it out at once (undo brings it back)
+      if ((e.key === 'Delete' || e.key === 'Backspace') && picked && !e.ctrlKey && !e.altKey && !e.metaKey && selectsExactly(picked)) {
+        e.preventDefault();
+        run(() => removePicked());
+        return;
+      }
       if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && stepCell(doc, e.shiftKey)) e.preventDefault();
       const inline = { b: 'bold', i: 'italic', u: 'underline' }[e.key.toLowerCase()];
       if (inline && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
@@ -446,7 +574,11 @@ export function createVisualEditor(els, editor, actions) {
       }
     });
     doc.addEventListener('selectionchange', () => {
-      if (document.activeElement === frame) selection = capture();
+      if (picked && (!picked.isConnected || !selectsExactly(picked))) unpick();
+      if (document.activeElement === frame) {
+        selection = capture();
+        showSource();
+      }
       updateTools();
     });
     render();
@@ -498,6 +630,17 @@ export function createVisualEditor(els, editor, actions) {
       if (value) color = value;
       doCommand('color-' + (value ? 'set' : 'remove'), capture() || selection);
     },
+    // Chooses the table with the caret as a whole ("Tabelle markieren"); Delete then takes it out.
+    pickTable() {
+      const at = current() && tableAt(doc);
+      if (!at) { actions.message('Klicke zuerst in eine Tabelle deiner Seite.', true); return; }
+      doc.defaultView.focus();
+      doc.body.focus({ preventScroll: true });
+      pick(at.table);
+      actions.message('Die Tabelle ist markiert. Mit Entf löschst du sie; Rückgängig holt sie zurück.');
+    },
+    get inTable() { return editing && !!tableAt(doc); },
+    setZoom(percent) { zoom = percent; applyZoom(); },
     disable() { failed = true; render(); },
     refresh() { render(); },
     schedule() { clearTimeout(timer); timer = setTimeout(render, 200); },

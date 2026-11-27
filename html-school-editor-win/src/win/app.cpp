@@ -6,6 +6,7 @@
 #include <wrl.h>
 
 #include <algorithm>
+#include <cmath>
 #include <random>
 
 #include "../core/paths.hpp"
@@ -534,6 +535,17 @@ constexpr const char* kPageCsp =
     "media-src 'self' data:; script-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; "
     "connect-src 'none'; form-action 'none'; base-uri 'self'; manifest-src 'none'";
 
+// A remembered zoom level in percent (wish W2): 50 to 200, else 100.
+int zoomSetting(const wchar_t* name) {
+    const std::wstring v = readSetting(name);
+    int p = 0;
+    for (wchar_t c : v) { if (c < L'0' || c > L'9' || p > 1000) return 100; p = p * 10 + (c - L'0'); }
+    return p >= 50 && p <= 200 ? p : 100;
+}
+int clampZoom(double percent) {
+    return percent >= 50 && percent <= 200 ? static_cast<int>(percent + 0.5) : percent > 200 ? 200 : percent > 0 ? 50 : 100;
+}
+
 constexpr const char* kEditCsp =
     "sandbox allow-same-origin; default-src 'none'; script-src 'none'; "
     "style-src 'unsafe-inline' https://projekt.example; img-src data: https://projekt.example; "
@@ -685,11 +697,28 @@ void App::createPreview() {
                     a->get_VirtualKey(&key);
                     if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN) return S_OK;
                     const bool ctrl = GetKeyState(VK_CONTROL) < 0;
+                    if (ctrl && (key == '0' || key == VK_NUMPAD0)) {
+                        // Ctrl+0 resets the zoom of the page (wish W2); the focus stays in the page view
+                        a->put_Handled(TRUE);
+                        post(Json::object().set("type", "shortcut").set("key", "zoomReset"));
+                        return S_OK;
+                    }
                     const char* name = (ctrl && key == 'S') ? "save" : (ctrl && key == 'F') ? "find" : key == VK_F3 ? "findNext" : nullptr;
                     if (!name || !uiController_) return S_OK;
                     a->put_Handled(TRUE);
                     uiController_->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                     post(Json::object().set("type", "shortcut").set("key", name));
+                    return S_OK;
+                }).Get(), &t);
+            // Ctrl+wheel zooms the page view (wish W2): a comfort setting, not a protection. The level is the
+            // one of the page pane; a change made here goes to the interface and is remembered.
+            ComPtr<ICoreWebView2Settings> zoomSettings;
+            if (SUCCEEDED(pv_->get_Settings(&zoomSettings)) && zoomSettings) zoomSettings->put_IsZoomControlEnabled(TRUE);
+            pvController_->put_ZoomFactor(pvZoom_);
+            pvController_->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
+                [this](ICoreWebView2Controller* c, IUnknown*) -> HRESULT {
+                    double f = 1.0;
+                    if (SUCCEEDED(c->get_ZoomFactor(&f))) onPreviewZoom(f);
                     return S_OK;
                 }).Get(), &t);
             if (pvVisible_ && !pvSegs_.empty()) {
@@ -780,7 +809,10 @@ void App::onUiMessage(const Json& m) {
     if (type == "ready") {
         if (uiReady_) return;
         uiReady_ = true;
-        post(Json::object().set("type", "init").set("version", HSE_VERSION));
+        pvZoom_ = zoomSetting(L"ZoomPage") / 100.0;
+        if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
+        post(Json::object().set("type", "init").set("version", HSE_VERSION)
+                 .set("zoomCode", zoomSetting(L"ZoomCode")).set("zoomPage", zoomSetting(L"ZoomPage")));
         if (!startFile_.empty()) {
             const std::wstring file = startFile_;
             startFile_.clear();
@@ -812,6 +844,14 @@ void App::onUiMessage(const Json& m) {
             pvController_->put_Bounds({0, 0, w, h});
             pvController_->put_IsVisible(pvVisible_ && !pvSegs_.empty());
         }
+    } else if (type == "zoom") {
+        // Display zoom of both panes (wish W2): remembered for the next start; the page view takes its level.
+        // Only the look changes, never the text.
+        const int code = clampZoom(m.at("code").num(100)), page = clampZoom(m.at("page").num(100));
+        writeSetting(L"ZoomCode", std::to_wstring(code));
+        writeSetting(L"ZoomPage", std::to_wstring(page));
+        pvZoom_ = page / 100.0;
+        if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
     } else if (type == "preview") {
         if (const auto segs = pathSegments(m.at("path").str())) showPreview(*segs, m.at("text").str());
     } else if (type == "openProject") {
@@ -1264,8 +1304,20 @@ void App::resetPreviewLoad() {
     if (pv_ && !pvStart_ && !pvFailed_) pv_->Stop();
 }
 
+// The engine changed the zoom of the page view (Ctrl+wheel there): kept within 50 to 200 %, remembered, and
+// told to the interface, so the editable page shows the same level.
+void App::onPreviewZoom(double factor) {
+    const int p = clampZoom(factor * 100);
+    if (pvController_ && std::abs(factor - p / 100.0) > 0.001) { pvController_->put_ZoomFactor(p / 100.0); return; }
+    if (std::abs(p / 100.0 - pvZoom_) < 0.001) return;
+    pvZoom_ = p / 100.0;
+    writeSetting(L"ZoomPage", std::to_wstring(p));
+    post(Json::object().set("type", "zoom").set("page", p));
+}
+
 void App::navigatePreview(std::wstring scroll) {
     if (!pv_ || pvSegs_.empty() || pvStart_ || pvFailed_ || closing_) return;
+    if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
     pvStart_ = PreviewStart{pvGeneration_, kProjectOriginW + toWide(urlPathOf(pvSegs_)), std::move(scroll)};
     const auto url = pvStart_->url;
     if (FAILED(pv_->Navigate(url.c_str()))) {
