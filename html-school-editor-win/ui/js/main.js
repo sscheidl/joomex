@@ -2,6 +2,7 @@
 // with web messages (see docs/ARCHITECTURE.md, "Messages"). The page view is a second WebView2 that the
 // core places over #pvSlot.
 import { createCodeEditor } from './editor.js';
+import { createVisualEditor } from './visual.js';
 import { addressProblems, PROBLEM_TEXT } from './checks.js';
 import { breaksOfBytes, createBreaks } from './breaks.js';
 import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './shared/util.js';
@@ -10,7 +11,8 @@ const $ = (id) => document.getElementById(id);
 const els = {};
 for (const id of ['version', 'versionBottom', 'bProject', 'bProject2', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bUndo', 'bRedo', 'bFind', 'bPicture', 'bBrowser',
   'docName', 'docState', 'bRescue', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
-  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons']) els[id] = $(id);
+  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
+  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'visualAlign', 'visualColor']) els[id] = $(id);
 
 const PREVIEW_DELAY = 300;
 const RESCUE_AFTER = 3000;  // a save on its way this long offers a rescue copy
@@ -43,6 +45,10 @@ const state = {
 };
 
 const editor = createCodeEditor(els, onTextChanged);
+const visual = createVisualEditor(els, editor, {
+  document: () => state.doc, message: setStatus, layout: () => queueMicrotask(() => scheduleLayout()),
+  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut,
+});
 
 // ---------------------------------------------------------------- small helpers
 
@@ -123,6 +129,22 @@ function paragraph(text, cls) {
 
 const tell = (title, text) => ask(title, text, [{ label: 'OK', value: 'ok', primary: true }]);
 
+async function askVisualFields(title, fields) {
+  const wrapper = document.createElement('div');
+  const inputs = fields.map(({ label, value }) => {
+    const field = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = 2048;
+    input.value = value;
+    field.append(label, input);
+    wrapper.append(field);
+    return input;
+  });
+  const result = await ask(title, wrapper, [{ label: 'Einfügen', value: 'insert', primary: true }, { label: 'Abbrechen', value: 'cancel' }], () => inputs[0].select());
+  return result === 'insert' ? inputs.map((input) => input.value) : null;
+}
+
 // Asks what to do with unsaved changes. Returns 'save', 'discard' or 'cancel'.
 function askUnsaved(what) {
   return ask('Deine Seite ist nicht gespeichert', 'Möchtest du „' + state.doc.name + '“ speichern, bevor ' + what + '?', [
@@ -135,7 +157,17 @@ function askUnsaved(what) {
 // Runs `action` once the current page is saved or its changes are given up. While a save is still on its
 // way, the action waits for its answer and is then checked again: text typed during the save is not saved
 // yet, so the question comes again instead of the action dropping it.
+// A page-side edit still open counts before anything is decided. If it cannot be applied, nothing is decided:
+// the edit stays where it is and the pupil is told what to do.
+function settlePage() {
+  if (visual.flush()) return true;
+  tell('Der neue Titel ist noch nicht übernommen',
+    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn links im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
+  return false;
+}
+
 async function whenSettled(what, action) {
+  if (!settlePage()) return;
   if (state.sending !== null) {
     state.afterSave = { what, action };
     setStatus('Einen Moment, die Seite wird noch gespeichert …');
@@ -154,6 +186,7 @@ function requestOpen(msg) {
   const op = ++state.opId;
   state.opening = op;
   editor.setLocked(true);
+  visual.refresh();
   send({ ...msg, op });
 }
 
@@ -169,6 +202,7 @@ function startPicking() {
 function openingDone() {
   state.opening = 0;
   editor.setLocked(!state.doc);
+  visual.refresh();
 }
 
 // ---------------------------------------------------------------- chrome
@@ -219,7 +253,7 @@ function updateChrome() {
 
 let lastLayout = '';
 function reportLayout() {
-  const visible = !!state.doc && state.modal === 0;
+  const visible = !!state.doc && !visual.editing && state.modal === 0;
   const r = els.pvSlot.getBoundingClientRect(), k = window.devicePixelRatio || 1;
   const msg = { type: 'layout', visible, x: Math.round(r.left * k), y: Math.round(r.top * k), w: Math.max(0, Math.round(r.width * k)), h: Math.max(0, Math.round(r.height * k)) };
   const key = JSON.stringify(msg);
@@ -328,6 +362,7 @@ function projectFolders() {
 function onTextChanged() {
   clearTimeout(state.previewTimer);
   state.previewTimer = setTimeout(sendPreview, PREVIEW_DELAY);
+  visual.schedule();
   updateChrome();
 }
 
@@ -407,6 +442,7 @@ async function openedFile(msg) {
   editor.load(decoded.text, breaks);
   setStatus(converted ? 'Geöffnet und in UTF-8 umgewandelt: ' + msg.path + '. Speichere die Seite, damit sie in UTF-8 bleibt.' : 'Geöffnet: ' + msg.path, converted);
   sendPreview();
+  visual.refresh();
   updateChrome();
   reportLayout();
   editor.focus();
@@ -418,6 +454,7 @@ async function openedFile(msg) {
 // conflict) writes a new file and never replaces one.
 function startSave(type, createOnly) {
   if (!state.doc || state.sending !== null || (type === 'saveAs' && state.picking)) return;
+  if (!settlePage()) return;
   const raw = editor.raw, bytes = (state.doc.bom ? '\ufeff' : '') + raw;
   if (new TextEncoder().encode(bytes).length > MAX_FILE_BYTES) {
     tell('Seite zu groß', 'Die Seite ist größer als 5 MB. So große Seiten kann der Editor nicht wieder öffnen. Nimm etwas heraus und speichere dann.');
@@ -447,7 +484,12 @@ function saved(msg) {
   const s = answeredSave(msg);
   if (!s) return;
   if (s.doc !== state.doc) { state.afterSave = null; updateChrome(); return; }
-  if (msg.path && msg.path !== state.doc.path) { state.doc.path = msg.path; state.doc.name = msg.name || baseName(msg.path); sendPreview(); }
+  if (msg.path && msg.path !== state.doc.path) {
+    state.doc.path = msg.path;
+    state.doc.name = msg.name || baseName(msg.path);
+    sendPreview();
+    visual.refresh();
+  }
   state.doc.savedRaw = s.raw;
   state.doc.breaks.remember(s.raw);
   state.doc.converted = false;
@@ -486,6 +528,7 @@ async function saveProblem(msg) {
 // new file on this computer. The save on its way and the saved state of the page stay as they are.
 function rescue() {
   if (!state.doc || state.rescuing) return;
+  visual.flush();  // a title that cannot be applied stays in its field; the copy holds the code
   const bytes = (state.doc.bom ? '\ufeff' : '') + editor.raw;
   state.rescuing = true;
   send({ type: 'rescue', id: ++state.rescueId, path: state.doc.path, text: bytes });
@@ -558,6 +601,7 @@ async function pictureOutside(msg) {
 
 function viewInBrowser() {
   if (!state.doc) return;
+  if (!settlePage()) return;
   const go = () => send({ type: 'viewInBrowser', path: state.doc.path });
   if (!dirty()) { go(); return; }
   ask('Erst speichern?', 'Der Browser zeigt die gespeicherte Datei. Deine letzten Änderungen sind noch nicht gespeichert.', [
@@ -600,22 +644,25 @@ els.bSaveAs.addEventListener('click', saveAs);
 els.bUndo.addEventListener('click', () => { editor.undo(); editor.focus(); });
 els.bRedo.addEventListener('click', () => { editor.redo(); editor.focus(); });
 els.bFind.addEventListener('click', openFind);
-els.bPicture.addEventListener('click', () => {
+function askPicture(insert = insertPicture) {
   if (!state.doc || editor.locked || !startPicking()) return;
   const op = ++state.opId;
-  state.picture = { op, doc: state.doc };
+  state.picture = { op, doc: state.doc, insert };
   send({ type: 'pickPicture', op, page: state.doc.path });
-});
+}
+els.bPicture.addEventListener('click', () => askPicture());
 els.bBrowser.addEventListener('click', viewInBrowser);
 els.bRescue.addEventListener('click', rescue);
 
-addEventListener('keydown', (e) => {
-  if (state.modal) return;
+function handleShortcut(e) {
+  if (state.modal || e.isComposing) return false;
   const ctrl = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (ctrl && !e.altKey && key === 's') { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
   else if (ctrl && !e.altKey && key === 'f') { e.preventDefault(); openFind(); }
   else if (e.key === 'F3') { e.preventDefault(); if (els.findBar.hidden) openFind(); else findStep(e.shiftKey ? -1 : 1); }
-});
+  return e.defaultPrevented;
+}
+addEventListener('keydown', handleShortcut);
 
 // The window is to close (close button, logoff, shutdown). While a question is open the request is kept and
 // answered once the question is done, so the question about unsaved text is never skipped.
@@ -647,6 +694,7 @@ const handlers = {
     state.afterSave = null;
     state.picture = null;
     editor.clear();
+    visual.refresh();
     renderFiles();
     renderNotes();
     reportLayout();
@@ -662,6 +710,7 @@ const handlers = {
     state.project = null;
     state.doc = null;
     editor.clear();
+    visual.refresh();
     renderFiles();
     renderNotes();
     reportLayout();
@@ -690,13 +739,17 @@ const handlers = {
     renderNotes();
   },
   dialogDone() { state.picking = false; updateChrome(); },
+  editViewFailed() {
+    visual.disable();
+    setStatus('Die Bearbeitungsansicht ist ausgefallen. Dein Text bleibt im HTML-Code erhalten.', true);
+  },
   rescued,
   rescueFailed: rescued,
   saved,
   conflict: saveProblem,
   saveFailed: saveProblem,
   saveCancelled: saveProblem,
-  picture(m) { if (pictureFor(m)) insertPicture(m.src); },
+  picture(m) { if (pictureFor(m)) state.picture.insert(m.src); },
   pictureOutside,
   link(m) {
     if (!state.doc) return;

@@ -69,8 +69,9 @@ private:
     void resetPreviewLoad();
     void navigatePreview(std::wstring scroll = {});
     void finishPreviewNavigation(ICoreWebView2NavigationCompletedEventArgs* args);
-    void finishPreviewRequests();
-    void onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args);
+    void finishPreviewRequests(bool edit = false);
+    void failEditView();
+    void onPreviewRequest(ICoreWebView2WebResourceRequestedEventArgs* args, bool edit = false);
     // false if no response could be set (the engine would then fetch the request itself)
     bool respond(ICoreWebView2WebResourceRequestedEventArgs* args, int status, const char* reason, std::string_view contentType,
                  std::shared_ptr<const std::string> body, const char* csp = nullptr);
@@ -90,6 +91,7 @@ private:
     bool runningWindowTask_ = false;
     FileWorkers fileWorkers_{2, 32};
     FileWorkers previewWorkers_{4, 96};
+    FileWorkers editWorkers_{2, 48};
     // Rescue copies go to the local disk on their own thread, so a hanging network drive that holds every
     // file worker cannot stop them.
     FileWorkers rescueWorkers_{1, 4};
@@ -133,9 +135,11 @@ private:
     std::optional<PreviewStart> pvStart_;
     std::optional<UINT64> pvNavigationId_;
     std::shared_ptr<FileCache> pvCache_;
+    std::shared_ptr<FileCache> editCache_;
     bool pvReadingScroll_ = false;
     bool pvReloadAgain_ = false;
     bool pvFailed_ = false;
+    bool editFailed_ = false;
     std::wstring pvScroll_;                               // "[x,y]" read before a reload
     std::vector<std::pair<std::string, Json>> missing_;   // reports for the current load, by address
     UINT64 nextRequest_ = 1;
@@ -145,6 +149,7 @@ private:
         ComPtr<ICoreWebView2Deferral> deferral;
     };
     std::map<UINT64, PreviewRequest> pending_;
+    std::map<UINT64, PreviewRequest> editPending_;
 };
 
 }  // namespace hse

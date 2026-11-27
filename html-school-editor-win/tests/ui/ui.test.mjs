@@ -104,7 +104,8 @@ test('start, project list, opening a page with BOM and CRLF, notes, page view la
   assert.match(await ui.page.textContent('#bNotes'), /1 Hinweis/);
   await ui.page.click('#bNotes');
   assert.match(await ui.page.textContent('#noteList'), /\.\.\/\.\.\/weg\.png.*aus deinem Projektordner hinaus/s);
-  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').pop().visible === true);
+  await ui.page.waitForSelector('#visualFrame', { state: 'visible' });
+  assert.equal((await ui.last('layout')).visible, false, 'native page view yields to the visual editor');
   const lay = await ui.last('layout');
   assert.ok(lay.w > 200 && lay.h > 200, 'page view has a size');
   assert.equal(await ui.page.textContent('#docState'), 'gespeichert');
@@ -183,6 +184,10 @@ test('conflict: nothing overwritten, the page view is hidden while the dialog is
   await ui.deliver(PROJECT);
   await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from(PAGE)) });
   await ui.page.click('#src');
+  await ui.page.locator('#src').evaluate((field) => {
+    const caret = field.value.indexOf('</title>');
+    field.setSelectionRange(caret, caret);
+  });
   await ui.page.keyboard.type('x');
   await ui.page.click('#bSave');
   await ui.reply({ type: 'conflict', path: 'index.html', kind: 'changed' });
@@ -195,7 +200,7 @@ test('conflict: nothing overwritten, the page view is hidden while the dialog is
   await ui.reply({ type: 'saved', path: 'neu.html', name: 'neu.html' });
   assert.equal(await ui.page.textContent('#docName'), 'neu.html');
   assert.equal((await ui.last('preview')).path, 'neu.html', 'page view follows the new file');
-  await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'layout').pop().visible === true);
+  await ui.page.waitForSelector('#visualFrame', { state: 'visible' });
 });
 
 test('picture: inserted at the caret, caret inside alt; picture outside the project offers a copy', async () => {
@@ -785,5 +790,148 @@ test('a page is acknowledged only once it is taken or refused (encoding question
   await ui.answer('#dlg button[value="cancel"]');
   await ui.page.waitForFunction(() => window.__sent.filter((m) => m.type === 'unsaved').pop().seen === 1);
   assert.equal((await ui.last('unsaved')).open, false, 'refused: no page');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('the page is editable on open, and both panes share a byte-preserving undo and save', async () => {
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  const source = '<!doctype html>\r\n<title>Äpfel</title>\r<p>Hallo</p>\n<p>Welt</p>';
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64([...BOM, ...Buffer.from(source)]) });
+  const frame = ui.page.frameLocator('#visualFrame');
+  const first = frame.locator('p').first();
+  await first.click();
+  await ui.page.keyboard.press('End');
+  await ui.page.keyboard.type('!');
+  assert.equal(await ui.text(), source.replace(/\r\n?/g, '\n').replace('Hallo', 'Hallo!'));
+  await ui.page.keyboard.press('Control+z');
+  assert.equal(await first.textContent(), 'Hallo');
+  await ui.page.keyboard.press('Control+y');
+  assert.equal(await first.textContent(), 'Hallo!');
+  await ui.page.fill('#pageTitle', 'Käse & Brot');
+  await ui.page.locator('#pageTitle').press('Enter');
+  await ui.page.click('#bSave');
+  const save = await ui.last('save');
+  assert.equal(save.text, '\ufeff' + source.replace('Äpfel', 'Käse &amp; Brot').replace('Hallo', 'Hallo!'));
+  assert.deepEqual(ui.errors, []);
+});
+
+test('the toolbar edits through the shared commands and only admits local assets in the edit frame', async () => {
+  const ui = await openUi(browser);
+  const requests = [];
+  await ui.page.route('https://projekt.example/**', (route) => {
+    const name = new URL(route.request().url()).pathname;
+    requests.push(name);
+    if (name.endsWith('.css')) return route.fulfill({ contentType: 'text/css', body: 'p { color: rgb(4, 5, 6) }' });
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await ui.deliver(PROJECT);
+  const source = '<!doctype html><link rel="stylesheet" href="../css/stil.css"><p>Hallo Welt</p><img src="../bilder/katze.png"><img src="https://outside.example/katze.png"><iframe title="Andere Seite"></iframe>';
+  await ui.opened({ type: 'opened', path: 'seiten/tiere.html', name: 'tiere.html', data: b64(Buffer.from(source)) });
+  const frame = ui.page.frameLocator('#visualFrame');
+  const paragraph = frame.locator('p');
+  await paragraph.click();
+  await paragraph.evaluate((p) => {
+    const selection = p.ownerDocument.getSelection();
+    selection.setBaseAndExtent(p.firstChild, 0, p.firstChild, 5);
+  });
+  await ui.page.click('[data-edit="bold"]');
+  assert.match(await ui.text(), /<p><b>Hallo<\/b> Welt<\/p>/);
+  assert.equal(await frame.locator('iframe').count(), 0);
+  await paragraph.evaluate((p) => new Promise((resolve, reject) => {
+    const deadline = performance.now() + 2500;
+    function check() {
+      if (getComputedStyle(p).color === 'rgb(4, 5, 6)') resolve();
+      else if (performance.now() > deadline) reject(new Error('project stylesheet did not apply'));
+      else requestAnimationFrame(check);
+    }
+    check();
+  }));
+  assert.ok(requests.includes('/css/stil.css'));
+  assert.ok(requests.includes('/bilder/katze.png'));
+  assert.equal(await frame.locator('img[src^="https://outside.example"]').count(), 0);
+  assert.deepEqual(ui.errors, []);
+});
+
+test('Save As moves the base of the visual projection to the saved path', async () => {
+  const ui = await openUi(browser);
+  await ui.page.route('https://projekt.example/**', (route) => route.fulfill({ status: 404, body: '' }));
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', path: 'index.html', name: 'index.html', data: b64(Buffer.from('<!doctype html><img src="icon.png">')) });
+  const image = ui.page.frameLocator('#visualFrame').locator('img');
+  assert.equal(await image.getAttribute('src'), 'https://projekt.example/icon.png');
+  await ui.page.click('#bSaveAs');
+  await ui.reply({ type: 'saved', path: 'seiten/kopie.html', name: 'kopie.html' });
+  assert.equal(await image.getAttribute('src'), 'https://projekt.example/seiten/icon.png');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('a page-side edit still open counts before saving and closing (title field, composition)', async () => {
+  const source = '<!doctype html>\r\n<title>Alt</title>\r\n<p>Hallo</p>\r\n';
+  const open = async () => {
+    const ui = await openUi(browser);
+    await ui.deliver(PROJECT);
+    await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+    await ui.page.frameLocator('#visualFrame').locator('p').waitFor();
+    return ui;
+  };
+  // a title typed but not confirmed, then the window is to close (also a logoff): the question comes
+  let ui = await open();
+  await ui.page.fill('#pageTitle', 'Neu');
+  assert.equal(await ui.page.textContent('#docState'), 'gespeichert', 'not taken over yet');
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/);
+  assert.equal(await ui.count('closeOk'), 0, 'the title is not lost');
+  assert.match(await ui.text(), /<title>Neu<\/title>/);
+  await ui.answer('#dlg button[value="cancel"]');
+  // a title typed but not confirmed, then Ctrl+S: the save holds it
+  ui = await open();
+  await ui.page.fill('#pageTitle', 'Gespeichert');
+  await ui.page.locator('#pageTitle').press('Control+s');
+  assert.equal((await ui.last('save')).text, source.replace('Alt', 'Gespeichert'));
+  // a composition not finished, then the window is to close
+  ui = await open();
+  await ui.page.frameLocator('#visualFrame').locator('p').click();
+  await ui.page.keyboard.press('End');
+  const cdp = await ui.page.context().newCDPSession(ui.page);
+  await cdp.send('Input.imeSetComposition', { text: 'ê', selectionStart: 1, selectionEnd: 1 });
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /nicht gespeichert/);
+  assert.match(await ui.text(), /<p>Halloê<\/p>/, 'the composed character is in the code');
+  assert.deepEqual(ui.errors, []);
+});
+
+test('a title that cannot be applied stops saving and closing, and stays until it is applied or reset', async () => {
+  const source = '<!doctype html>\r\n<html><head><template><title>Vorlage</title></template><title>Alt</title></head><body><p>Hallo</p></body></html>\r\n';
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  await ui.page.frameLocator('#visualFrame').locator('p').waitFor();
+  // the field says at once that this title is changed in the code
+  await ui.page.focus('#pageTitle');
+  assert.equal(await ui.page.$eval('#pageTitle', (i) => i.readOnly), true, 'read-only where the title cannot be written');
+  assert.match(await ui.page.textContent('#status'), /nur links im HTML-Code/);
+  // a typed title that got into the field anyway: closing and saving stop, nothing is lost
+  await ui.page.$eval('#pageTitle', (i) => { i.readOnly = false; i.value = 'Neu'; });
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /noch nicht übernommen/);
+  await ui.answer('#dlg button[value="ok"]');
+  assert.equal(await ui.count('closeOk'), 0, 'the window stays open');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Neu', 'the typed title is kept');
+  assert.equal(await ui.text(), source.replace(/\r\n/g, '\n'), 'the template and the code are untouched');
+  await ui.page.keyboard.press('Control+s');
+  await ui.page.waitForSelector('dialog[open]');
+  assert.equal(await ui.count('save'), 0, 'nothing is saved without the title');
+  await ui.answer('#dlg button[value="ok"]');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Neu', 'still kept after the second attempt');
+  // Esc in the field resets it; then closing goes on
+  await ui.page.focus('#pageTitle');
+  await ui.page.keyboard.press('Escape');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Alt');
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'closeOk'));
   assert.deepEqual(ui.errors, []);
 });

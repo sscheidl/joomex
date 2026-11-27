@@ -56,6 +56,16 @@ Layers, from the outside in (`src/win/app.cpp`: `createEnvironment`, `lockDown`,
 * **User interface.** Only the program's own resources (from the exe, under a second virtual host); no other navigation, frames never navigate.
 * New windows, downloads, permission requests, status bar, the default context menu (page view) and developer tools (release build) are off. The host itself runs one script in the page view after a reload (`scrollTo` with two numbers), which works with page scripts off; it is built from numbers only.
 
+## Editing on the page side (stage 2, 0.1.0-alpha.15)
+
+The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the right side shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
+
+* **The frame.** `https://app.example/edit-frame.html` is served with `sandbox allow-same-origin` and a content policy with `script-src 'none'` in the response header, and again in its `<meta>`. The `<iframe>` has `sandbox="allow-same-origin"`. Frame navigation is allowed only to that address.
+* **The projection.** `renderView` of the shared `project.js` builds it from admitted elements and attributes only. It drops event attributes, `srcdoc`, `target`, form targets and named elements, and the interface never inserts raw markup.
+* **Assets.** The frame's requests to `https://projekt.example/` reach `onUiRequest` and go on to `onPreviewRequest` in edit mode. Only images (image context, image type) and style sheets (style sheet context, `text/css`) are admitted, through `CheckedFile`, on their own workers (`editWorkers_`), with their own cache and pending list. Answers are tied to the project generation.
+* **Messages.** The core accepts web messages only from the interface's own top-level document (`get_Source`).
+* **One document.** Changes from the page side go through `editor.editFromPage`, into the history of raw texts and through `breaks.follow`. A page-side edit that is still open (a title typed but not confirmed, an unfinished composition) is applied by `visual.flush()` before every decision about saving, a rescue copy, opening another page or folder, "Im Browser ansehen" and closing (this includes a logoff). If it cannot be applied (a title that this page does not let the field write, for example after a `<title>` inside a `<template>`), `flush()` says so and the save, the opening or the close stops with a message; the typed title stays in the field until it is applied or reset with Esc. Where the title cannot be written from the field at all, the field becomes read-only when it gets the focus.
+
 ## User interface (WebView2 #1)
 
 Owner's decision D6 (answer to Q4): own HTML, CSS and JavaScript, compiled into the exe as resources, reusing the source pane of the single-file editor (own code, MIT): line numbers, syntax colouring, undo and redo. Reasons:
@@ -83,6 +93,7 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | `pickPicture` {op, page}, `copyPicture` {op, token, page} | picture dialog; a picture outside the project is copied into `bilder/` after asking | `picture` {op, src}, `pictureOutside` {op, name, token} |
 | `viewInBrowser` {path} | open the saved file in the standard browser | — |
 | `closeOk` | the window may close (answer to `closeRequest`) | — |
+| — | — | `editViewFailed`: the core could not answer a request of the editable projection; the interface switches to the read-only page view for the rest of the session |
 | `rescue` {id, path, text} | while a save hangs: write the encoded text to a new local file (`%LOCALAPPDATA%\HtmlSchoolEditor\Rettungskopien`, `<name>_<date>_<time>.html`, the name cut to 60 characters), on its own worker, without the project folder. No other place: if that folder cannot be used, the copy fails | `rescued` {id, page, path (full local path)}, `rescueFailed` {id, page, message} |
 | `unsaved` {value, open, seen} | whether text could be lost (unsaved, or a save on its way), whether a page is open, and `seen`: every `opened` up to that `seq` has been handled, taken or refused (a page still being handled, for example while the question about its encoding is open, holds `seen` below its `seq`); sent when any of them changes and taken by the core at once, not through the window queue. A page counts as open for the core from the moment it sends `opened`; a report of "no page" counts only if its `seen` is that page's `seq`. While a page is open the core refuses a logoff or shutdown query with a reason and sends `closeRequest` | — |
 

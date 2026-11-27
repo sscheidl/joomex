@@ -172,6 +172,15 @@ export function createCodeEditor(els, onChange) {
     redo() { if (!ta.readOnly) applyHistory(history.redo()); },
     canUndo: () => history.canUndo(),
     canRedo: () => history.canRedo(),
+    editFromPage(newText, kind) {
+      if (ta.readOnly || newText === text) return;
+      if (kind === 'cmd') history.seal();
+      setValue(newText, true);
+      if (breaks) breaks.follow(text);
+      history.record(rawNow(), kind, Date.now());
+      if (kind === 'cmd') history.seal();
+      onChange(text);
+    },
     // Inserts at the caret; `select` = [from, to] inside the inserted text is selected afterwards.
     insert(str, select) {
       if (ta.readOnly) return;
