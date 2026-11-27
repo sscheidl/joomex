@@ -902,3 +902,36 @@ test('a page-side edit still open counts before saving and closing (title field,
   assert.match(await ui.text(), /<p>Halloê<\/p>/, 'the composed character is in the code');
   assert.deepEqual(ui.errors, []);
 });
+
+test('a title that cannot be applied stops saving and closing, and stays until it is applied or reset', async () => {
+  const source = '<!doctype html>\r\n<html><head><template><title>Vorlage</title></template><title>Alt</title></head><body><p>Hallo</p></body></html>\r\n';
+  const ui = await openUi(browser);
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from(source)) });
+  await ui.page.frameLocator('#visualFrame').locator('p').waitFor();
+  // the field says at once that this title is changed in the code
+  await ui.page.focus('#pageTitle');
+  assert.equal(await ui.page.$eval('#pageTitle', (i) => i.readOnly), true, 'read-only where the title cannot be written');
+  assert.match(await ui.page.textContent('#status'), /nur links im HTML-Code/);
+  // a typed title that got into the field anyway: closing and saving stop, nothing is lost
+  await ui.page.$eval('#pageTitle', (i) => { i.readOnly = false; i.value = 'Neu'; });
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForSelector('dialog[open]');
+  assert.match(await ui.page.textContent('#dlgTitle'), /noch nicht übernommen/);
+  await ui.answer('#dlg button[value="ok"]');
+  assert.equal(await ui.count('closeOk'), 0, 'the window stays open');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Neu', 'the typed title is kept');
+  assert.equal(await ui.text(), source.replace(/\r\n/g, '\n'), 'the template and the code are untouched');
+  await ui.page.keyboard.press('Control+s');
+  await ui.page.waitForSelector('dialog[open]');
+  assert.equal(await ui.count('save'), 0, 'nothing is saved without the title');
+  await ui.answer('#dlg button[value="ok"]');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Neu', 'still kept after the second attempt');
+  // Esc in the field resets it; then closing goes on
+  await ui.page.focus('#pageTitle');
+  await ui.page.keyboard.press('Escape');
+  assert.equal(await ui.page.inputValue('#pageTitle'), 'Alt');
+  await ui.deliver({ type: 'closeRequest' });
+  await ui.page.waitForFunction(() => window.__sent.some((m) => m.type === 'closeOk'));
+  assert.deepEqual(ui.errors, []);
+});

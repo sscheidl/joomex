@@ -19,6 +19,7 @@ export function createVisualEditor(els, editor, actions) {
   const buttons = Array.from(els.visualCommands.querySelectorAll('[data-edit]'));
   let doc, view, owner, base, title = '', composing = false, editing = false, failed = false, timer = 0;
   let selection;
+  let keptTitle = null;  // a typed title that could not be applied; it stays until applied or reset with Esc
 
   function projectUrl(address) {
     if (!base || !address || /[\\\u0000-\u001f]/.test(address)) return '';
@@ -32,7 +33,7 @@ export function createVisualEditor(els, editor, actions) {
     els.visualTools.hidden = !editing;
     frame.hidden = !editing;
     els.visualHint.textContent = editing ? 'Hier kannst du schreiben.' : actions.document() ? 'Bearbeite den HTML-Code links.' : '';
-    if (document.activeElement !== els.pageTitle) els.pageTitle.value = title;
+    if (document.activeElement !== els.pageTitle) els.pageTitle.value = keptTitle ?? title;
     const s = editing ? caretState(doc) : {};
     for (const b of buttons) {
       const key = b.dataset.edit;
@@ -66,6 +67,7 @@ export function createVisualEditor(els, editor, actions) {
     const next = actions.document();
     if (next !== owner) {
       owner = next;
+      keptTitle = null;
       view = undefined;
       selection = undefined;
       composing = false;
@@ -111,10 +113,12 @@ export function createVisualEditor(els, editor, actions) {
       editor.editFromPage(out.text, kind);
       view = undefined;
       render(out.sel);
+      return true;
     } catch {
       view = undefined;
       render();
       actions.message('Diese Änderung lässt sich hier nicht sicher übernehmen. Versuche es links im HTML-Code.', true);
+      return false;
     }
   }
 
@@ -141,20 +145,32 @@ export function createVisualEditor(els, editor, actions) {
     else if (result) actions.message('Dieser Befehl passt hier nicht. Wähle eine andere Stelle.', true);
   }
 
-  function editTitle() {
-    if (!current()) { render(); return; }
-    const value = els.pageTitle.value.replace(/\s+/g, ' ').trim();
-    if (value === title) return;
+  // The title as it would be written, or null if this page's title cannot be written safely from here (for
+  // example a <title> inside a <template> comes first).
+  function titledSource(value) {
     const src = editor.text;
     const next = withTitle(src, tokenize(src), value);
     const after = next === null ? null : analyze(next, tokenize(next)).dom;
-    if (!after || after.title !== value || after.body.innerHTML !== view.dom.body.innerHTML || after.compatMode !== view.dom.compatMode) {
-      els.pageTitle.value = title;
+    return after && after.title === value && after.body.innerHTML === view.dom.body.innerHTML && after.compatMode === view.dom.compatMode ? next : null;
+  }
+
+  // Takes the title field into the code. Returns false if it could not be taken: on `keep` (a save or close
+  // is waiting) the typed title stays in the field, otherwise the field shows the page's title again.
+  function editTitle(keep = false) {
+    if (!current()) { if (keep) return false; render(); return true; }
+    const value = els.pageTitle.value.replace(/\s+/g, ' ').trim();
+    if (value === title) { keptTitle = null; return true; }
+    const next = titledSource(value);
+    if (next === null) {
+      if (keep) keptTitle = els.pageTitle.value;
+      else { keptTitle = null; els.pageTitle.value = title; }
       actions.message('Ändere den Titel hier bitte im HTML-Code im Tag <title>.', true);
-      return;
+      return false;
     }
+    keptTitle = null;
     editor.editFromPage(next, 'cmd');
     render();
+    return true;
   }
 
   async function doCommand(command, saved) {
@@ -242,8 +258,17 @@ export function createVisualEditor(els, editor, actions) {
 
   frame.addEventListener('load', wire);
   wire();
-  els.pageTitle.addEventListener('change', editTitle);
-  els.pageTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+  els.pageTitle.addEventListener('change', () => editTitle(keptTitle !== null));  // a kept title stays kept
+  // Where the title cannot be written from here, the field is read-only from the start and says why.
+  els.pageTitle.addEventListener('focus', () => {
+    const writable = current() && titledSource((title ? title + ' ' : '') + 'x') !== null;
+    els.pageTitle.readOnly = !writable;
+    if (!writable && current()) actions.message('Den Titel dieser Seite kannst du nur links im HTML-Code im Tag <title> ändern.', true);
+  });
+  els.pageTitle.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); keptTitle = null; els.pageTitle.value = title; e.target.blur(); }  // back to the page's title
+  });
   for (const button of buttons) {
     button.addEventListener('pointerdown', (e) => e.preventDefault());
     button.addEventListener('click', () => doCommand(button.dataset.edit, capture() || selection));
@@ -258,9 +283,12 @@ export function createVisualEditor(els, editor, actions) {
 
   // Applies a page-side edit that is still open: a title typed but not yet confirmed, or a composition
   // (IME or dead key) not yet finished. Called before every decision about saving or closing.
+  // Returns false if an open edit could not be applied; the caller then stops and the edit is kept.
   function flush() {
-    if (document.activeElement === els.pageTitle && els.pageTitle.value.replace(/\s+/g, ' ').trim() !== title) editTitle();
-    if (composing) { composing = false; commit('vis-type', true); }
+    let ok = true;
+    if (els.pageTitle.value.replace(/\s+/g, ' ').trim() !== title) ok = editTitle(true) && ok;
+    if (composing) { composing = false; ok = commit('vis-type', true) && ok; }
+    return ok;
   }
 
   return {
