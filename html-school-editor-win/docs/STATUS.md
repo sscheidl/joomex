@@ -64,6 +64,8 @@ On that computer Codex found `HKCU\Control Panel\Desktop\AutoEndTasks` = 1. With
 
 ### 0.1.0-alpha.18 (2026-11-27): findings of the review of alpha.17
 
+Merged into `main` through PR #31 (`4253ab2`, 2026-11-27) after Codex's re-review of alpha.18 concluded READY TO MERGE. Codex repeated P1 and P2 natively on the alpha.18 test build (`8c29df18…fb8b`, about 120 %), and in all three cases Ctrl+S wrote exactly the expected bytes. Pupils' files are still NOT READY.
+
 Codex reviewed alpha.17 (PR #31) on 2026-11-27: CHANGE BEFORE MERGE, two findings about where something is inserted. Codex measured both natively.
 
 * **P1, "Bild einfügen" after "Rückgängig":** "Rückgängig" and "Wiederholen" in the header put the focus into the code. "Bild einfügen" then used the old caret in the code: before `<!doctype html>`, which switched the page to quirks mode.
@@ -191,4 +193,4 @@ Built and run on Windows 11 with the Visual Studio 2022 Build Tools (see the evi
 
 ## Next step
 
-Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Stage 1 and the stage 2 pilot (P0) are on `main` as 0.1.0-alpha.16 (PR #26, PR #29). The plan for stage 2, with the owner's decisions E1 to E6, is [STAGE2.md](STAGE2.md). Next is P1: a complete network measurement of the editable frame, focus, Tab and scaling, and the open findings S2-2 to S2-5 of the pilot review (listed in PR #29). Before use with pupils' files: the network share cases and the release write checks. A real logoff is no longer a requirement (owner's decision of 2026-11-27, see below); on the school computers it is worth knowing whether `AutoEndTasks` or the matching group policy is set. Verify the school computer and SMB cases before using the editor with pupils' files.
+Two WebView2 views stay (E1 decided by the owner on 2026-11-25, see [STAGE2.md](STAGE2.md)). The independent stage 1 review of alpha.9 is done (local stage 2 prototype READY TO BUILD). Stage 1, the stage 2 pilot (P0) and the new layout are on `main` as 0.1.0-alpha.18 (PR #26, PR #29, PR #31). The plan for stage 2, with the owner's decisions E1 to E6, is [STAGE2.md](STAGE2.md). Next is P1: a complete network measurement of the editable frame, focus, Tab and scaling, and the open findings S2-2 to S2-5 of the pilot review (listed in PR #29). Before use with pupils' files: the network share cases and the release write checks. A real logoff is no longer a requirement (owner's decision of 2026-11-27, see below); on the school computers it is worth knowing whether `AutoEndTasks` or the matching group policy is set. Verify the school computer and SMB cases before using the editor with pupils' files.
