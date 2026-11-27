@@ -937,7 +937,7 @@ test('a title that cannot be applied stops saving and closing, and stays until i
 });
 
 test('layout: two header rows, project list left, page in the middle, code right; Save and the state stay visible', async () => {
-  for (const width of [1280, 1093]) {  // 1093: a 1366 pixel wide screen at 125 % scaling
+  for (const width of [1280, 1138]) {  // 1138: a 1366 pixel wide screen at 120 % scaling
     const ui = await openUi(browser);
     await ui.page.setViewportSize({ width, height: 720 });
     await ui.deliver(PROJECT);

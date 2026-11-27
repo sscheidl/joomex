@@ -48,7 +48,7 @@ button.primary .ic { stroke: var(--accent-ink); }
 #pageTitle[readonly] { background: #f8f9fa; color: var(--soft); }
 #visualCommands [aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); }
 .doc { flex: 1 1 0; justify-content: flex-end; display: flex; gap: 10px; align-items: center; min-width: 0; }
-/* Narrow windows (for example 1366 pixels at 125 %): the first row keeps "Projektordner öffnen" and "Speichern"
+/* Narrow windows (for example 1366 pixels at 100 % or at 120 %): the first row keeps "Projektordner öffnen" and "Speichern"
    with text, the other file buttons show their symbol with the tooltip and accessible name. */
 @media (max-width: 1400px) {
   #bNew span, #bOpen span, #bSaveAs span, #bBrowser span { display: none; }
