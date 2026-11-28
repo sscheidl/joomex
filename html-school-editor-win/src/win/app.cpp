@@ -235,7 +235,7 @@ int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
                     L"Auf diesem Computer fehlt die Microsoft Edge WebView2-Laufzeitumgebung.\n\n"
                     L"Sie gehört zu Windows 11 und wird für Windows 10 mit Microsoft Edge verteilt. "
                     L"Bitte wende dich an die Betreuung der Schulcomputer.",
-                    L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
+                    L"Markup Ninja", MB_OK | MB_ICONERROR);
         return 1;
     }
     CoTaskMemFree(version);
@@ -248,6 +248,8 @@ int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
     wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     wc.lpszClassName = kWindowClass;
     wc.hIcon = LoadIconW(instance, L"APPICON");
+    // the small icon (title bar, taskbar) from the same resource, at the size of this screen
+    wc.hIconSm = static_cast<HICON>(LoadImageW(instance, L"APPICON", IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR));
     RegisterClassExW(&wc);
 
     WNDCLASSEXW pc{};
@@ -259,7 +261,7 @@ int App::run(HINSTANCE instance, int show, const std::wstring& fileToOpen) {
     pc.lpszClassName = kPreviewClass;
     RegisterClassExW(&pc);
 
-    window_ = CreateWindowExW(0, kWindowClass, L"HTML-Schuleditor", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT,
+    window_ = CreateWindowExW(0, kWindowClass, L"Markup Ninja", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT,
                               1400, 900, nullptr, nullptr, instance, this);
     if (!window_) return 1;
     {
@@ -348,7 +350,7 @@ LRESULT App::handle(UINT msg, WPARAM wp, LPARAM lp) {
             // saved. Windows shows the reason meanwhile; the pupil decides there. Not handled: a session that
             // ends without asking (WM_ENDSESSION after a forced logoff) ends the program like any other.
             if (!closing_ && uiReady_ && (pageOpen_ || unsaved_)) {
-                const wchar_t* reason = unsaved_ ? L"Eine Seite ist noch nicht gespeichert." : L"Der HTML-Schuleditor prüft, ob alles gespeichert ist.";
+                const wchar_t* reason = unsaved_ ? L"Eine Seite ist noch nicht gespeichert." : L"Markup Ninja prüft, ob alles gespeichert ist.";
                 if (ShutdownBlockReasonCreate(window_, reason)) endBlocked_ = true;
                 post(Json::object().set("type", "closeRequest"));
                 return FALSE;
@@ -421,7 +423,7 @@ void App::shutdown() {
 
 void App::startupError(const wchar_t* message) {
     runLater([this, message] {
-        MessageBoxW(window_, message, L"HTML-Schuleditor", MB_OK | MB_ICONERROR);
+        MessageBoxW(window_, message, L"Markup Ninja", MB_OK | MB_ICONERROR);
         if (!closing_) DestroyWindow(window_);
     });
 }

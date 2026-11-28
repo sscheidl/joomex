@@ -1,0 +1,19 @@
+{
+  "comment": "First-party branding graphics of the HTML School Editor for Windows (Markup Ninja), the only binary files this repository allows outside verified vendor files (owner's decision of 2026-11-27, issue #34; rules in RULES.md and AGENTS.md). scripts/check_publication.py admits each file only at its exact path, with this SHA-256, at most max_bytes (never above 1 MiB) and with the content signature of its suffix. The design masters and the asset ZIP stay outside the repository.",
+  "files": {
+    "html-school-editor-win/ui/assets/ninja-hero.webp": {
+      "sha256": "c1df3530c56cb0c1144a84d3b639c1d534402ddccc4f92c8d4103d5a32dc7a85",
+      "max_bytes": 262144,
+      "format": "WebP, 1536 x 1024, opaque",
+      "use": "artwork at the top of the help window",
+      "source": "MarkupNinja_Assets.zip (SHA-256 2a01cbe0a7b9c729cec969e1631e67b7a06a35f683efad6fb93e57b36312dd66), entry html-school-editor-win/ui/assets/ninja-hero.webp; generated branding artwork approved by the owner on 2026-11-27"
+    },
+    "html-school-editor-win/src/win/markup-ninja.ico": {
+      "sha256": "a493b656ab6cdc90fe577b5a4ea7f135858cab8e6535a809c8d171ea0cc25f31",
+      "max_bytes": 65536,
+      "format": "ICO with PNG images 16, 20, 24, 32, 40, 48, 64, 128 and 256 px (44,650 bytes)",
+      "use": "native icon of the exe and its window (resource APPICON)",
+      "source": "made by tools/make-icon.mjs from tools/markup-ninja-icon.svg: the logo of ui/assets/ninja-logo.svg on a white tile with a deep teal rim (owner's choice of 2026-11-28, so the dark face is seen on a dark taskbar; replaces the dark tile of the asset ZIP)"
+    }
+  }
+}

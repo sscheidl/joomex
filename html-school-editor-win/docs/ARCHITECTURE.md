@@ -70,6 +70,11 @@ The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page 
 * **The place in the code (alpha.20).** `srcOffsetOf` and `srcElementRange` of the shared `project.js` give the source range of a selection or of the element around the caret; the code pane draws it in its mark layer (`#marks`) and scrolls to it, without the focus.
 * **Display zoom (alpha.20).** The edit frame gets a `<style id="se-zoom">` in its head (outside the body, so never serialized); the code pane scales font, line height and gutter through CSS variables; the native page view uses `ICoreWebView2Controller::put_ZoomFactor`, and its own Ctrl+wheel zoom (`IsZoomControlEnabled` on the page view only, a comfort setting) is reported back. The interface view keeps its zoom off.
 
+* **Branding files (alpha.23).**
+  * `ui/assets/ninja-logo.svg` (text) and `ui/assets/ninja-hero.webp` are listed in `ui/resources.json` and served like every other resource of the interface. They are served with the types `image/svg+xml` and `image/webp`, set by the type switch in `CMakeLists.txt`.
+  * The native icon `src/win/markup-ninja.ico` becomes resource `APPICON` through `src/win/app.rc.in`. The path is absolute in the generated script, and the resource is rebuilt when only the icon changes.
+  * The picture files are pinned in `branding-assets.json` (see RULES.md and `scripts/check_publication.py`).
+
 ## User interface (WebView2 #1)
 
 Layout (from 0.1.0-alpha.17): a header of two rows (`#topFiles` for project and files, `#topEdit` for editing, with the formatting tools of `visual.js` in `#visualCommands`), then the project list, the page pane (`#pvPane`, with `#pvSlot` for the edit frame or the native page view) and the code pane (`#srcPane`). The divider (`#split`) sits between page and code and sets the page pane's share of the work area. While the page cannot be edited, the formatting controls are switched off, not hidden. "Bild einfügen" inserts into the page or into the code, wherever the pupil wrote last (`lastPane`; the edit frame reports its focus). Symbols are one inline SVG sprite in `index.html`.

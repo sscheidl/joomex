@@ -19,7 +19,7 @@ const MOCK_CORE = `
   window.__deliver = (m) => window.__recv({ data: m });
 `;
 
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png' };
 export const b64 = (bytes) => Buffer.from(bytes).toString('base64');
 
 export async function openUi(browser) {

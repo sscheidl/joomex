@@ -252,7 +252,7 @@ function updateChrome() {
   reportUnsaved(!!doc && (d || state.sending !== null), !!doc);
   els.docState.textContent = !doc ? '' : state.sending !== null ? 'wird gespeichert …' : d ? 'nicht gespeichert' : 'gespeichert';
   els.docState.classList.toggle('dirty', !!doc && (d || state.sending !== null));
-  document.title = (doc ? (d ? '● ' : '') + doc.name + ' – ' : '') + 'HTML-Schuleditor';
+  document.title = (doc ? (d ? '● ' : '') + doc.name + ' – ' : '') + 'Markup Ninja';
   els.bNew.disabled = !state.project;
   els.bSave.disabled = !doc || state.sending !== null;
   els.bSaveAs.disabled = !doc || state.sending !== null || state.picking;
@@ -804,7 +804,7 @@ const handlers = {
     if (m.zoomPage) setZoom('page', m.zoomPage, false);
     state.version = m.version || '';
     els.version.textContent = m.version || '';
-    els.versionBottom.textContent = m.version ? 'html-school-editor-win ' + m.version : '';
+    els.versionBottom.textContent = m.version ? 'Markup Ninja ' + m.version : '';
     updateChrome();
   },
   project(m) {
