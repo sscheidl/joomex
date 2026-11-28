@@ -69,6 +69,8 @@ private:
     void resetPreviewLoad();
     void navigatePreview(std::wstring scroll = {});
     void onPreviewZoom(double factor);
+    void commitPreviewZoom(int percent);
+    void previewZoomKey(int dir);
     void finishPreviewNavigation(ICoreWebView2NavigationCompletedEventArgs* args);
     void finishPreviewRequests(bool edit = false);
     void failEditView();
