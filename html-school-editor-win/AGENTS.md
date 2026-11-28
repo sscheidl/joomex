@@ -28,4 +28,4 @@ These rules are binding for every contributor and every agent working in this fo
 ## Publication
 
 * Everything committed here may become public. Before every commit run the repository's publication check from the repository root; the private deny-list lives outside the repository.
-* No names of schools, sites or persons, no local paths, no credentials. The one exception is the author's name in `LICENSE` and in the help window (RULES.md, owner's decision of 2026-11-27).
+* No names of schools, sites or persons, no local paths, no credentials. The one exception is the author's name inside this folder: in `LICENSE`, in the help window, and in the docs and tests that describe or check them (RULES.md, owner's decisions of 2026-11-27 and 2026-11-28). Nowhere else in the repository.
