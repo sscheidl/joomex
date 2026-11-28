@@ -2,7 +2,7 @@
 
 A small Windows program in which pupils of about 12–13 years learn HTML: the code in the middle and the page on the right, exactly as Microsoft Edge shows it, and they write in either. Pictures and links are found relative to the page, as in a browser, because the page is loaded from its real place in the pupil's project folder.
 
-**State:** 0.1.0-alpha.23 on a branch (2026-11-28): the owner's branding "Markup Ninja" (name, look, icon, help picture) on top of alpha.22, which is on `main` (PR #33); not reviewed yet; not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
+**State:** 0.1.0-alpha.24 on a branch (2026-11-28, PR #36): the owner's branding "Markup Ninja" (name, look, light icon, help picture) on top of alpha.22, which is on `main` (PR #33); not reviewed yet; not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
 
 | Document | Content |
 | --- | --- |

@@ -132,3 +132,35 @@ test('branding: the SVG logo holds no active content; the picture files are the 
   assert.equal(served['/assets/ninja-hero.webp'], 'ui/assets/ninja-hero.webp');
   assert.ok(Object.keys(manifest).includes('html-school-editor-win/ui/assets/ninja-hero.webp'), 'the served picture is an approved one');
 });
+
+test('branding: the program icon has a light tile, so its dark face is seen on a dark taskbar (alpha.24)', async () => {
+  const ico = fs.readFileSync(path.join(ROOT, 'src', 'win', 'markup-ninja.ico'));
+  assert.equal(ico.readUInt16LE(2), 1, 'an icon file');
+  const count = ico.readUInt16LE(4);
+  const frames = [];
+  for (let k = 0; k < count; k++) {
+    const e = 6 + 16 * k, size = ico.readUInt8(e) || 256;
+    frames.push({ size, png: ico.subarray(ico.readUInt32LE(e + 12), ico.readUInt32LE(e + 12) + ico.readUInt32LE(e + 8)) });
+  }
+  assert.deepEqual(frames.map((f) => f.size), [16, 20, 24, 32, 40, 48, 64, 128, 256]);
+  const page = await browser.newPage();
+  for (const { size, png } of frames.filter((f) => [16, 32, 256].includes(f.size))) {
+    const px = await page.evaluate(async ([data, n]) => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,' + data;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = c.height = n;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const at = (x, y) => Array.from(g.getImageData(Math.floor(x), Math.floor(y), 1, 1).data);
+      return { corner: at(0, 0), tile: at(n * 0.1, n * 0.5), face: at(n * 0.5, n * 0.5) };
+    }, [png.toString('base64'), size]);
+    assert.equal(px.corner[3], 0, size + ': the corners stay transparent');
+    assert.ok(px.tile[3] === 255 && px.tile.slice(0, 3).every((v) => v >= 230), size + ': a light tile left of the face: ' + px.tile);
+    assert.ok(px.face.slice(0, 3).every((v) => v <= 60), size + ': the dark visor in the middle: ' + px.face);
+  }
+  await page.close();
+  // the icon is made from its SVG source by tools/make-icon.mjs
+  assert.match(fs.readFileSync(path.join(ROOT, 'tools', 'markup-ninja-icon.svg'), 'utf8'), /fill="#ffffff" stroke="#0e7490"/);
+});
