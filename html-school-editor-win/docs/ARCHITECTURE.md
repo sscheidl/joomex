@@ -58,13 +58,17 @@ Layers, from the outside in (`src/win/app.cpp`: `createEnvironment`, `lockDown`,
 
 ## Editing on the page side (stage 2, 0.1.0-alpha.15)
 
-The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the page pane in the middle shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
+The plan, with the owner's decisions, is in [STAGE2.md](STAGE2.md). When a page opens, the page pane on the right shows an editable projection, if the source allows one. Otherwise it falls back to the page view of stage 1 (`ui/js/visual.js`).
 
 * **The frame.** `https://app.example/edit-frame.html` is served with `sandbox allow-same-origin` and a content policy with `script-src 'none'` in the response header, and again in its `<meta>`. The `<iframe>` has `sandbox="allow-same-origin"`. Frame navigation is allowed only to that address.
 * **The projection.** `renderView` of the shared `project.js` builds it from admitted elements and attributes only. It drops event attributes, `srcdoc`, `target`, form targets and named elements, and the interface never inserts raw markup.
 * **Assets.** The frame's requests to `https://projekt.example/` reach `onUiRequest` and go on to `onPreviewRequest` in edit mode. Only images (image context, image type) and style sheets (style sheet context, `text/css`) are admitted, through `CheckedFile`, on their own workers (`editWorkers_`), with their own cache and pending list. Answers are tied to the project generation.
 * **Messages.** The core accepts web messages only from the interface's own top-level document (`get_Source`).
 * **One document.** Changes from the page side go through `editor.editFromPage`, into the history of raw texts and through `breaks.follow`. A page-side edit that is still open (a title typed but not confirmed, an unfinished composition) is applied by `visual.flush()` before every decision about saving, a rescue copy, opening another page or folder, "Im Browser ansehen" and closing (this includes a logoff). If it cannot be applied (a title that this page does not let the field write, for example after a `<title>` inside a `<template>`), `flush()` says so and the save, the opening or the close stops with a message; the typed title stays in the field until it is applied or reset with Esc. Where the title cannot be written from the field at all, the field becomes read-only when it gets the focus.
+
+* **Choosing a picture or a table (alpha.20).** A chosen element carries `data-se-picked` (an outline of the edit frame); attributes `data-se-*` are never written, and the serializer writes elements from the source as they stand. Deleting it removes the white space in front of it when it stood on a line of its own, and marks that white space as dropped, as `commands.js` does for table rows.
+* **The place in the code (alpha.20).** `srcOffsetOf` and `srcElementRange` of the shared `project.js` give the source range of a selection or of the element around the caret; the code pane draws it in its mark layer (`#marks`) and scrolls to it, without the focus.
+* **Display zoom (alpha.20).** The edit frame gets a `<style id="se-zoom">` in its head (outside the body, so never serialized); the code pane scales font, line height and gutter through CSS variables; the native page view uses `ICoreWebView2Controller::put_ZoomFactor`, and its own Ctrl+wheel zoom (`IsZoomControlEnabled` on the page view only, a comfort setting) is reported back. The interface view keeps its zoom off.
 
 ## User interface (WebView2 #1)
 
@@ -85,7 +89,8 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 
 | From the interface | Meaning | Answer |
 | --- | --- | --- |
-| `ready` | the interface has loaded | `init` (version); the last project folder is opened again if it can be reached |
+| `ready` | the interface has loaded | `init` (version, `zoomCode`, `zoomPage` in percent from HKCU); the last project folder is opened again if it can be reached |
+| `zoom` {code, page} | the display zoom of both panes in percent (from alpha.20); the core snaps both to the zoom steps of `src/core/zoom.hpp` (from alpha.21), writes `ZoomCode` and `ZoomPage` to HKCU and sets the zoom factor of the page view. Only the look changes | — (the core sends `zoom` {page} when the page view zoomed itself: Ctrl+wheel there, or Ctrl+0, Ctrl+plus and Ctrl+minus, which the core handles for that view) |
 | `layout` {visible, x, y, w, h} | where the page view lies, in device pixels; hidden while a dialog is open | — |
 | `preview` {path, text} | the current, unsaved text, after a pause in typing | `missing` {path, items} after the page view has loaded |
 | `openProject` | choose a folder | `projectChanged`, `project` {name, files} |

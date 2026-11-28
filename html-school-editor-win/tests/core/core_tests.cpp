@@ -1,10 +1,12 @@
 // Unit tests of the portable core. Run: build target core_tests (CMake) or, on any platform,
 //   c++ -std=c++20 -Isrc/core src/core/*.cpp tests/core/core_tests.cpp -o core_tests && ./core_tests
+#include <cmath>
 #include <cstdio>
 #include <string>
 
 #include "json.hpp"
 #include "paths.hpp"
+#include "zoom.hpp"
 
 using namespace hse;
 
@@ -149,6 +151,24 @@ static void testJson() {
     CHECK(back && back->at("s").str() == "\xC3\xA4\x01\"</");
 }
 
+// The zoom steps of both page views and of the remembered levels (review of alpha.20, finding 3).
+static void testZoomSteps() {
+    CHECK(nearestZoomStep(100) == 100);
+    CHECK(nearestZoomStep(144) == 150);   // an engine level between two steps goes to the nearer step
+    CHECK(nearestZoomStep(137.5) == 125); // a tie goes to the lower step
+    CHECK(nearestZoomStep(66.67) == 67);
+    CHECK(nearestZoomStep(33) == 50);
+    CHECK(nearestZoomStep(250) == 200);
+    CHECK(nearestZoomStep(0) == 100);
+    CHECK(nearestZoomStep(-5) == 100);
+    CHECK(nearestZoomStep(std::nan("")) == 100);
+    CHECK(nextZoomStep(100, 1) == 110);
+    CHECK(nextZoomStep(100, -1) == 90);
+    CHECK(nextZoomStep(144, 1) == 175);
+    CHECK(nextZoomStep(200, 1) == 200);
+    CHECK(nextZoomStep(50, -1) == 50);
+}
+
 int main() {
     testRequestSegments();
     testPathOfUrl();
@@ -157,6 +177,7 @@ int main() {
     testCaseAndKinds();
     testUniqueAndFingerprint();
     testJson();
+    testZoomSteps();
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures ? 1 : 0;
 }

@@ -6,9 +6,11 @@
 #include <wrl.h>
 
 #include <algorithm>
+#include <cmath>
 #include <random>
 
 #include "../core/paths.hpp"
+#include "../core/zoom.hpp"
 
 #ifndef HSE_VERSION
 #define HSE_VERSION "0.0.0-dev"
@@ -534,6 +536,14 @@ constexpr const char* kPageCsp =
     "media-src 'self' data:; script-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; "
     "connect-src 'none'; form-action 'none'; base-uri 'self'; manifest-src 'none'";
 
+// A remembered zoom level in percent (wish W2), as one of the zoom steps (`src/core/zoom.hpp`).
+int zoomSetting(const wchar_t* name) {
+    const std::wstring v = readSetting(name);
+    int p = 0;
+    for (wchar_t c : v) { if (c < L'0' || c > L'9' || p > 1000) return kZoomDefault; p = p * 10 + (c - L'0'); }
+    return v.empty() ? kZoomDefault : nearestZoomStep(p);
+}
+
 constexpr const char* kEditCsp =
     "sandbox allow-same-origin; default-src 'none'; script-src 'none'; "
     "style-src 'unsafe-inline' https://projekt.example; img-src data: https://projekt.example; "
@@ -685,11 +695,32 @@ void App::createPreview() {
                     a->get_VirtualKey(&key);
                     if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN) return S_OK;
                     const bool ctrl = GetKeyState(VK_CONTROL) < 0;
+                    // Ctrl+0, Ctrl+plus and Ctrl+minus zoom the page view (wish W2). The engine's own keys for it
+                    // are off with the browser accelerator keys, so the program takes them: the same steps as
+                    // the editable page, and through ZoomFactorChanged the same remembering. The focus stays.
+                    const int zoomDir = (key == '0' || key == VK_NUMPAD0) ? 0 : (key == VK_OEM_PLUS || key == VK_ADD) ? 1
+                                      : (key == VK_OEM_MINUS || key == VK_SUBTRACT) ? -1 : 2;
+                    if (ctrl && zoomDir != 2) {
+                        a->put_Handled(TRUE);
+                        previewZoomKey(zoomDir);
+                        return S_OK;
+                    }
                     const char* name = (ctrl && key == 'S') ? "save" : (ctrl && key == 'F') ? "find" : key == VK_F3 ? "findNext" : nullptr;
                     if (!name || !uiController_) return S_OK;
                     a->put_Handled(TRUE);
                     uiController_->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                     post(Json::object().set("type", "shortcut").set("key", name));
+                    return S_OK;
+                }).Get(), &t);
+            // Ctrl+wheel zooms the page view (wish W2): a comfort setting, not a protection. The level is the
+            // one of the page pane; a change made here goes to the interface and is remembered.
+            ComPtr<ICoreWebView2Settings> zoomSettings;
+            if (SUCCEEDED(pv_->get_Settings(&zoomSettings)) && zoomSettings) zoomSettings->put_IsZoomControlEnabled(TRUE);
+            pvController_->put_ZoomFactor(pvZoom_);
+            pvController_->add_ZoomFactorChanged(Callback<ICoreWebView2ZoomFactorChangedEventHandler>(
+                [this](ICoreWebView2Controller* c, IUnknown*) -> HRESULT {
+                    double f = 1.0;
+                    if (SUCCEEDED(c->get_ZoomFactor(&f))) onPreviewZoom(f);
                     return S_OK;
                 }).Get(), &t);
             if (pvVisible_ && !pvSegs_.empty()) {
@@ -780,7 +811,10 @@ void App::onUiMessage(const Json& m) {
     if (type == "ready") {
         if (uiReady_) return;
         uiReady_ = true;
-        post(Json::object().set("type", "init").set("version", HSE_VERSION));
+        pvZoom_ = zoomSetting(L"ZoomPage") / 100.0;
+        if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
+        post(Json::object().set("type", "init").set("version", HSE_VERSION)
+                 .set("zoomCode", zoomSetting(L"ZoomCode")).set("zoomPage", zoomSetting(L"ZoomPage")));
         if (!startFile_.empty()) {
             const std::wstring file = startFile_;
             startFile_.clear();
@@ -812,6 +846,20 @@ void App::onUiMessage(const Json& m) {
             pvController_->put_Bounds({0, 0, w, h});
             pvController_->put_IsVisible(pvVisible_ && !pvSegs_.empty());
         }
+    } else if (type == "zoom") {
+        // Display zoom of both panes (wish W2): remembered for the next start; the page view takes its level.
+        // Only the look changes, never the text.
+        const int code = nearestZoomStep(m.at("code").num(kZoomDefault)), page = nearestZoomStep(m.at("page").num(kZoomDefault));
+        writeSetting(L"ZoomCode", std::to_wstring(code));
+        writeSetting(L"ZoomPage", std::to_wstring(page));
+        pvZoom_ = page / 100.0;
+        if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
+#ifdef HSE_TEST_HOOKS
+    } else if (type == "testZoomKey") {
+        // test build only: what Ctrl+plus (1), Ctrl+minus (-1) and Ctrl+0 (0) do in the page view, without
+        // physical input (the key detection itself is not part of this)
+        previewZoomKey(static_cast<int>(m.at("dir").num(0)));
+#endif
     } else if (type == "preview") {
         if (const auto segs = pathSegments(m.at("path").str())) showPreview(*segs, m.at("text").str());
     } else if (type == "openProject") {
@@ -1264,8 +1312,34 @@ void App::resetPreviewLoad() {
     if (pv_ && !pvStart_ && !pvFailed_) pv_->Stop();
 }
 
+// A zoom level chosen in the page view itself (its zoom keys, or the engine's own Ctrl+wheel zoom): set on the
+// controller and, if that worked, committed: `pvZoom_`, `ZoomPage` in HKCU and the interface, so the editable
+// page shows the same level. WebView2 raises ZoomFactorChanged only for the user's own zoom, not for a factor
+// the program sets, so the program commits it here itself (review of alpha.21 by Codex, 2026-11-28).
+void App::commitPreviewZoom(int percent) {
+    const int p = nearestZoomStep(percent);
+    if (!pvController_ || FAILED(pvController_->put_ZoomFactor(p / 100.0))) return;
+    if (std::lround(pvZoom_ * 100) == p) return;  // already the level: nothing to remember or tell
+    pvZoom_ = p / 100.0;
+    writeSetting(L"ZoomPage", std::to_wstring(p));
+    post(Json::object().set("type", "zoom").set("page", p));
+}
+
+// Ctrl+plus (1), Ctrl+minus (-1) or Ctrl+0 (0) in the page view: one step of the shared steps, or 100 %.
+void App::previewZoomKey(int dir) {
+    commitPreviewZoom(dir == 0 ? kZoomDefault : nextZoomStep(pvZoom_ * 100, dir > 0 ? 1 : -1));
+}
+
+// The engine changed the zoom of the page view (the user's Ctrl+wheel there): set to the nearest zoom step (the
+// engine's own steps are not all ours) and committed. A factor the program set itself raises no event.
+void App::onPreviewZoom(double factor) {
+    const int p = nearestZoomStep(factor * 100);
+    if (std::abs(factor - p / 100.0) > 0.001 || std::lround(pvZoom_ * 100) != p) commitPreviewZoom(p);
+}
+
 void App::navigatePreview(std::wstring scroll) {
     if (!pv_ || pvSegs_.empty() || pvStart_ || pvFailed_ || closing_) return;
+    if (pvController_) pvController_->put_ZoomFactor(pvZoom_);
     pvStart_ = PreviewStart{pvGeneration_, kProjectOriginW + toWide(urlPathOf(pvSegs_)), std::move(scroll)};
     const auto url = pvStart_->url;
     if (FAILED(pv_->Navigate(url.c_str()))) {

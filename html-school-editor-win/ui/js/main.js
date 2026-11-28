@@ -3,6 +3,9 @@
 // core places over #pvSlot.
 import { createCodeEditor } from './editor.js';
 import { createVisualEditor } from './visual.js';
+import { createPalette } from './palette.js';
+import { helpBody } from './help.js';
+import { nearestZoom, nextZoom, ZOOM_DEFAULT } from './zoom.js';
 import { addressProblems, PROBLEM_TEXT } from './checks.js';
 import { breaksOfBytes, createBreaks } from './breaks.js';
 import { decodeFileBytes, encodeFileText, escapeAttr, MAX_FILE_BYTES } from './shared/util.js';
@@ -11,8 +14,8 @@ const $ = (id) => document.getElementById(id);
 const els = {};
 for (const id of ['version', 'versionBottom', 'bProject', 'bProject2', 'bNew', 'bOpen', 'bSave', 'bSaveAs', 'bUndo', 'bRedo', 'bFind', 'bPicture', 'bBrowser',
   'docName', 'docState', 'bRescue', 'work', 'projectName', 'bFold', 'files', 'pos', 'findBar', 'findText', 'bFindPrev', 'bFindNext', 'findCount', 'bFindClose',
-  'srcBox', 'gutterIn', 'hlIn', 'src', 'split', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
-  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'visualAlign', 'visualColor']) els[id] = $(id);
+  'srcBox', 'gutterIn', 'hlIn', 'marksIn', 'src', 'split', 'srcPane', 'pvPane', 'notes', 'bNotes', 'noteList', 'pvSlot', 'welcome', 'status', 'dlg', 'dlgTitle', 'dlgBody', 'dlgButtons',
+  'visualFrame', 'visualHint', 'visualTools', 'visualCommands', 'pageTitle', 'bColor', 'colorBar', 'bColorMenu', 'palette', 'bHelp', 'bPickTable']) els[id] = $(id);
 
 const PREVIEW_DELAY = 300;
 const RESCUE_AFTER = 3000;  // a save on its way this long offers a rescue copy
@@ -42,14 +45,17 @@ const state = {
   closePending: false,  // a close request came while a question was open
   seen: 0,              // highest `seq` of a page the core handed over that this interface has handled
   previewTimer: 0,
+  version: '',          // version of the program, from the core
 };
 
 const editor = createCodeEditor(els, onTextChanged);
 let lastPane = 'code';  // where the pupil wrote last: 'page' or 'code' (for "Bild einfügen")
 const visual = createVisualEditor(els, editor, {
   document: () => state.doc, message: setStatus, layout: () => queueMicrotask(() => scheduleLayout()),
-  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut, focused: () => { lastPane = 'page'; },
+  fields: askVisualFields, picture: askPicture, shortcut: handleShortcut, focused: () => { lastPane = 'page'; palette.close(false); },
+  markSource: (range) => editor.markSource(range), zoom: (pane, dir) => zoomStep(pane, dir),
 });
+const palette = createPalette(els, (value) => visual.applyColor(value));
 
 // ---------------------------------------------------------------- small helpers
 
@@ -79,9 +85,9 @@ function bytesOf(base64) {
 const questions = [];
 let questionOpen = false;
 
-function ask(title, body, buttons, onOpen) {
+function ask(title, body, buttons, onOpen, cls) {
   return new Promise((resolve) => {
-    questions.push({ title, body, buttons, onOpen, resolve });
+    questions.push({ title, body, buttons, onOpen, cls, resolve });
     if (!questionOpen) showNextQuestion();
   });
 }
@@ -100,6 +106,7 @@ function showNextQuestion() {
   state.modal = 1;
   reportLayout();
   const d = els.dlg;
+  d.className = q.cls || '';
   els.dlgTitle.textContent = q.title;
   els.dlgBody.replaceChildren(...(typeof q.body === 'string' ? [paragraph(q.body)] : [].concat(q.body)));
   els.dlgButtons.replaceChildren(...q.buttons.map((b) => {
@@ -130,20 +137,34 @@ function paragraph(text, cls) {
 
 const tell = (title, text) => ask(title, text, [{ label: 'OK', value: 'ok', primary: true }]);
 
+// Fields of a dialog of the page side: { label, value } is a text field, { label, check: true } a tick box
+// (its answer is true or false). Returns the answers in the order of the fields, or null.
 async function askVisualFields(title, fields) {
   const wrapper = document.createElement('div');
-  const inputs = fields.map(({ label, value }) => {
+  const inputs = fields.map(({ label, value, check }) => {
     const field = document.createElement('label');
     const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 2048;
-    input.value = value;
-    field.append(label, input);
+    if (check) {
+      input.type = 'checkbox';
+      field.className = 'check';
+      field.append(input, label);
+    } else {
+      input.type = 'text';
+      input.maxLength = 2048;
+      input.value = value;
+      field.append(label, input);
+    }
     wrapper.append(field);
     return input;
   });
   const result = await ask(title, wrapper, [{ label: 'Einfügen', value: 'insert', primary: true }, { label: 'Abbrechen', value: 'cancel' }], () => inputs[0].select());
-  return result === 'insert' ? inputs.map((input) => input.value) : null;
+  return result === 'insert' ? inputs.map((input) => (input.type === 'checkbox' ? input.checked : input.value)) : null;
+}
+
+// "Hilfe": a short guide, the version, the developer and the licences (MIT, WebView2).
+function showHelp() {
+  palette.close(false);
+  ask('Hilfe', helpBody(state.version), [{ label: 'Schließen', value: 'ok', primary: true }], (d) => d.querySelector('button.primary').focus(), 'help');
 }
 
 // Asks what to do with unsaved changes. Returns 'save', 'discard' or 'cancel'.
@@ -163,7 +184,7 @@ function askUnsaved(what) {
 function settlePage() {
   if (visual.flush()) return true;
   tell('Der neue Titel ist noch nicht übernommen',
-    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn rechts im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
+    'Bei dieser Seite kann der Editor den Titel aus dem Titelfeld nicht übernehmen. Ändere ihn links im HTML-Code im Tag <title>, oder drücke im Titelfeld Esc, um ihn zurückzusetzen. Versuche es dann noch einmal.');
   return false;
 }
 
@@ -273,9 +294,9 @@ els.split.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   els.split.setPointerCapture(e.pointerId);
   els.work.classList.add('dragging');
-  // The page pane (left of the divider) gets the width up to the pointer. Its column is a share of the whole
-  // work area, so the divider stays under the pointer; page and code keep at least 200 pixels each.
-  const left = els.pvSlot.closest('section').getBoundingClientRect().left;
+  // The code pane (left of the divider) gets the width up to the pointer. Its column is a share of the whole
+  // work area, so the divider stays under the pointer; code and page keep at least 200 pixels each.
+  const left = els.srcBox.closest('section').getBoundingClientRect().left;
   const work = els.work.getBoundingClientRect();
   const most = Math.max(200, work.right - left - 8 - 200);
   const move = (ev) => {
@@ -586,10 +607,55 @@ async function newPage() {
   }
 }
 
-function insertPicture(src) {
-  const tag = '<img src="' + escapeAttr(src) + '" alt="">';
-  editor.insert(tag, [tag.length - 2, tag.length - 2]);
+// The tag for a picture in the code, with the size of the size step: width and height in pixels as attributes,
+// a width in percent as style (as on the page side).
+function pictureTag(src, size) {
+  let tag = '<img src="' + escapeAttr(src) + '" alt=""';
+  if (size?.width) tag += ' width="' + size.width + '"';
+  if (size?.height) tag += ' height="' + size.height + '"';
+  if (size?.percent) tag += ' style="width: ' + size.percent + '%"';
+  return tag + '>';
+}
+
+function insertPicture(src, size) {
+  const tag = pictureTag(src, size), alt = tag.indexOf('alt=""') + 5;
+  editor.insert(tag, [alt, alt]);
   setStatus('Bild eingefügt. Schreibe bei alt="" in ein paar Wörtern, was auf dem Bild zu sehen ist.');
+}
+
+const PICTURE_FORMATS = 'jpg, png, gif, webp und svg';
+
+// The size step of "Bild einfügen" (wish W10): width and height in pixels, or the width in percent of the space
+// on the page (the height then follows). Empty fields keep the picture's own size. Returns { width, height },
+// { percent }, {} for the own size, or null when cancelled.
+async function askPictureSize(src) {
+  const unit = Object.assign(document.createElement('select'), { id: 'psUnit' });
+  unit.append(new Option('Pixel', 'px'), new Option('Prozent der Breite', '%'));
+  const width = Object.assign(document.createElement('input'), { type: 'text', id: 'psWidth', inputMode: 'numeric', autocomplete: 'off', maxLength: 4 });
+  const height = Object.assign(document.createElement('input'), { type: 'text', id: 'psHeight', inputMode: 'numeric', autocomplete: 'off', maxLength: 4 });
+  const label = (forId, text) => Object.assign(document.createElement('label'), { htmlFor: forId, textContent: text });
+  const err = paragraph('', 'err');
+  unit.addEventListener('change', () => { height.disabled = unit.value === '%'; if (height.disabled) height.value = ''; });
+  for (;;) {
+    const choice = await ask('Bildgröße', [
+      paragraph('Bild: ' + src),
+      paragraph('Lass die Felder leer, dann behält das Bild seine eigene Größe.', 'note'),
+      label('psUnit', 'Maß'), unit, label('psWidth', 'Breite'), width, label('psHeight', 'Höhe'), height,
+      paragraph('Bei Prozent passt sich die Höhe von selbst an. Erlaubte Bildformate: ' + PICTURE_FORMATS + '.', 'note'), err,
+    ], [{ label: 'Einfügen', value: 'ok', primary: true }, { label: 'Abbrechen', value: 'cancel' }], () => width.focus());
+    if (choice !== 'ok') return null;
+    const w = width.value.trim(), h = height.value.trim();
+    const num = (v, most) => (/^[0-9]{1,4}$/.test(v) && +v >= 1 && +v <= most ? +v : null);
+    if (unit.value === '%') {
+      if (!w) return {};
+      const p = num(w, 100);
+      if (p === null) { err.textContent = 'Gib bei Prozent eine Zahl von 1 bis 100 ein.'; continue; }
+      return { percent: p };
+    }
+    const pw = w ? num(w, 4000) : 0, ph = h ? num(h, 4000) : 0;
+    if (pw === null || ph === null) { err.textContent = 'Gib eine ganze Zahl von 1 bis 4000 ein (ohne „px“).'; continue; }
+    return { ...(pw ? { width: pw } : {}), ...(ph ? { height: ph } : {}) };
+  }
 }
 
 // The answer to the picture dialog belongs to the page it was opened for.
@@ -623,7 +689,7 @@ function openFind() {
   els.findText.select();
   scheduleLayout();
 }
-function closeFind() { els.findBar.hidden = true; editor.focus(); scheduleLayout(); }
+function closeFind() { els.findBar.hidden = true; editor.markHits('', -1); editor.focus(); scheduleLayout(); }
 function findStep(dir) {
   const r = editor.find(els.findText.value, dir);
   els.findCount.textContent = !els.findText.value ? '' : r.count ? r.index + ' von ' + r.count : 'nicht gefunden';
@@ -657,15 +723,23 @@ for (const [button, undo] of [[els.bUndo, true], [els.bRedo, false]]) {
   });
 }
 els.bFind.addEventListener('click', openFind);
-function askPicture(insert = insertPicture) {
+// `options.size`: false skips the size step (a picture replaced by a double click keeps its size).
+function askPicture(insert = insertPicture, options = {}) {
   if (!state.doc || editor.locked || !startPicking()) return;
   const op = ++state.opId;
-  state.picture = { op, doc: state.doc, insert };
+  // The place in the code is kept here with the revision of the text: every question on the way (size, a
+  // picture outside the project) puts the caret of the code to its start when it closes, and while a copy runs
+  // the pupil can type on. The place is used only if the text has not changed since.
+  state.picture = { op, doc: state.doc, insert, size: options.size !== false, at: editor.selection, revision: editor.revision };
+  setStatus('Erlaubt sind Bilder im Format ' + PICTURE_FORMATS + '.');
   send({ type: 'pickPicture', op, page: state.doc.path });
 }
 // "Bild einfügen" puts the picture where the pupil wrote last: into the page (reported by the edit frame), or
 // into the HTML code.
-addEventListener('focusin', (e) => { if (e.target === els.src) lastPane = 'code'; });
+// The pupil goes back to the code: the place of the page is no longer marked there.
+addEventListener('focusin', (e) => { if (e.target === els.src) { lastPane = 'code'; editor.markSource(null); } });
+els.bPickTable.addEventListener('pointerdown', (e) => e.preventDefault());
+els.bPickTable.addEventListener('click', () => visual.pickTable());
 els.bPicture.addEventListener('pointerdown', (e) => e.preventDefault());
 els.bPicture.addEventListener('click', () => {
   if (lastPane === 'page' && visual.editing) visual.command('image');
@@ -673,13 +747,44 @@ els.bPicture.addEventListener('click', () => {
 });
 els.bBrowser.addEventListener('click', viewInBrowser);
 els.bRescue.addEventListener('click', rescue);
+els.bHelp.addEventListener('click', showHelp);
+
+// ---------------------------------------------------------------- zoom (wish W2)
+
+// Each pane has its own display zoom. Only the look changes: the code pane's font and line numbers, the page
+// pane's display (a style of the edit frame outside the page's body, and the zoom factor of the native page view,
+// set by the core). The level goes to the core, which remembers it in HKCU.
+const zoom = { code: ZOOM_DEFAULT, page: ZOOM_DEFAULT };
+let zoomTimer = 0;
+function setZoom(pane, percent, tell = true) {
+  const p = nearestZoom(percent);
+  zoom[pane] = p;
+  if (pane === 'code') editor.setZoom(p); else visual.setZoom(p);
+  if (!tell) return;
+  setStatus('Zoom ' + (pane === 'code' ? 'HTML-Code' : 'deine Seite') + ': ' + p + ' %' + (p === ZOOM_DEFAULT ? '' : ' (Strg+0: zurück auf 100 %)'));
+  clearTimeout(zoomTimer);
+  zoomTimer = setTimeout(() => send({ type: 'zoom', code: zoom.code, page: zoom.page }), 250);
+}
+const zoomStep = (pane, dir) => setZoom(pane, nextZoom(zoom[pane], dir));
+// The pane a zoom key means: the page if it comes from the edit frame, the code if the code has the focus,
+// otherwise where the pupil wrote last.
+const paneOf = (e) => (e.target?.ownerDocument && e.target.ownerDocument !== document ? 'page' : els.srcPane.contains(document.activeElement) ? 'code' : lastPane);
+addEventListener('wheel', (e) => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();  // never zoom the whole interface
+  const pane = els.srcPane.contains(e.target) ? 'code' : els.pvPane.contains(e.target) ? 'page' : null;
+  if (pane && e.deltaY) zoomStep(pane, e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
 
 function handleShortcut(e) {
   if (state.modal || e.isComposing) return false;
   const ctrl = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
-  if (ctrl && !e.altKey && key === 's') { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
+  const zoomKey = ctrl && !e.altKey ? { '0': 0, '+': 1, '=': 1, '-': -1 }[e.key] : undefined;
+  if (zoomKey !== undefined) { e.preventDefault(); zoomStep(paneOf(e), zoomKey); }
+  else if (ctrl && !e.altKey && key === 's') { e.preventDefault(); if (e.shiftKey) saveAs(); else save(); }
   else if (ctrl && !e.altKey && key === 'f') { e.preventDefault(); openFind(); }
   else if (e.key === 'F3') { e.preventDefault(); if (els.findBar.hidden) openFind(); else findStep(e.shiftKey ? -1 : 1); }
+  else if (e.key === 'F1' && !ctrl && !e.altKey) { e.preventDefault(); showHelp(); }
   return e.defaultPrevented;
 }
 addEventListener('keydown', handleShortcut);
@@ -695,6 +800,9 @@ function requestClose() {
 
 const handlers = {
   init(m) {
+    if (m.zoomCode) setZoom('code', m.zoomCode, false);
+    if (m.zoomPage) setZoom('page', m.zoomPage, false);
+    state.version = m.version || '';
     els.version.textContent = m.version || '';
     els.versionBottom.textContent = m.version ? 'html-school-editor-win ' + m.version : '';
     updateChrome();
@@ -719,6 +827,9 @@ const handlers = {
     renderNotes();
     reportLayout();
   },
+  // The native page view zoomed itself (Ctrl+wheel, Ctrl+plus, Ctrl+minus, Ctrl+0 there; the core sets the
+  // step and remembers it); the edit frame takes the same level.
+  zoom(m) { if (m.page) setZoom('page', m.page, false); },
   shortcut(m) {
     if (state.modal) return;
     editor.focus();
@@ -769,7 +880,24 @@ const handlers = {
   conflict: saveProblem,
   saveFailed: saveProblem,
   saveCancelled: saveProblem,
-  picture(m) { if (pictureFor(m)) state.picture.insert(m.src); },
+  // The picture chosen in the dialog: after the size step it goes where it was asked for, if that page is
+  // still open and no other picture was asked for meanwhile.
+  async picture(m) {
+    if (!pictureFor(m)) return;
+    const p = state.picture;
+    const size = p.size ? await askPictureSize(m.src) : null;
+    if (p.size && !size) { setStatus('Kein Bild eingefügt.'); return; }
+    if (state.picture !== p || p.doc !== state.doc) return;
+    if (p.insert === insertPicture) {
+      // checked after the last question: text typed meanwhile is never replaced
+      if (editor.revision !== p.revision) {
+        tell('Bild nicht eingefügt', 'Du hast inzwischen im HTML-Code weitergeschrieben. Damit nichts überschrieben wird, ist das Bild nicht eingefügt. Klicke an die Stelle, an die es soll, und wähle es noch einmal mit „Bild einfügen“. Die Bilddatei ist schon in deinem Projektordner.');
+        return;
+      }
+      editor.select(p.at);
+    }
+    p.insert(m.src, size);
+  },
   pictureOutside,
   link(m) {
     if (!state.doc) return;

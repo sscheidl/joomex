@@ -7,6 +7,15 @@
 <style>
 body:focus { outline: none; }
 [data-se-box] { display: inline-block; padding: 4px; border: 1px dashed #adb5bd; color: #495057; }
+/* Links hold their address in data-se-href (never href, so a click goes nowhere); without href the browser draws
+   them as plain text. They look like the browser's own links. :where() keeps the specificity at zero, so every
+   rule of the page for "a" still applies (rules for "a:link" do not: there is no href here). */
+:where(a[data-se-href]) { color: #0000ee; text-decoration: underline; }
+/* Tables in the edit view only: every cell can be clicked and written into, and dashed guide lines show the
+   cells, also without a border. Outlines take no room; the minimum size does. Nothing of this reaches the code. */
+:where(td, th) { min-width: 2.5em; height: 1.6em; outline: 1px dashed #adb5bd; outline-offset: -1px; }
+/* A picture or a table chosen as a whole (a click on it, or "Tabelle markieren"): Delete takes it out. */
+[data-se-picked] { outline: 3px solid #1c7ed6 !important; outline-offset: 2px !important; }
 </style>
 </head>
 <body></body>

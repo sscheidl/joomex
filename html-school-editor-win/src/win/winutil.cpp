@@ -421,7 +421,7 @@ std::optional<std::wstring> pickPictureFile(HWND owner, const std::wstring& star
         {L"Bilder (*.png, *.jpg, *.gif, *.webp, *.svg)", L"*.png;*.jpg;*.jpeg;*.jfif;*.gif;*.webp;*.svg;*.bmp;*.ico;*.avif"},
         {L"Alle Dateien", L"*.*"},
     };
-    return openDialog(owner, start, L"Bild einfügen", FOS_FILEMUSTEXIST, f, 2, fallback);
+    return openDialog(owner, start, L"Bild einfügen (jpg, png, gif, webp, svg)", FOS_FILEMUSTEXIST, f, 2, fallback);
 }
 
 std::optional<std::wstring> pickSaveFile(HWND owner, const std::wstring& start, const std::wstring& name, bool askOverwrite) {

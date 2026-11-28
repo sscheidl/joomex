@@ -68,6 +68,9 @@ private:
     void reloadPreview();
     void resetPreviewLoad();
     void navigatePreview(std::wstring scroll = {});
+    void onPreviewZoom(double factor);
+    void commitPreviewZoom(int percent);
+    void previewZoomKey(int dir);
     void finishPreviewNavigation(ICoreWebView2NavigationCompletedEventArgs* args);
     void finishPreviewRequests(bool edit = false);
     void failEditView();
@@ -134,6 +137,7 @@ private:
     UINT64 pvGeneration_ = 0;
     std::optional<PreviewStart> pvStart_;
     std::optional<UINT64> pvNavigationId_;
+    double pvZoom_ = 1.0;  // display zoom of the page view (wish W2), remembered in HKCU as "ZoomPage"
     std::shared_ptr<FileCache> pvCache_;
     std::shared_ptr<FileCache> editCache_;
     bool pvReadingScroll_ = false;

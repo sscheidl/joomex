@@ -49,6 +49,8 @@ Use `HSE_TEST_RESOLVE_DELAY_MS=5000` in a test build to make resolving the proje
 
 Use `HSE_TEST_PICK_DELAY_MS=6000` in a test build to hold back the check of a file chosen in the page or picture dialog, so a late answer can be tested (F-14).
 
+A test build also accepts the web message `{ type: 'testZoomKey', dir }` from the interface (for example sent through DevTools): it runs what Ctrl+plus (`dir` 1), Ctrl+minus (-1) and Ctrl+0 (0) do in the native page view, without physical input. The release build does not contain it.
+
 ## Tests without Windows
 
 The portable core and the user interface can be tested on any computer:
