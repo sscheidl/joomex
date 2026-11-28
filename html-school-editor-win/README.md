@@ -1,8 +1,8 @@
-# HTML School Editor for Windows
+# Markup Ninja: HTML School Editor for Windows
 
 A small Windows program in which pupils of about 12–13 years learn HTML: the code in the middle and the page on the right, exactly as Microsoft Edge shows it, and they write in either. Pictures and links are found relative to the page, as in a browser, because the page is loaded from its real place in the pupil's project folder.
 
-**State:** 0.1.0-alpha.22 on `main` (2026-11-28, PR #33): stage 1 with the stage 2 pilot, the two-row header, the code in the middle again, and the owner's collection of 2026-11-27 (help, line break, alignment buttons, colour palette, link options, zoom, the place of the page in the code, choosing pictures and tables, picture size, fixes, and the findings of the reviews of alpha.20 and alpha.21); not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
+**State:** 0.1.0-alpha.23 on a branch (2026-11-28): the owner's branding "Markup Ninja" (name, look, icon, help picture) on top of alpha.22, which is on `main` (PR #33); not reviewed yet; not yet for pupils' files. See [docs/STATUS.md](docs/STATUS.md) and [docs/BUILD.md](docs/BUILD.md).
 
 | Document | Content |
 | --- | --- |

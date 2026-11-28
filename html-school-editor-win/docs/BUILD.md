@@ -60,6 +60,14 @@ cmake -S . -B build && cmake --build build && ctest --test-dir build   # core: p
 node --test --test-concurrency=1 "tests/ui/*.test.mjs"                  # interface in Chromium, with a mock of the core
 ```
 
+From the repository root, the tests of the publication check's exception for the branding pictures (they need Git and Python 3):
+
+```bash
+python -m unittest scripts/test_check_publication.py
+```
+
+A new or changed branding picture needs its entry in `branding-assets.json`: its SHA-256, a size cap of at most 1 MiB, and where it comes from. The program's icon is `src/win/markup-ninja.ico`; the build puts it into the exe as resource `APPICON`.
+
 The interface tests need Playwright with Chromium (`npm install -g playwright` and `npx playwright install chromium`). They replace the C++ core by a labelled mock; the real core, the page view and files are not part of them.
 
 ## What to try by hand after a build

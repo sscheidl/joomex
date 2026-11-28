@@ -92,13 +92,18 @@ const el = (tag, props, ...kids) => { const e = Object.assign(document.createEle
 
 export function helpBody(version) {
   const box = el('div', { className: 'helpText' });
+  // The hero of the branding (an approved picture of the owner's brief, shown as it is, without cropping)
+  box.append(el('img', {
+    className: 'helpHero', src: 'assets/ninja-hero.webp', width: 1536, height: 1024, decoding: 'async',
+    alt: 'Markup Ninja: Ein lächelnder Ninja mit Schwert auf dem Rücken reicht dir die Hand. Daneben das Logo und der Satz „Master the Art of HTML.“',
+  }));
   for (const [head, items] of GUIDE) {
     box.append(el('h4', { textContent: head }));
     box.append(el('ul', null, ...items.map((item) => (Array.isArray(item) ? el('li', null, item[0] + ': ', el('kbd', { textContent: item[1] })) : el('li', { textContent: item })))));
   }
   box.append(
     el('h4', { textContent: 'Über dieses Programm' }),
-    el('p', { textContent: 'HTML-Schuleditor für Windows' + (version ? ', Version ' + version : '') }),
+    el('p', { textContent: 'Markup Ninja – der HTML-Editor für die Schule (Windows)' + (version ? ', Version ' + version : '') }),
     el('p', { textContent: 'Entwickelt von ' + DEVELOPER + ', ' + YEAR + '.' }),
     el('p', { textContent: 'Das Programm ist freie Software unter der MIT-Lizenz:' }),
     el('pre', { textContent: MIT }),

@@ -1,6 +1,9 @@
 #pragma code_page(65001)
 #include <windows.h>
 
+// the icon of the exe and of its window (wc.hIcon in app.cpp loads it by this name)
+APPICON ICON "@HSE_ICON_RC_PATH@"
+
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
  PRODUCTVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
@@ -14,9 +17,9 @@ BEGIN
     BEGIN
         BLOCK "040704b0"
         BEGIN
-            VALUE "FileDescription", "HTML-Schuleditor"
+            VALUE "FileDescription", "Markup Ninja"
             VALUE "FileVersion", "@HSE_VERSION@"
-            VALUE "ProductName", "HTML School Editor for Windows"
+            VALUE "ProductName", "Markup Ninja"
             VALUE "ProductVersion", "@HSE_VERSION@"
             VALUE "LegalCopyright", "MIT licence"
             VALUE "OriginalFilename", "HtmlSchulEditor.exe"

@@ -8,6 +8,10 @@ sources that differ from HEAD are findings. Entry count and declared sizes are b
 not depend on the archive's compression. The check imports each project's build.py: run it only on a trusted checkout.
 
 * binary files only under */media/vendor/ and only when the file's SHA-256 matches that project's dependencies.json
+* one exception (owner's decision of 2026-11-27, issue #34): the first-party branding graphics of html-school-editor-win/
+  listed in html-school-editor-win/branding-assets.json, only at the approved paths (ui/assets/<name>.png|webp|jpg|ico
+  and src/win/markup-ninja.ico), each with its SHA-256, a size cap of at most 1 MiB and a content signature that
+  matches its suffix; the private deny-list still scans them
 * no file above 1 MiB unless it is such a verified vendor file
 * no local absolute paths (user profiles, home directories), no e-mail addresses except example/noreply domains
 * no credential-like strings (tokens, private keys)
@@ -79,6 +83,76 @@ def load_denylist(path: str | None, root: Path) -> list[tuple[str, re.Pattern]]:
         rx = re.compile(line[3:], re.I) if line.startswith('re:') else re.compile(re.escape(line), re.I)
         terms.append((f'deny-list #{len(terms) + 1}', rx))   # never print the term itself
     return terms
+
+
+# ---------------------------------------------------------------- first-party branding graphics (issue #34)
+# The one exception to "no binaries outside verified vendor files": the Markup Ninja graphics of the Windows editor.
+# Scope, path pattern and file types are fixed here; the manifest only pins the files (path, SHA-256, size cap).
+BRANDING_MANIFEST = 'html-school-editor-win/branding-assets.json'
+BRANDING_DIR = 'html-school-editor-win/ui/assets/'
+BRANDING_ICON = 'html-school-editor-win/src/win/markup-ninja.ico'
+BRANDING_TYPES = {'.png': 'png', '.webp': 'webp', '.jpg': 'jpeg', '.jpeg': 'jpeg', '.ico': 'ico'}
+BRANDING_NAME = re.compile(r'[a-z0-9][a-z0-9-]{0,63}\.(?:png|webp|jpe?g|ico)')
+
+
+def branding_path_ok(name: str) -> bool:
+    """True only for the approved places: the native icon, or a plain file name directly in ui/assets/."""
+    if name == BRANDING_ICON:
+        return True
+    return name.startswith(BRANDING_DIR) and BRANDING_NAME.fullmatch(name[len(BRANDING_DIR):]) is not None
+
+
+def signature_type(data: bytes) -> str | None:
+    """The picture type the content really is (by its signature), or None."""
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'png'
+    if len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return 'webp'
+    if data.startswith(b'\xff\xd8\xff'):
+        return 'jpeg'
+    if len(data) >= 6 and data[:4] == b'\x00\x00\x01\x00' and int.from_bytes(data[4:6], 'little') > 0:
+        return 'ico'
+    return None
+
+
+def load_branding(root: Path, findings: list[str]) -> dict[str, dict]:
+    """The approved branding files: path -> {sha256, max_bytes}. Entries outside the scope are findings and are not approved."""
+    manifest = root / BRANDING_MANIFEST
+    if not manifest.is_file():
+        return {}
+    try:
+        entries = json.loads(manifest.read_text(encoding='utf-8'))['files']
+        if not isinstance(entries, dict):
+            raise ValueError('"files" is not an object')
+    except (ValueError, KeyError, TypeError) as error:
+        findings.append(f'{BRANDING_MANIFEST}: not readable ({error})')
+        return {}
+    approved = {}
+    for name, entry in entries.items():
+        cap = entry.get('max_bytes') if isinstance(entry, dict) else None
+        if not branding_path_ok(name):
+            problem = 'path outside the approved branding scope'
+        elif not isinstance(entry, dict) or not isinstance(entry.get('sha256'), str) or not re.fullmatch(r'[0-9a-f]{64}', entry['sha256']):
+            problem = 'no valid sha256'
+        elif not isinstance(cap, int) or isinstance(cap, bool) or not 0 < cap <= MAX_BYTES:
+            problem = f'max_bytes must be a whole number from 1 to {MAX_BYTES}'
+        else:
+            approved[name] = entry
+            continue
+        findings.append(f'{BRANDING_MANIFEST}: {name}: {problem}')
+    return approved
+
+
+def branding_problem(name: str, data: bytes, entry: dict) -> str:
+    """Why an approved branding file is not acceptable as it is, or ''."""
+    want = BRANDING_TYPES[Path(name).suffix.lower()]
+    if signature_type(data) != want:
+        return f'content is not a {want} file'
+    if len(data) > entry['max_bytes']:
+        return f'larger than its cap of {entry["max_bytes"]} bytes'
+    if hashlib.sha256(data).hexdigest() != entry['sha256']:
+        return f'does not match its SHA-256 in {BRANDING_MANIFEST}'
+    return ''
 
 
 def scan_bytes(name: str, data: bytes, rules, findings: list[str]) -> None:
@@ -192,6 +266,7 @@ def main() -> int:
     rules = GENERIC + load_denylist(args.denylist, root)
     vendor = vendor_hashes(root)
     findings: list[str] = []
+    branding = load_branding(root, findings)
     files = repo_files(root)
     files = [name for name in files if (root / name).is_file()]   # tracked files deleted in the working tree are not published
     for name in files:
@@ -202,12 +277,22 @@ def main() -> int:
         verified = vendor.get(name) == hashlib.sha256(data).hexdigest()
         if name in vendor and not verified:
             findings.append(f'{name}: vendor file does not match dependencies.json')
-        if is_binary(data) and not verified:
+        approved = False
+        if name in branding:
+            problem = branding_problem(name, data, branding[name])
+            if problem:
+                findings.append(f'{name}: approved branding asset: {problem}')
+            approved = not problem
+        if is_binary(data) and not verified and not approved:
             findings.append(f'{name}: binary file outside verified vendor files')
         if len(data) > MAX_BYTES and not verified:
             findings.append(f'{name}: larger than {MAX_BYTES} bytes')
-        if not (verified and is_binary(data)):   # hash-pinned third-party binaries are not text-scanned
+        if approved and is_binary(data):     # first-party graphics: the private deny-list still applies
+            scan_bytes(name, data, rules[len(GENERIC):], findings)
+        elif not (verified and is_binary(data)):   # hash-pinned third-party binaries are not text-scanned
             scan_bytes(name, data, rules if not verified else rules[len(GENERIC):], findings)
+    for name in sorted(set(branding) - set(files)):
+        findings.append(f'{name}: listed in {BRANDING_MANIFEST} but missing')
     if args.zip:
         # Archive membership comes from committed files only, and a package source that differs from HEAD cannot
         # vouch for an archive's identity (N18-3).

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(HtmlSchoolEditorWin VERSION 0.1.0 LANGUAGES CXX)
 
 # The full version with its pre-release label; every exe that leaves the repository has its own.
-set(HSE_VERSION "0.1.0-alpha.22")
+set(HSE_VERSION "0.1.0-alpha.23")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -74,6 +74,12 @@ foreach(I RANGE ${UI_LAST})
     set(CT "text/css; charset=utf-8")
   elseif(EXT STREQUAL ".js")
     set(CT "text/javascript; charset=utf-8")
+  elseif(EXT STREQUAL ".svg")
+    set(CT "image/svg+xml")
+  elseif(EXT STREQUAL ".webp")
+    set(CT "image/webp")
+  elseif(EXT STREQUAL ".png")
+    set(CT "image/png")
   else()
     set(CT "application/octet-stream")
   endif()
@@ -84,7 +90,13 @@ endforeach()
 file(WRITE "${GEN}/ui_resources.rc" "${UI_RC}")
 file(WRITE "${GEN}/ui_resources.inc" "${UI_INC}")
 set_source_files_properties("${GEN}/ui_resources.rc" PROPERTIES OBJECT_DEPENDS "${UI_DEPS}")
+# The native icon (branding, branding-assets.json): an absolute path in the generated resource script, and a rebuild
+# of the resources when only the icon changes.
+set(HSE_ICON "${CMAKE_SOURCE_DIR}/src/win/markup-ninja.ico")
+file(TO_NATIVE_PATH "${HSE_ICON}" HSE_ICON_RC_PATH)
+string(REPLACE "\\" "\\\\" HSE_ICON_RC_PATH "${HSE_ICON_RC_PATH}")
 configure_file(src/win/app.rc.in "${GEN}/app.rc" @ONLY)
+set_source_files_properties("${GEN}/app.rc" PROPERTIES OBJECT_DEPENDS "${HSE_ICON}")
 
 # ---------------------------------------------------------------- the program
 

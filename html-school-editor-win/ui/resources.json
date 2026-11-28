@@ -9,6 +9,8 @@
     "/js/palette.js": "ui/js/palette.js",
     "/js/help.js": "ui/js/help.js",
     "/js/zoom.js": "ui/js/zoom.js",
+    "/assets/ninja-logo.svg": "ui/assets/ninja-logo.svg",
+    "/assets/ninja-hero.webp": "ui/assets/ninja-hero.webp",
     "/js/editor.js": "ui/js/editor.js",
     "/js/checks.js": "ui/js/checks.js",
     "/js/breaks.js": "ui/js/breaks.js",

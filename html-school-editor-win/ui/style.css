@@ -1,5 +1,9 @@
 :root {
-  --ink: #212529; --soft: #5c6670; --line: #ced4da; --panel: #f4f6f8; --accent: #1864ab; --accent-ink: #fff;
+  /* Markup Ninja palette (owner's branding brief of 2026-11-27): light neutral chrome, deep teal for actions,
+     bright cyan only in the artwork. Contrast of text on its background at least 4.5:1, focus ring at least 3:1. */
+  --ink: #172536; --soft: #526579; --line: #c7d4df; --panel: #edf3f6; --accent: #0e7490; --accent-ink: #fff;
+  --accent-hover: #155e75; --hover-bg: #e4f2f4; --selected-bg: #d5f0f0; --focus-ring: #0d9488; --inactive: #8293a3;
+  --navy: #142033;
   --warn-bg: #fff4d6; --warn-ink: #664d03; --code: 14px/20px Consolas, "Cascadia Mono", "Lucida Console", "Courier New", monospace;
 }
 * { box-sizing: border-box; }
@@ -8,15 +12,15 @@ body { display: flex; flex-direction: column; color: var(--ink); background: var
 [hidden] { display: none !important; }
 
 button { font: inherit; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
-button:hover:not(:disabled) { border-color: var(--accent); background: #edf4fb; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #74c0fc; outline-offset: 1px; }
-button:disabled { color: #adb5bd; cursor: default; }
+button:hover:not(:disabled) { border-color: var(--accent); background: var(--hover-bg); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+button:disabled { color: var(--inactive); cursor: default; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #124f88; }
-button.primary:disabled { background: #a5c4e0; border-color: #a5c4e0; color: #fff; }
-button.insert { background: #e7f5ff; border-color: #74c0fc; color: #0b5394; font-weight: 600; }
-button.insert:hover:not(:disabled) { background: #d0ebff; border-color: #339af0; }
-button.insert:disabled { background: #f1f8fe; border-color: #cfe6fb; }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+button.primary:disabled { background: #a6c8ce; border-color: #a6c8ce; color: #405866; }
+button.insert { background: #e0f4f4; border-color: #78bec7; color: var(--accent-hover); font-weight: 600; }
+button.insert:hover:not(:disabled) { background: #c9eaec; border-color: var(--accent); }
+button.insert:disabled { background: #f1f7f8; border-color: var(--line); color: var(--inactive); }
 button.small { padding: 1px 8px; font-size: 13px; }
 
 /* Header: two rows across the window. Every control of both rows has the same height. */
@@ -25,8 +29,12 @@ button.small { padding: 1px 8px; font-size: 13px; }
 #top .bar { display: flex; align-items: center; gap: 8px; padding: 5px 12px; flex-wrap: wrap; }
 #topFiles { flex-wrap: nowrap; }
 #topEdit { border-top: 1px solid var(--line); background: var(--panel); }
-.brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: 4px; }
-.brand strong { font-size: 17px; color: var(--accent); white-space: nowrap; }
+/* The wordmark: the logo (30 pixels, decorative next to the name) and "Markup" in navy, "Ninja" in deep teal. */
+.brand { display: flex; align-items: center; gap: 7px; margin-right: 4px; }
+.brand img { flex: none; width: 30px; height: 30px; object-fit: contain; }
+.brandText { display: flex; flex-direction: column; line-height: 1.15; }
+.brand strong { font-size: 17px; color: var(--navy); white-space: nowrap; }
+.brand strong .w2 { color: var(--accent); }
 .brand small { font-size: 11px; color: var(--soft); }
 .group { display: inline-flex; align-items: center; gap: 3px; }
 #top .bar > .group, #visualTools > .group, #visualCommands > .group { padding-left: 8px; border-left: 1px solid var(--line); }
@@ -41,12 +49,12 @@ button.primary .ic { stroke: var(--accent-ink); }
 .gl.bold { font-weight: 800; } .gl.italic { font-style: italic; font-family: Georgia, serif; } .gl.underline { text-decoration: underline; }
 .gl.mark { background: #ffec99; padding: 0 2px; border-radius: 2px; } .gl.p, .gl.h1, .gl.h2, .gl.h3 { font-weight: 700; font-size: 13px; }
 #top select { font: inherit; font-size: 14px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 0 6px; }
-#top select:disabled { color: #adb5bd; }
+#top select:disabled { color: var(--inactive); }
 .titleField label { font-size: 14px; color: var(--soft); margin-right: 4px; white-space: nowrap; }
 #pageTitle { width: 11em; max-width: 22vw; font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 0 7px; }
 #pageTitle:disabled { background: #f1f3f5; }
 #pageTitle[readonly] { background: #f8f9fa; color: var(--soft); }
-#visualCommands [aria-pressed="true"] { background: #d0ebff; border-color: var(--accent); }
+#visualCommands [aria-pressed="true"] { background: var(--selected-bg); border-color: var(--accent); }
 .doc { flex: 1 1 0; justify-content: flex-end; display: flex; gap: 10px; align-items: center; min-width: 0; }
 /* Narrow windows (for example 1366 pixels at 100 % or at 120 %): the first row keeps "Projektordner öffnen" and "Speichern"
    with text, the other file buttons show their symbol with the tooltip and accessible name. */
@@ -81,8 +89,8 @@ button.primary .ic { stroke: var(--accent-ink); }
 #palette .palWide { display: block; width: 100%; margin-top: 6px; font-size: 13px; padding: 3px 8px; text-align: left; }
 .offscreen { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
 #docName { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; min-width: 7em; flex: 0 1 auto; }
-#docState { font-size: 13px; font-weight: 700; color: #2b8a3e; white-space: nowrap; }
-#docState.dirty { color: #d9480f; }
+#docState { font-size: 13px; font-weight: 700; color: #237235; white-space: nowrap; }
+#docState.dirty { color: #b53b0c; }
 #bRescue { font-size: 13px; background: var(--warn-bg); border-color: #f0c36d; color: var(--warn-ink); font-weight: 600; }
 #dlgBody p.path { font: var(--code); word-break: break-all; user-select: text; background: #f1f3f5; padding: 4px 8px; border-radius: 4px; }
 
@@ -92,7 +100,7 @@ button.primary .ic { stroke: var(--accent-ink); }
 #work.folded { --proj: 34px; }
 #work.dragging textarea { pointer-events: none; }
 section, aside { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #fff; }
-aside { border-right: 1px solid var(--line); background: #fafbfc; }
+aside { border-right: 1px solid var(--line); background: #f5f8fa; }
 .paneHead { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); min-height: 36px; }
 .paneHead button.small { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
 .paneHead button.small .ic { width: 15px; height: 15px; }
@@ -103,15 +111,15 @@ aside { border-right: 1px solid var(--line); background: #fafbfc; }
 #work.folded #projectPane h2, #work.folded #files { display: none; }
 .hint { font-size: 13px; color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #split { background: var(--line); cursor: col-resize; touch-action: none; }
-#split:hover { background: #74c0fc; }
+#split:hover { background: var(--focus-ring); }
 
 #files { list-style: none; margin: 0; padding: 6px 0; overflow: auto; flex: 1; font-size: 14px; }
 #files li { padding: 2px 8px 2px calc(10px + var(--depth, 0) * 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #files li.folder { color: var(--soft); font-weight: 600; }
 #files li.file { cursor: default; }
 #files li.page { cursor: pointer; color: var(--accent); }
-#files li.page:hover { background: #edf4fb; }
-#files li.current { background: #d0ebff; font-weight: 600; }
+#files li.page:hover { background: var(--hover-bg); }
+#files li.current { background: var(--selected-bg); color: var(--accent-hover); font-weight: 600; }
 #files li .kind { display: inline-block; width: 1.3em; color: var(--soft); }
 
 #findBar { display: flex; gap: 4px; align-items: center; padding: 4px 8px; border-bottom: 1px solid var(--line); background: #fff9db; }
@@ -119,7 +127,7 @@ aside { border-right: 1px solid var(--line); background: #fafbfc; }
 
 /* --code-size, --code-line and --gutter are set by the code zoom (editor.js setZoom); 14/20/46 pixels at 100 %. */
 #srcBox { position: relative; flex: 1; min-height: 0; overflow: hidden; font: var(--code-size, 14px) / var(--code-line, 20px) Consolas, "Cascadia Mono", "Lucida Console", "Courier New", monospace; background: #fff; }
-#gutter { position: absolute; left: 0; top: 0; bottom: 0; width: var(--gutter, 46px); overflow: hidden; background: #f1f3f5; color: #868e96; text-align: right; user-select: none; border-right: 1px solid #e9ecef; }
+#gutter { position: absolute; left: 0; top: 0; bottom: 0; width: var(--gutter, 46px); overflow: hidden; background: var(--panel); color: var(--soft); text-align: right; user-select: none; border-right: 1px solid #dce5ec; }
 #gutterIn { padding: 8px 7px 8px 0; white-space: pre; }
 #hl, #src { position: absolute; left: var(--gutter, 46px); top: 0; width: calc(100% - var(--gutter, 46px)); height: 100%; margin: 0; border: 0; padding: 8px; font: inherit; letter-spacing: 0; white-space: pre; tab-size: 2; }
 #hl { overflow: hidden; pointer-events: none; color: var(--ink); }
@@ -128,15 +136,15 @@ aside { border-right: 1px solid var(--line); background: #fafbfc; }
 #marksIn { position: relative; }
 #marksIn > i { position: absolute; height: var(--code-line, 20px); border-radius: 2px; background: #ffe066; }
 #marksIn > i.now { background: #ff922b; }
-#marksIn > i.src { background: #d0ebff; box-shadow: inset 0 -2px 0 #74c0fc; }
+#marksIn > i.src { background: var(--selected-bg); box-shadow: inset 0 -2px 0 var(--focus-ring); }
 #hlIn { width: max-content; min-width: 100%; }
 #hlIn > div { height: var(--code-line, 20px); }
 #src { display: block; resize: none; outline: none; overflow: auto; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #000; overflow-wrap: normal; }
-#src::selection { background: rgba(51, 154, 240, .35); color: transparent; }
+#src::selection { background: rgba(14, 116, 144, .25); color: transparent; }
 #srcBox.plain #hl { display: none; }
 #srcBox.plain #src { color: var(--ink); -webkit-text-fill-color: var(--ink); }
-.tg { color: #1864ab; } .an { color: #c2410c; } .av { color: #2b8a3e; } .cm { color: #868e96; font-style: italic; }
-.dt { color: #868e96; } .en { color: #9c36b5; } .rw { color: #495057; } .er { color: #c92a2a; text-decoration: underline wavy; }
+.tg { color: #0e7490; } .an { color: #c2410c; } .av { color: #237235; } .cm { color: #64748b; font-style: italic; }
+.dt { color: #64748b; } .en { color: #9c36b5; } .rw { color: #495057; } .er { color: #c92a2a; text-decoration: underline wavy; }
 
 #notes { border-bottom: 1px solid #ffe066; background: var(--warn-bg); color: var(--warn-ink); font-size: 14px; max-height: 40%; overflow: auto; }
 .notesHead { width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; color: inherit; font-weight: 600; padding: 4px 12px; }
@@ -154,7 +162,7 @@ aside { border-right: 1px solid var(--line); background: #fafbfc; }
 #welcome strong { color: var(--ink); font-size: 17px; }
 #welcome button { margin-top: 14px; }
 
-#bottom { display: flex; justify-content: space-between; gap: 12px; padding: 3px 12px; font-size: 13px; color: var(--soft); background: #fff; border-top: 1px solid var(--line); }
+#bottom { display: flex; justify-content: space-between; gap: 12px; padding: 3px 12px; font-size: 13px; color: var(--soft); background: #f5f8fa; border-top: 1px solid var(--line); }
 #status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #status.warn { color: #c92a2a; font-weight: 600; }
 
@@ -167,7 +175,8 @@ dialog input[type="text"], dialog select { width: 100%; font: inherit; padding: 
 dialog .code { margin: 8px 0 0; padding: 6px 9px; border-radius: 6px; background: #f1f3f5; font-family: Consolas, "Courier New", monospace; font-size: 13px; overflow-wrap: anywhere; }
 dialog label.check { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 8px 0 0; }
 dialog label.check input { width: 18px; height: 18px; margin: 0; }
-dialog.help { max-width: min(640px, 94vw); width: 640px; }
+dialog.help { max-width: min(660px, 92vw); width: 660px; max-height: 90vh; }
+.helpHero { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto 10px; border-radius: 8px; object-fit: contain; }
 .helpText { max-height: min(62vh, 560px); overflow: auto; padding-right: 6px; font-size: 14px; }
 .helpText h4 { margin: 14px 0 4px; font-size: 15px; }
 .helpText ul { margin: 4px 0; padding-left: 20px; }
