@@ -7,10 +7,11 @@ export const ZOOM_DEFAULT = 100;
 
 // The nearest step to `percent` (a level remembered by an older version, or set by the engine's own zoom of the
 // native page view, can lie between two steps).
+// The same rule as nearestZoomStep in src/core/zoom.hpp: a tie goes to the lower step.
 export function nearestZoom(percent) {
   const p = Number(percent);
-  if (!Number.isFinite(p)) return ZOOM_DEFAULT;
-  return ZOOM_STEPS.reduce((best, s) => (Math.abs(s - p) < Math.abs(best - p) ? s : best), ZOOM_DEFAULT);
+  if (!Number.isFinite(p) || p <= 0) return ZOOM_DEFAULT;
+  return ZOOM_STEPS.reduce((best, s) => (Math.abs(s - p) < Math.abs(best - p) ? s : best), ZOOM_STEPS[0]);
 }
 
 // One step up (dir 1) or down (dir -1) from `percent`; dir 0 is the default.

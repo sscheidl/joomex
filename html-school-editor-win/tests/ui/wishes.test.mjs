@@ -384,7 +384,7 @@ test('W2: Ctrl+wheel zooms each pane on its own, Ctrl+0 resets, the level goes t
   assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '0.8');
   await ui2.deliver({ type: 'zoom', page: 110 });
   assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '1.1');
-  await ui2.deliver({ type: 'shortcut', key: 'zoomReset' });
+  await ui2.deliver({ type: 'zoom', page: 100 });  // Ctrl+0 in the native page view: the core sets 100 and says so
   assert.equal(await ui2.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '1', 'Ctrl+0 in the native page view');
   for (const u of [ui, ui2]) assert.deepEqual(u.errors, []);
 });
@@ -522,5 +522,91 @@ test('W12: a table is chosen as a whole and marked in the code; Delete takes it 
   assert.equal(await ui.frame.locator('table').getAttribute('data-se-picked'), '');
   await ui.page.keyboard.press('Backspace');
   assert.doesNotMatch(await ui.text(), /<table/);
+  assert.deepEqual(ui.errors, []);
+});
+
+// ---------------------------------------------------------------- review of alpha.20 by Codex (2026-11-28)
+
+test('review of alpha.20, finding 1: a late picture never replaces code typed while it was on its way', async () => {
+  const source = '<!DOCTYPE html>\r\n<title>T</title>\r\n<p>abcDEFghi</p>\r\n';
+  const ui = await openPage(source);
+  const at = (await ui.text()).indexOf('DEF');
+  await ui.page.click('#src');
+  await ui.page.evaluate((a) => document.getElementById('src').setSelectionRange(a, a + 3), at);
+  await ui.page.click('#bPicture');
+  // a picture outside the project: the copy is confirmed and runs (on Windows on a worker)
+  await ui.pictureReply({ type: 'pictureOutside', name: 'review.png', token: 't1' });
+  await ui.page.waitForSelector('dialog[open]');
+  await ui.answer('dialog button.primary');
+  // meanwhile the pupil types in the code
+  await ui.page.click('#src');
+  await ui.page.evaluate((a) => document.getElementById('src').setSelectionRange(a, a), at);
+  await ui.page.keyboard.type('123');
+  // the copy's answer, then the size step
+  await ui.pictureReply({ type: 'picture', src: 'bilder/review.png' }, true);
+  await ui.page.waitForFunction(() => document.getElementById('dlgTitle').textContent === 'Bildgröße');
+  await ui.answer('#dlg button[value="ok"]');
+  await ui.page.waitForSelector('dialog[open]');
+  assert.equal(await ui.page.textContent('#dlgTitle'), 'Bild nicht eingefügt');
+  assert.match(await ui.text(), /<p>abc123DEFghi<\/p>/, 'the typed text and the selection stay');
+  assert.doesNotMatch(await ui.text(), /<img/);
+  // without typing in between, the picture goes to the place as before (V-14)
+  await ui.answer('#dlg button[value="ok"]');
+  await ui.deliver({ type: 'dialogDone' });
+  const at2 = (await ui.text()).indexOf('ghi');
+  await ui.page.click('#src');
+  await ui.page.evaluate((a) => document.getElementById('src').setSelectionRange(a, a), at2);
+  await ui.page.click('#bPicture');
+  await ui.pictureReply({ type: 'picture', src: 'bilder/review.png' });
+  assert.match(await ui.text(), /<p>abc123DEF<img src="bilder\/review\.png" alt="">ghi<\/p>/);
+  assert.deepEqual(ui.errors, []);
+});
+
+test('review of alpha.20, finding 2: Enter takes away spaces only at its own split, never written or kept ones', async () => {
+  // Enter in an empty list item ends the list; the paragraph before it is not touched
+  const ui = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Leave this&nbsp;</p><ul><li><br></li></ul>\r\n');
+  await ui.frame.locator('li').click();
+  await ui.page.keyboard.press('Enter');
+  assert.match(await ui.text(), /<p>Leave this&nbsp;<\/p>/, JSON.stringify(await ui.text()));
+  // a paragraph that keeps its spaces (pre-wrap): split after three spaces, all three stay
+  const ui2 = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p style="white-space: pre-wrap">eins   zwei</p>\r\n');
+  await caret(ui2, 'p', 7);
+  await ui2.page.keyboard.press('Enter');
+  assert.match(await ui2.text(), /<p style="white-space: pre-wrap">eins {3}<\/p>/, JSON.stringify(await ui2.text()));
+  await caret(ui2, 'p', 7);
+  // a no-break space written in the code at the end of a paragraph, Enter at the very end: it stays
+  const ui3 = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Seite&nbsp;</p>\r\n');
+  await caret(ui3, 'p', 6);
+  await ui3.page.keyboard.press('Enter');
+  await ui3.page.keyboard.type('x');
+  assert.match(await ui3.text(), /<p>Seite&nbsp;<\/p>\s*<p>x<\/p>/, JSON.stringify(await ui3.text()));
+  // the same with Shift+Enter
+  const ui4 = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Seite&nbsp;mehr</p>\r\n');
+  await caret(ui4, 'p', 6);
+  await ui4.page.keyboard.press('Shift+Enter');
+  assert.match(await ui4.text(), /<p>Seite&nbsp;<br>mehr<\/p>/, JSON.stringify(await ui4.text()));
+  // the original case still works: ordinary spaces at a split go (B3)
+  const ui5 = await openPage('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>Der schnelle Fuchs</p>\r\n');
+  await caret(ui5, 'p', 4);
+  await ui5.page.keyboard.press('Enter');
+  assert.match(await ui5.text(), /<p>Der<\/p>\s*<p>schnelle Fuchs<\/p>/);
+  for (const u of [ui, ui2, ui3, ui4, ui5]) assert.deepEqual(u.errors, []);
+});
+
+test('review of alpha.20, finding 3: one list of zoom steps for the edit frame, the native page view and HKCU', async () => {
+  const { ZOOM_STEPS, nearestZoom, nextZoom } = await import('../../ui/js/zoom.js');
+  const header = fs.readFileSync(path.join(ROOT, 'src', 'core', 'zoom.hpp'), 'utf8');
+  const native = /kZoomSteps\{([^}]*)\}/.exec(header)[1].split(',').map((x) => Number(x.trim()));
+  assert.deepEqual(ZOOM_STEPS, native, 'the same steps as the core');
+  // the same rounding as nearestZoomStep in the core (tests/core/core_tests.cpp)
+  for (const [p, want] of [[144, 150], [137.5, 125], [66.67, 67], [33, 50], [250, 200], [0, 100], [-5, 100], [NaN, 100]]) assert.equal(nearestZoom(p), want, String(p));
+  assert.equal(nextZoom(144, 1), 175);
+  // an off-step level from the core is shown as its step
+  const ui = await openUi(browser);
+  await ui.deliver({ type: 'init', version: '0.1.0-test', zoomPage: 144 });
+  await ui.deliver(PROJECT);
+  await ui.opened({ type: 'opened', seq: 1, path: 'index.html', name: 'index.html', data: b64(Buffer.from('<!DOCTYPE html>\r\n<title>T</title>\r\n<p>x</p>\r\n')) });
+  await ui.page.waitForSelector('#visualFrame', { state: 'visible' });
+  assert.equal(await ui.page.frameLocator('#visualFrame').locator('html').evaluate((h) => getComputedStyle(h).zoom), '1.5');
   assert.deepEqual(ui.errors, []);
 });

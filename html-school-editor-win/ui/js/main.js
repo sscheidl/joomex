@@ -727,9 +727,10 @@ els.bFind.addEventListener('click', openFind);
 function askPicture(insert = insertPicture, options = {}) {
   if (!state.doc || editor.locked || !startPicking()) return;
   const op = ++state.opId;
-  // the place in the code is kept here: every question on the way (size, a picture outside the project) puts
-  // the caret of the code to its start when it closes
-  state.picture = { op, doc: state.doc, insert, size: options.size !== false, at: editor.selection };
+  // The place in the code is kept here with the revision of the text: every question on the way (size, a
+  // picture outside the project) puts the caret of the code to its start when it closes, and while a copy runs
+  // the pupil can type on. The place is used only if the text has not changed since.
+  state.picture = { op, doc: state.doc, insert, size: options.size !== false, at: editor.selection, revision: editor.revision };
   setStatus('Erlaubt sind Bilder im Format ' + PICTURE_FORMATS + '.');
   send({ type: 'pickPicture', op, page: state.doc.path });
 }
@@ -826,11 +827,11 @@ const handlers = {
     renderNotes();
     reportLayout();
   },
-  // The native page view zoomed itself (Ctrl+wheel there); the edit frame takes the same level.
+  // The native page view zoomed itself (Ctrl+wheel, Ctrl+plus, Ctrl+minus, Ctrl+0 there; the core sets the
+  // step and remembers it); the edit frame takes the same level.
   zoom(m) { if (m.page) setZoom('page', m.page, false); },
   shortcut(m) {
     if (state.modal) return;
-    if (m.key === 'zoomReset') { setZoom('page', ZOOM_DEFAULT); return; }  // Ctrl+0 in the native page view
     editor.focus();
     if (m.key === 'save') save();
     else if (m.key === 'find') openFind();
@@ -887,7 +888,14 @@ const handlers = {
     const size = p.size ? await askPictureSize(m.src) : null;
     if (p.size && !size) { setStatus('Kein Bild eingefügt.'); return; }
     if (state.picture !== p || p.doc !== state.doc) return;
-    if (p.insert === insertPicture) editor.select(p.at);
+    if (p.insert === insertPicture) {
+      // checked after the last question: text typed meanwhile is never replaced
+      if (editor.revision !== p.revision) {
+        tell('Bild nicht eingefügt', 'Du hast inzwischen im HTML-Code weitergeschrieben. Damit nichts überschrieben wird, ist das Bild nicht eingefügt. Klicke an die Stelle, an die es soll, und wähle es noch einmal mit „Bild einfügen“. Die Bilddatei ist schon in deinem Projektordner.');
+        return;
+      }
+      editor.select(p.at);
+    }
     p.insert(m.src, size);
   },
   pictureOutside,

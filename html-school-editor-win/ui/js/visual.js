@@ -12,7 +12,6 @@ const FRAME_URL = 'https://app.example/edit-frame.html';
 const INLINE = ['bold', 'italic', 'underline', 'sup', 'sub', 'mark'];
 const TYPING = /^insert(?:Text|CompositionText|Paragraph|LineBreak|ReplacementText)$/;
 const ALIGN = ['left', 'center', 'right', 'justify'];
-const SPACE_END = /[ \u00a0]+$/, SPACE_START = /^[ \u00a0]+/;
 const SEEN = 'img, svg, video, audio, iframe, object, embed, input, select, textarea, button, hr, [data-se-box]';
 const LINK = new Set(['a']);
 // A colour of the palette's grid or of the colour dialog, as the editor writes it (see keepHexColors).
@@ -207,37 +206,87 @@ export function createVisualEditor(els, editor, actions) {
     return part.textContent === '' && !part.querySelector(end ? SEEN : SEEN + ', br') ? node : null;
   }
 
-  // Takes the spaces at `node`'s end (or start) away; an emptied block keeps a line break so it stays visible.
-  // Ordinary spaces next to a line break of the code (indentation of the code) are not part of the split
-  // and stay.
-  function trimSpaces(node, end, block) {
-    const m = node && (end ? SPACE_END : SPACE_START).exec(node.data);
-    if (!m) return;
-    const rest = end ? node.data.slice(0, m.index) : node.data.slice(m[0].length);
-    const next = end ? rest.slice(-1) : rest.charAt(0);
-    if (!m[0].includes('\u00a0') && (next === '' ? !/\S/.test(rest) : /[\t\n\r\f]/.test(next))) return;
-    node.data = rest;
-    if (block && !block.textContent && !block.querySelector(SEEN + ', br')) block.append(doc.createElement('br'));
+  // ---- Enter or Shift+Enter at a space (B3). The engine keeps a space at the end of the first part as a
+  // no-break space (&nbsp; in the code), or at the start of the second part. A split point needs no space. What
+  // may go is decided before the input, at the place of the split, and only that is taken away afterwards: a
+  // no-break space written in the code stays, and so does every space where the page keeps spaces (pre,
+  // pre-wrap and the like). Review of alpha.20 by Codex (2026-11-28), finding 2.
+
+  const NBSP = '\u00a0';
+  const keepsSpaces = (el) => {
+    const cs = el ? getComputedStyle(el) : null;
+    return !!cs && (/^(?:pre|break-spaces)/.test(cs.whiteSpace) || /preserve|break-spaces/.test(cs.whiteSpaceCollapse || ''));
+  };
+  const srcCaret = () => { const r = getRange(doc); return r ? srcOffsetOf(view, info, r.startContainer, r.startOffset) : -1; };
+  // A no-break space the code holds as written, not one the engine made while typing or splitting.
+  function writtenNbsp(node, i, typedAt) {
+    const inf = info.get(node);
+    if (!inf || typeof inf.data !== 'string' || inf.data.length !== node.data.length || inf.data[i] !== NBSP) return false;
+    return !(typedAt && i === typedAt.index);  // the space the pupil has just typed here
+  }
+  // How many spaces next to the caret may go: `back` before it, else after it. 0 if one of them is a written
+  // no-break space, or if they belong to the indentation of the code (a line break next to them).
+  function spacesAt(node, offset, back, typedAt) {
+    if (!node || node.nodeType !== 3 || keepsSpaces(node.parentElement)) return 0;
+    const d = node.data;
+    let i = offset;
+    if (back) while (i > 0 && (d[i - 1] === ' ' || d[i - 1] === NBSP)) i--;
+    else while (i < d.length && (d[i] === ' ' || d[i] === NBSP)) i++;
+    const [from, to] = back ? [i, offset] : [offset, i];
+    if (from === to) return 0;
+    const beyond = back ? d[from - 1] : d[to];
+    if (beyond !== undefined && /[\t\n\r\f]/.test(beyond)) return 0;
+    for (let k = from; k < to; k++) if (d[k] === NBSP && writtenNbsp(node, k, typedAt)) return 0;
+    return to - from;
   }
 
-  // Enter or Shift+Enter at a space: the browser keeps the space at the end of the first part as a no-break
-  // space (&nbsp; in the code) or at the start of the second part. A split point needs no space; both go.
+  let splitPlan = null;  // { type, block, tail, head, text }: decided in beforeinput, carried out in input
+  let typedSpace = null; // { text, at }: the source place right after a space the pupil typed in the page
+  function planSplit(type) {
+    splitPlan = null;
+    const range = getRange(doc);
+    if (!range || !range.collapsed) return;
+    const c = range.startContainer, o = range.startOffset;
+    const before = c.nodeType === 3 ? [c, o] : c.childNodes[o - 1]?.nodeType === 3 ? [c.childNodes[o - 1], c.childNodes[o - 1].data.length] : null;
+    const after = c.nodeType === 3 ? [c, o] : c.childNodes[o]?.nodeType === 3 ? [c.childNodes[o], 0] : null;
+    const block = blockOf(c, doc.body);
+    if (block === doc.body || keepsSpaces(block)) return;
+    const typed = typedSpace && typedSpace.text === editor.text && typedSpace.at === srcCaret() && before ? { index: before[1] - 1 } : null;
+    const tail = before ? spacesAt(before[0], before[1], true, typed) : 0;
+    const head = after ? spacesAt(after[0], after[1], false, null) : 0;
+    if (tail || head) splitPlan = { type, block, tail, head, text: editor.text };
+  }
+
+  // Takes `count` spaces from the end (or start) of a text node, if they are there.
+  function cut(node, count, end) {
+    if (!node || node.nodeType !== 3 || !count) return;
+    const d = node.data, part = end ? d.slice(d.length - count) : d.slice(0, count);
+    if (part.length !== count || /[^ \u00a0]/.test(part)) return;
+    node.data = end ? d.slice(0, d.length - count) : d.slice(count);
+  }
+  const keepVisible = (block) => { if (!block.textContent && !block.querySelector(SEEN + ', br')) block.append(doc.createElement('br')); };
+
+  // After the input: only if the split happened where it was planned (the block of the caret was split into it
+  // and the block behind it, or a line break stands at the caret in that block).
   function tidySplit(type) {
+    const plan = splitPlan;
+    splitPlan = null;
+    if (!plan || plan.type !== type || plan.text !== editor.text || !plan.block.isConnected) return;
     const range = getRange(doc);
     if (!range || !range.collapsed) return;
     if (type === 'insertParagraph') {
       const block = blockOf(range.startContainer, doc.body);
-      const prev = block !== doc.body ? block.previousElementSibling : null;
-      if (!prev || prev.localName !== block.localName || !isEditableAt(prev)) return;
-      trimSpaces(textAtEdge(prev, true), true, prev);
-      trimSpaces(textAtEdge(block, false), false, block);
+      if (block === doc.body || block === plan.block || block.previousElementSibling !== plan.block || !isEditableAt(block)) return;
+      cut(textAtEdge(plan.block, true), plan.tail, true);
+      cut(textAtEdge(block, false), plan.head, false);
+      keepVisible(plan.block);
+      keepVisible(block);
     } else {
-      // the line break in front of the caret, and the texts directly around it
       const { startContainer: c, startOffset: o } = range;
       const br = c.nodeType === 3 ? (o === 0 ? c.previousSibling : null) : c.childNodes[o - 1];
-      if (!br || br.nodeType !== 1 || br.localName !== 'br') return;
-      if (br.previousSibling && br.previousSibling.nodeType === 3) trimSpaces(br.previousSibling, true);
-      if (br.nextSibling && br.nextSibling.nodeType === 3) trimSpaces(br.nextSibling, false);
+      if (!br || br.nodeType !== 1 || br.localName !== 'br' || blockOf(br, doc.body) !== plan.block) return;
+      cut(br.previousSibling, plan.tail, true);
+      cut(br.nextSibling, plan.head, false);
     }
   }
 
@@ -358,6 +407,7 @@ export function createVisualEditor(els, editor, actions) {
   // "Zeilenumbruch": a <br> at the caret, exactly as Shift+Enter makes it, as a step of its own.
   function lineBreak() {
     inputKind = 'cmd';
+    planSplit('insertLineBreak');  // execCommand may not send beforeinput
     try { doc.execCommand('insertLineBreak'); } finally { inputKind = null; }
     return 'input';
   }
@@ -534,13 +584,18 @@ export function createVisualEditor(els, editor, actions) {
         historyStep(type === 'historyUndo');
       } else if (type.startsWith('format') || ['insertFromDrop', 'insertFromPaste', 'insertFromPasteAsQuotation', 'insertLink'].includes(type)) {
         e.preventDefault();
-      } else if (type === 'insertParagraph') leaveLink();
+      } else if (type === 'insertParagraph' || type === 'insertLineBreak') {
+        if (type === 'insertParagraph') leaveLink();
+        planSplit(type);
+      }
     });
     doc.addEventListener('input', (e) => {
       if (composing) return;
       if (e.inputType === 'insertParagraph') { dropEmptyLists(env); dropEmptyLinks(); }
       if (e.inputType === 'insertParagraph' || e.inputType === 'insertLineBreak') tidySplit(e.inputType);
       commit(inputKind || 'vis-type', TYPING.test(e.inputType));
+      // a space typed in the page: Enter right after it may take it away (see planSplit)
+      typedSpace = e.inputType === 'insertText' && (e.data === ' ' || e.data === NBSP) && current() ? { text: editor.text, at: srcCaret() } : null;
     });
     doc.addEventListener('compositionstart', () => { composing = true; });
     doc.addEventListener('compositionend', () => { composing = false; commit('vis-type', true); });

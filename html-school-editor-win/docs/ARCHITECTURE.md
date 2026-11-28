@@ -90,7 +90,7 @@ JSON objects with a `type`; paths are project paths with `/` (`seiten/tiere.html
 | From the interface | Meaning | Answer |
 | --- | --- | --- |
 | `ready` | the interface has loaded | `init` (version, `zoomCode`, `zoomPage` in percent from HKCU); the last project folder is opened again if it can be reached |
-| `zoom` {code, page} | the display zoom of both panes in percent (from alpha.20); the core keeps 50 to 200, writes `ZoomCode` and `ZoomPage` to HKCU and sets the zoom factor of the page view. Only the look changes | — (the core sends `zoom` {page} when the page view zoomed itself with Ctrl+wheel, and `shortcut` {key: zoomReset} for Ctrl+0 there) |
+| `zoom` {code, page} | the display zoom of both panes in percent (from alpha.20); the core snaps both to the zoom steps of `src/core/zoom.hpp` (from alpha.21), writes `ZoomCode` and `ZoomPage` to HKCU and sets the zoom factor of the page view. Only the look changes | — (the core sends `zoom` {page} when the page view zoomed itself: Ctrl+wheel there, or Ctrl+0, Ctrl+plus and Ctrl+minus, which the core handles for that view) |
 | `layout` {visible, x, y, w, h} | where the page view lies, in device pixels; hidden while a dialog is open | — |
 | `preview` {path, text} | the current, unsaved text, after a pause in typing | `missing` {path, items} after the page view has loaded |
 | `openProject` | choose a folder | `projectChanged`, `project` {name, files} |

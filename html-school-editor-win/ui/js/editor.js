@@ -16,6 +16,7 @@ export function createCodeEditor(els, onChange) {
   const hlState = {};
   let text = '', lineStarts = [0], lineCount = 0, plain = false, charWidth = 0;
   let lineHeight = LINE_HEIGHT;  // pixels per line at the current zoom
+  let revision = 0;  // counts every change of the text, so a remembered place can tell that it is out of date
   // The line breaks of the open file (breaks.js). The history stores raw texts (every break as it stands
   // in the file), so each undo step brings back its own breaks.
   let breaks = null;
@@ -109,6 +110,7 @@ export function createCodeEditor(els, onChange) {
   function took(kind) {
     if (ta.value === text) { showPosition(); return; }
     text = ta.value;
+    revision++;
     if (breaks) breaks.follow(text);
     history.record(rawNow(), kind, Date.now());
     render();
@@ -129,6 +131,7 @@ export function createCodeEditor(els, onChange) {
   function setValue(newText, keepCaret) {
     const a = ta.selectionStart, b = ta.selectionEnd, top = ta.scrollTop, left = ta.scrollLeft;
     const old = text;
+    if (newText !== text) revision++;
     text = newText;
     ta.value = newText;
     if (keepCaret) {
@@ -275,6 +278,8 @@ export function createCodeEditor(els, onChange) {
     // The selection of the code, and setting it back (a modal dialog puts the caret of the text area to its
     // start when it gives the focus back).
     get selection() { return [ta.selectionStart, ta.selectionEnd]; },
+    // Changes with every change of the text (typing, undo, the page side, another page).
+    get revision() { return revision; },
     select(range) {
       const a = Math.min(range[0], text.length), b = Math.min(range[1], text.length);
       ta.setSelectionRange(a, b);

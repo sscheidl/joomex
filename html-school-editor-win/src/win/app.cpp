@@ -10,6 +10,7 @@
 #include <random>
 
 #include "../core/paths.hpp"
+#include "../core/zoom.hpp"
 
 #ifndef HSE_VERSION
 #define HSE_VERSION "0.0.0-dev"
@@ -535,15 +536,12 @@ constexpr const char* kPageCsp =
     "media-src 'self' data:; script-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; "
     "connect-src 'none'; form-action 'none'; base-uri 'self'; manifest-src 'none'";
 
-// A remembered zoom level in percent (wish W2): 50 to 200, else 100.
+// A remembered zoom level in percent (wish W2), as one of the zoom steps (`src/core/zoom.hpp`).
 int zoomSetting(const wchar_t* name) {
     const std::wstring v = readSetting(name);
     int p = 0;
-    for (wchar_t c : v) { if (c < L'0' || c > L'9' || p > 1000) return 100; p = p * 10 + (c - L'0'); }
-    return p >= 50 && p <= 200 ? p : 100;
-}
-int clampZoom(double percent) {
-    return percent >= 50 && percent <= 200 ? static_cast<int>(percent + 0.5) : percent > 200 ? 200 : percent > 0 ? 50 : 100;
+    for (wchar_t c : v) { if (c < L'0' || c > L'9' || p > 1000) return kZoomDefault; p = p * 10 + (c - L'0'); }
+    return v.empty() ? kZoomDefault : nearestZoomStep(p);
 }
 
 constexpr const char* kEditCsp =
@@ -697,10 +695,15 @@ void App::createPreview() {
                     a->get_VirtualKey(&key);
                     if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN) return S_OK;
                     const bool ctrl = GetKeyState(VK_CONTROL) < 0;
-                    if (ctrl && (key == '0' || key == VK_NUMPAD0)) {
-                        // Ctrl+0 resets the zoom of the page (wish W2); the focus stays in the page view
+                    // Ctrl+0, Ctrl+plus and Ctrl+minus zoom the page view (wish W2). The engine's own keys for it
+                    // are off with the browser accelerator keys, so the program takes them: the same steps as
+                    // the editable page, and through ZoomFactorChanged the same remembering. The focus stays.
+                    const int zoomDir = (key == '0' || key == VK_NUMPAD0) ? 0 : (key == VK_OEM_PLUS || key == VK_ADD) ? 1
+                                      : (key == VK_OEM_MINUS || key == VK_SUBTRACT) ? -1 : 2;
+                    if (ctrl && zoomDir != 2) {
                         a->put_Handled(TRUE);
-                        post(Json::object().set("type", "shortcut").set("key", "zoomReset"));
+                        const int p = zoomDir == 0 ? kZoomDefault : nextZoomStep(pvZoom_ * 100, zoomDir);
+                        if (pvController_) pvController_->put_ZoomFactor(p / 100.0);
                         return S_OK;
                     }
                     const char* name = (ctrl && key == 'S') ? "save" : (ctrl && key == 'F') ? "find" : key == VK_F3 ? "findNext" : nullptr;
@@ -847,7 +850,7 @@ void App::onUiMessage(const Json& m) {
     } else if (type == "zoom") {
         // Display zoom of both panes (wish W2): remembered for the next start; the page view takes its level.
         // Only the look changes, never the text.
-        const int code = clampZoom(m.at("code").num(100)), page = clampZoom(m.at("page").num(100));
+        const int code = nearestZoomStep(m.at("code").num(kZoomDefault)), page = nearestZoomStep(m.at("page").num(kZoomDefault));
         writeSetting(L"ZoomCode", std::to_wstring(code));
         writeSetting(L"ZoomPage", std::to_wstring(page));
         pvZoom_ = page / 100.0;
@@ -1304,10 +1307,11 @@ void App::resetPreviewLoad() {
     if (pv_ && !pvStart_ && !pvFailed_) pv_->Stop();
 }
 
-// The engine changed the zoom of the page view (Ctrl+wheel there): kept within 50 to 200 %, remembered, and
-// told to the interface, so the editable page shows the same level.
+// The engine changed the zoom of the page view (Ctrl+wheel there, or the program's own zoom keys): set to the
+// nearest zoom step (the engine's own steps are not all ours), remembered, and told to the interface, so the
+// editable page shows the same level.
 void App::onPreviewZoom(double factor) {
-    const int p = clampZoom(factor * 100);
+    const int p = nearestZoomStep(factor * 100);
     if (pvController_ && std::abs(factor - p / 100.0) > 0.001) { pvController_->put_ZoomFactor(p / 100.0); return; }
     if (std::abs(p / 100.0 - pvZoom_) < 0.001) return;
     pvZoom_ = p / 100.0;
